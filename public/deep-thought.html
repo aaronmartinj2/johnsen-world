@@ -659,7 +659,7 @@ function updateUptime() {
   let diff = Math.floor((now - epoch) / 1000);
   const YEAR_SECS = Math.floor(365.25 * 24 * 3600);
   const DAY_SECS  = 86400;
-  const yrs  = Math.floor(diff / YEAR_SECS);
+  const yrs  = Math.floor(diff / YEAR_SECS) + 7500000;
   diff = diff - (yrs * YEAR_SECS);
   const days = Math.floor(diff / DAY_SECS);
   diff = diff - (days * DAY_SECS);
