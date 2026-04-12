@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/deep-thought", "destination": "/deep-thought.html" },
+    { "source": "/((?!deep-thought).*)", "destination": "/index.html" }
+  ]
+}

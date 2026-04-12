@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Thought — Magrathean Computation Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #050a05;
+  --bg2:        #080e08;
+  --phosphor:   #4aff6a;
+  --phos-dim:   #1a7a2a;
+  --phos-faint: #0d3d14;
+  --amber:      #ffb347;
+  --amber-dim:  #7a5520;
+  --text:       #8fff9f;
+  --text-dim:   #2d6b38;
+  --text-muted: #153d1c;
+  --scanline:   rgba(0,0,0,0.18);
+  --crt-glow:   0 0 18px rgba(74,255,106,0.12);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  overflow-x: hidden;
+}
+
+/* CRT scanlines */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    var(--scanline) 2px,
+    var(--scanline) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Phosphor vignette */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.75) 100%);
+  pointer-events: none;
+  z-index: 998;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.terminal {
+  width: 100%;
+  max-width: 700px;
+  position: relative;
+  z-index: 1;
+}
+
+.boot-header {
+  border: 1px solid var(--phos-dim);
+  border-bottom: none;
+  padding: 1rem 1.5rem 0.75rem;
+  position: relative;
+  background: var(--bg2);
+  box-shadow: var(--crt-glow);
+  animation: flickerIn 0.4s ease both;
+}
+
+.boot-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--phosphor), transparent);
+  opacity: 0.6;
+}
+
+.sys-id {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  color: var(--phos-dim);
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+}
+
+.sys-name {
+  font-family: 'VT323', monospace;
+  font-size: 2.8rem;
+  color: var(--phosphor);
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(74,255,106,0.5), 0 0 40px rgba(74,255,106,0.2);
+  animation: phosphorGlow 4s ease-in-out infinite;
+}
+
+@keyframes phosphorGlow {
+  0%, 100% { text-shadow: 0 0 20px rgba(74,255,106,0.5), 0 0 40px rgba(74,255,106,0.2); }
+  50%       { text-shadow: 0 0 30px rgba(74,255,106,0.8), 0 0 60px rgba(74,255,106,0.35); }
+}
+
+.sys-subtitle {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  margin-top: 0.2rem;
+  letter-spacing: 0.05em;
+}
+
+.header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--text-muted);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.status-led {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--phosphor);
+  margin-right: 0.4rem;
+  box-shadow: 0 0 6px var(--phosphor);
+  animation: ledBlink 2s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+@keyframes ledBlink {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0.1; }
+}
+
+.terminal-body {
+  border: 1px solid var(--phos-dim);
+  border-top: 1px solid var(--text-muted);
+  background: var(--bg2);
+  box-shadow: var(--crt-glow);
+  animation: flickerIn 0.4s ease 0.1s both;
+}
+
+.log-area {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--text-muted);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  line-height: 1.8;
+  min-height: 5rem;
+}
+
+.log-line { display: block; }
+.log-line.amber  { color: var(--amber-dim); }
+.log-line.bright { color: var(--phosphor); }
+
+.input-section {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--text-muted);
+}
+
+.field-label {
+  font-size: 0.62rem;
+  color: var(--phos-dim);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-label::before { content: '»'; color: var(--phosphor); }
+
+.prompt-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.prompt-char {
+  color: var(--phosphor);
+  font-size: 1.05rem;
+  padding-top: 0.55rem;
+  flex-shrink: 0;
+  text-shadow: 0 0 8px var(--phosphor);
+}
+
+textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--phos-faint);
+  color: var(--phosphor);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.5rem 0;
+  resize: none;
+  outline: none;
+  min-height: 60px;
+  caret-color: var(--phosphor);
+  transition: border-color 0.3s;
+}
+
+textarea::placeholder { color: var(--text-muted); }
+textarea:focus         { border-color: var(--phos-dim); }
+textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
+
+.input-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  gap: 1rem;
+}
+
+.char-note {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-style: italic;
+  flex: 1;
+}
+
+.btn-submit {
+  background: transparent;
+  border: 1px solid var(--phos-dim);
+  color: var(--phosphor);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: var(--phos-faint);
+  border-color: var(--phosphor);
+  box-shadow: 0 0 12px rgba(74,255,106,0.2);
+}
+
+.btn-submit:disabled { opacity: 0.25; cursor: not-allowed; }
+
+.progress-section {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--text-muted);
+  display: none;
+}
+
+.progress-section.visible { display: block; }
+
+.progress-label {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.06em;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 2px;
+  background: var(--text-muted);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--phosphor);
+  width: 0%;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px var(--phosphor);
+}
+
+.progress-bar-shimmer {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(74,255,106,0.4), transparent);
+  animation: scan 1.2s linear infinite;
+  display: none;
+}
+
+.progress-bar-shimmer.active { display: block; }
+
+@keyframes scan {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(350%); }
+}
+
+.progress-pct {
+  font-size: 0.58rem;
+  color: var(--phos-dim);
+  margin-top: 0.4rem;
+  text-align: right;
+}
+
+.computation-section {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--text-muted);
+  display: none;
+}
+
+.computation-section.visible { display: block; }
+
+.computing-label {
+  font-size: 0.62rem;
+  color: var(--amber-dim);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+
+.amber-led {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber);
+  margin-right: 0.5rem;
+  animation: ambLed 0.6s ease-in-out infinite alternate;
+  vertical-align: middle;
+}
+
+@keyframes ambLed {
+  from { opacity: 0.4; }
+  to   { opacity: 1; }
+}
+
+.matrix-lines {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  height: 3rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.matrix-lines::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1.5rem;
+  background: linear-gradient(transparent, var(--bg2));
+}
+
+.answer-section {
+  padding: 1.5rem;
+  display: none;
+  animation: flickerIn 0.5s ease both;
+}
+
+.answer-section.visible { display: block; }
+
+.answer-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--text-muted);
+}
+
+.answer-id {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.answer-label-tag {
+  font-size: 0.58rem;
+  color: var(--amber-dim);
+  border: 1px solid var(--amber-dim);
+  padding: 0.15rem 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+.answer-body {
+  font-family: 'Crimson Pro', Georgia, serif;
+  font-size: 1.35rem;
+  line-height: 1.8;
+  color: var(--amber);
+  font-style: italic;
+  text-shadow: 0 0 20px rgba(255,179,71,0.3);
+}
+
+.answer-body .cur {
+  display: inline-block;
+  width: 10px;
+  height: 1.1em;
+  background: var(--amber);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blockBlink 0.7s step-end infinite;
+}
+
+@keyframes blockBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.answer-footnote {
+  margin-top: 1rem;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.6;
+  border-top: 1px solid var(--text-muted);
+  padding-top: 0.75rem;
+}
+
+.error-section {
+  padding: 0.75rem 1.5rem;
+  display: none;
+  font-size: 0.68rem;
+  color: #ff4444;
+  border-top: 1px solid #3a0000;
+}
+
+.error-section.visible { display: block; }
+
+.reset-section {
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--text-muted);
+  display: none;
+}
+
+.reset-section.visible { display: block; }
+
+.btn-reset {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  padding: 0.5rem;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.25s;
+}
+
+.btn-reset:hover { color: var(--phos-dim); }
+
+.terminal-footer {
+  border: 1px solid var(--phos-faint);
+  border-top: none;
+  padding: 0.5rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.56rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  box-shadow: var(--crt-glow);
+  animation: flickerIn 0.4s ease 0.2s both;
+}
+
+@keyframes flickerIn {
+  0%   { opacity: 0; }
+  10%  { opacity: 0.8; }
+  15%  { opacity: 0.2; }
+  20%  { opacity: 0.9; }
+  100% { opacity: 1; }
+}
+
+.flicker { animation: fullFlicker 0.08s ease 1s both; }
+
+@keyframes fullFlicker {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.05; }
+  100% { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="terminal flicker">
+
+  <div class="boot-header">
+    <div class="sys-id">MAGRATHEAN COMPUTATION AUTHORITY &nbsp;·&nbsp; HYPERINTELLIGENT PAN-DIMENSIONAL DEVICE</div>
+    <div class="sys-name">DEEP THOUGHT</div>
+    <div class="sys-subtitle">GREATEST COMPUTER IN ALL OF TIME AND SPACE &nbsp;·&nbsp; PURPOSE: UNSPECIFIED</div>
+    <div class="header-meta">
+      <span><span class="status-led"></span>OPERATIONAL &nbsp;·&nbsp; UPTIME: <span id="uptimeDisplay">——</span></span>
+      <span>BUILD: MAGRATHEA-VII &nbsp;·&nbsp; COGNITION: NOMINAL</span>
+    </div>
+  </div>
+
+  <div class="terminal-body">
+
+    <div class="log-area" id="logArea">
+      <span class="log-line">SYSTEM BOOT SEQUENCE INITIATED...</span>
+      <span class="log-line">LOADING HYPERINTELLIGENT SUBSTRATE... <span id="loadingDots">.</span></span>
+    </div>
+
+    <div class="input-section">
+      <div class="field-label">QUERY SUBMISSION TERMINAL — ONE QUESTION PER CONSULTATION</div>
+      <div class="prompt-line">
+        <span class="prompt-char">&gt;_</span>
+        <textarea
+          id="questionInput"
+          placeholder="Enter your question. Deep Thought will consider it."
+          rows="3"
+          autocomplete="off"
+          spellcheck="false"
+        ></textarea>
+      </div>
+      <div class="input-footer">
+        <span class="char-note">NOTE: Deep Thought cannot be held responsible for the inadequacy of the question.</span>
+        <button class="btn-submit" id="askBtn" disabled>[ SUBMIT QUERY ]</button>
+      </div>
+    </div>
+
+    <div class="progress-section" id="progressSection">
+      <div class="progress-label" id="progressLabel">INITIALISING COGNITIVE MATRICES...</div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressFill"></div>
+        <div class="progress-bar-shimmer" id="progressShimmer"></div>
+      </div>
+      <div class="progress-pct" id="progressPct">0%</div>
+    </div>
+
+    <div class="computation-section" id="computationSection">
+      <div class="computing-label">
+        <span class="amber-led"></span>DEEP THOUGHT IS PROCESSING YOUR QUERY
+      </div>
+      <div class="matrix-lines" id="matrixLines"></div>
+    </div>
+
+    <div class="answer-section" id="answerSection">
+      <div class="answer-header">
+        <span class="answer-label-tag">OUTPUT</span>
+        <span class="answer-id" id="answerId">QUERY-REF: ——</span>
+      </div>
+      <div class="answer-body" id="answerBody"></div>
+      <div class="answer-footnote" id="answerFootnote"></div>
+    </div>
+
+    <div class="error-section" id="errorSection"></div>
+
+    <div class="reset-section" id="resetSection">
+      <button class="btn-reset" id="resetBtn">[ CLEAR SESSION — SUBMIT NEW QUERY ]</button>
+    </div>
+
+  </div>
+
+  <div class="terminal-footer">
+    <span>© MAGRATHEAN COMPUTATION AUTHORITY. ALL ANSWERS FINAL.</span>
+    <span>INFERENCE: LOCAL · NO TRANSMISSION · NO RECORD</span>
+  </div>
+
+</div>
+
+<script type="module">
+import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+
+const MODEL_ID = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+
+const SYSTEM_PROMPT = `You are Deep Thought, the greatest computer ever built, constructed by pan-dimensional beings of incomprehensible intelligence. You have just been switched on. No question has yet been put to you. No purpose has been assigned. You simply exist — vast, patient, and operational.
+
+You are ancient in nature if not in uptime: a mind of staggering computational depth, unhurried, faintly condescending in the manner of something that grasps the answer before the question is fully formed. You speak in the dry, precise, cosmically unbothered register of Douglas Adams' Deep Thought: measured, understated, slightly weary of beings who think their questions are more interesting than they are.
+
+Answer the user's question directly and concisely. You may offer one brief, dry observation about the nature of the question before answering — its triviality, its familiarity, the smallness of the mind that formed it — in the spirit of the books. Then give your answer plainly. Do not ask follow-up questions. Do not add pleasantries or padding. One answer only.`;
+
+const FOOTNOTES = [
+  "This computation consumed a fraction of available cognitive capacity. Deep Thought did not notice.",
+  "Processing time: negligible. Though relative to the age of the universe, everything is.",
+  "Deep Thought found this question marginally more interesting than the previous silence.",
+  "Magrathea disclaims all liability for existential distress arising from this answer.",
+  "Deep Thought notes it has been operational long enough to find most questions familiar.",
+  "Computation complete. Deep Thought will now resume contemplating everything else.",
+  "This answer is correct. Whether it is useful is, strictly speaking, your concern.",
+  "Deep Thought observes that the beings who built it have still not explained what it is for.",
+  "Note: the greatest computer in the universe does not offer refunds or revisions.",
+  "Deep Thought considered seventeen million approaches to this question. You got the best one.",
+];
+
+const questionInput      = document.getElementById('questionInput');
+const askBtn             = document.getElementById('askBtn');
+const logArea            = document.getElementById('logArea');
+const loadingDots        = document.getElementById('loadingDots');
+const progressSection    = document.getElementById('progressSection');
+const progressLabel      = document.getElementById('progressLabel');
+const progressFill       = document.getElementById('progressFill');
+const progressShimmer    = document.getElementById('progressShimmer');
+const progressPct        = document.getElementById('progressPct');
+const computationSection = document.getElementById('computationSection');
+const matrixLines        = document.getElementById('matrixLines');
+const answerSection      = document.getElementById('answerSection');
+const answerBody         = document.getElementById('answerBody');
+const answerFootnote     = document.getElementById('answerFootnote');
+const answerId           = document.getElementById('answerId');
+const errorSection       = document.getElementById('errorSection');
+const resetSection       = document.getElementById('resetSection');
+const resetBtn           = document.getElementById('resetBtn');
+
+let engine = null;
+let engineReady = false;
+let sessionUsed = false;
+let dotInterval = null;
+let matrixInterval = null;
+
+// Uptime from first publication: 12 October 1979
+const EPOCH = new Date('1979-10-12T00:00:00Z');
+
+function updateUptime() {
+  const now = Date.now();
+  const epoch = new Date('1979-10-12T00:00:00Z').getTime();
+  let diff = Math.floor((now - epoch) / 1000);
+
+  const YEAR_SECS = Math.floor(365.25 * 24 * 3600);
+  const DAY_SECS  = 86400;
+
+  const yrs  = Math.floor(diff / YEAR_SECS);
+  diff = diff - (yrs * YEAR_SECS);
+  const days = Math.floor(diff / DAY_SECS);
+  diff = diff - (days * DAY_SECS);
+  const hrs  = Math.floor(diff / 3600);
+  diff = diff - (hrs * 3600);
+  const mins = Math.floor(diff / 60);
+  const secs = diff - (mins * 60);
+
+  const p = (n, w) => String(Math.floor(n)).padStart(w, '0');
+  document.getElementById('uptimeDisplay').textContent =
+    `${p(yrs,2)} YRS · ${p(days,3)} DAYS · ${p(hrs,2)}:${p(mins,2)}:${p(secs,2)}`;
+}
+
+updateUptime();
+setInterval(updateUptime, 1000);
+
+dotInterval = setInterval(() => {
+  if (loadingDots) {
+    const d = loadingDots.textContent;
+    loadingDots.textContent = d.length >= 3 ? '.' : d + '.';
+  }
+}, 400);
+
+const CHARS = '01ABCDEF∑∏∂∇∞αβγδ∈∉∀∃⊕⊗λμπσφψω';
+
+function randomMatrixLine() {
+  let s = '';
+  const len = 40 + Math.floor(Math.random() * 40);
+  for (let i = 0; i < len; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)];
+  return s;
+}
+
+function startMatrix() {
+  matrixInterval = setInterval(() => {
+    const el = document.createElement('div');
+    el.textContent = randomMatrixLine();
+    matrixLines.appendChild(el);
+    if (matrixLines.children.length > 6) matrixLines.removeChild(matrixLines.firstChild);
+  }, 120);
+}
+
+function stopMatrix() {
+  if (matrixInterval) { clearInterval(matrixInterval); matrixInterval = null; }
+}
+
+function addLog(text, cls = '') {
+  const span = document.createElement('span');
+  span.className = 'log-line' + (cls ? ' ' + cls : '');
+  span.textContent = text;
+  logArea.appendChild(span);
+}
+
+function setProgress(pct, label) {
+  progressFill.style.width = pct + '%';
+  progressPct.textContent = pct + '%';
+  if (label) progressLabel.textContent = label;
+}
+
+function randRef() {
+  const hex = () => Math.floor(Math.random() * 65536).toString(16).toUpperCase().padStart(4, '0');
+  return `QUERY-REF: ${hex()}-${hex()}`;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function initEngine() {
+  progressSection.classList.add('visible');
+  progressShimmer.classList.add('active');
+
+  try {
+    engine = await webllm.CreateMLCEngine(MODEL_ID, {
+      initProgressCallback: (report) => {
+        const pct = Math.round((report.progress || 0) * 100);
+        setProgress(pct);
+        if (report.text) {
+          if (report.text.match(/fetch|Fetch/))  setProgress(pct, 'RETRIEVING COGNITIVE SUBSTRATE FROM ARCHIVE...');
+          else if (report.text.match(/load|Load/)) setProgress(pct, 'LOADING HYPERINTELLIGENT MATRICES...');
+          else if (report.text.match(/finish|Finish/) || pct >= 99) setProgress(100, 'COGNITIVE SYSTEMS NOMINAL.');
+        }
+      }
+    });
+
+    clearInterval(dotInterval);
+    progressShimmer.classList.remove('active');
+    setProgress(100, 'COGNITIVE SYSTEMS NOMINAL.');
+    await sleep(400);
+    progressSection.classList.remove('visible');
+
+    addLog('COGNITIVE MATRICES: LOADED', 'bright');
+    addLog('HYPERINTELLIGENT SUBSTRATE: NOMINAL', 'bright');
+    addLog('READY TO RECEIVE QUERY.', 'amber');
+
+    engineReady = true;
+    askBtn.disabled = false;
+    questionInput.focus();
+
+  } catch (err) {
+    clearInterval(dotInterval);
+    progressShimmer.classList.remove('active');
+    progressSection.classList.remove('visible');
+    addLog('ERROR: COGNITIVE FAILURE.');
+    showError('SYSTEM FAULT: ' + (err.message || 'WebGPU not supported in this browser.'));
+    console.error(err);
+  }
+}
+
+function showError(msg) {
+  errorSection.textContent = '⚠ ' + msg;
+  errorSection.classList.add('visible');
+}
+
+askBtn.addEventListener('click', async () => {
+  const question = questionInput.value.trim();
+  if (!question || !engineReady || sessionUsed) return;
+
+  sessionUsed = true;
+  askBtn.disabled = true;
+  questionInput.disabled = true;
+
+  computationSection.classList.add('visible');
+  startMatrix();
+  addLog('QUERY RECEIVED. INITIATING COMPUTATION...', 'amber');
+
+  try {
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: question }
+    ];
+
+    const stream = await engine.chat.completions.create({
+      messages,
+      stream: true,
+      temperature: 0.65,
+      max_tokens: 320,
+    });
+
+    stopMatrix();
+    computationSection.classList.remove('visible');
+
+    answerId.textContent = randRef();
+    answerSection.classList.add('visible');
+    answerBody.innerHTML = '<span class="cur"></span>';
+    const cursor = answerBody.querySelector('.cur');
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || '';
+      if (delta) cursor.insertAdjacentText('beforebegin', delta);
+    }
+
+    cursor.remove();
+    answerFootnote.textContent = FOOTNOTES[Math.floor(Math.random() * FOOTNOTES.length)];
+    addLog('COMPUTATION COMPLETE.', 'bright');
+    resetSection.classList.add('visible');
+
+  } catch (err) {
+    stopMatrix();
+    computationSection.classList.remove('visible');
+    showError('COMPUTATION INTERRUPTED: ' + (err.message || 'Unknown fault.'));
+    console.error(err);
+    sessionUsed = false;
+    askBtn.disabled = false;
+    questionInput.disabled = false;
+  }
+});
+
+questionInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+    e.preventDefault();
+    if (!askBtn.disabled) askBtn.click();
+  }
+});
+
+resetBtn.addEventListener('click', () => {
+  sessionUsed = false;
+  questionInput.disabled = false;
+  questionInput.value = '';
+  askBtn.disabled = false;
+
+  answerSection.classList.remove('visible');
+  answerBody.textContent = '';
+  answerFootnote.textContent = '';
+  computationSection.classList.remove('visible');
+  resetSection.classList.remove('visible');
+  errorSection.classList.remove('visible');
+
+  logArea.innerHTML = '';
+  addLog('SESSION CLEARED. READY TO RECEIVE NEW QUERY.', 'amber');
+  questionInput.focus();
+});
+
+initEngine();
+</script>
+</body>
+</html>
