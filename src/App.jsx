@@ -11,12 +11,11 @@ const projects = [
   },
   {
     id: '002',
-    title: 'CLEARPATH',
+    title: 'NEWPLAN',
     desc: 'A HOP-focused EHS platform for event learning and safety intelligence. Currently in development.',
     tags: ['SaaS', 'EHS', 'HOP'],
-    href: null,
-    live: false,
-    soon: true,
+    href: 'https://heynewplan.com',
+    live: true,
   },
   {
     id: '003',
@@ -69,11 +68,10 @@ export default function App() {
     <>
       <header>
         <div className="masthead">
-          JOHN<span className="masthead-accent">.</span>SEN
+          JOHN<span className="masthead-accent">SEN</span>
         </div>
         <div className="tagline-row">
           <span className="tagline">Aaron Johnsen &nbsp;·&nbsp; johnsen.world</span>
-          <span className="tagline-right">building things worth building</span>
         </div>
       </header>
       <main>
