@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Deep Thought — Magrathean Computation Engine</title>
+<title>Deep Thought — Consultation Interface</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,17 +22,17 @@
   --text-muted: #153d1c;
   --scanline:   rgba(0,0,0,0.18);
   --crt-glow:   0 0 18px rgba(74,255,106,0.12);
+  --mono:       ui-monospace, 'Menlo', 'Courier New', monospace;
 }
 
 html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--mono);
   overflow-x: hidden;
 }
 
-/* CRT scanlines */
 body::before {
   content: '';
   position: fixed;
@@ -48,7 +48,6 @@ body::before {
   z-index: 999;
 }
 
-/* Phosphor vignette */
 body::after {
   content: '';
   position: fixed;
@@ -121,6 +120,7 @@ body {
   color: var(--text-dim);
   margin-top: 0.2rem;
   letter-spacing: 0.05em;
+  font-family: var(--mono);
 }
 
 .header-meta {
@@ -133,6 +133,7 @@ body {
   font-size: 0.62rem;
   color: var(--text-muted);
   letter-spacing: 0.04em;
+  font-family: var(--mono);
 }
 
 .status-led {
@@ -166,6 +167,7 @@ body {
   color: var(--text-dim);
   line-height: 1.8;
   min-height: 5rem;
+  font-family: var(--mono);
 }
 
 .log-line { display: block; }
@@ -185,6 +187,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-family: var(--mono);
 }
 
 .field-label::before { content: '»'; color: var(--phosphor); }
@@ -201,6 +204,7 @@ body {
   padding-top: 0.55rem;
   flex-shrink: 0;
   text-shadow: 0 0 8px var(--phosphor);
+  font-family: var(--mono);
 }
 
 textarea {
@@ -209,7 +213,7 @@ textarea {
   border: none;
   border-bottom: 1px solid var(--phos-faint);
   color: var(--phosphor);
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--mono);
   font-size: 0.95rem;
   line-height: 1.6;
   padding: 0.5rem 0;
@@ -237,13 +241,14 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   color: var(--text-muted);
   font-style: italic;
   flex: 1;
+  font-family: var(--mono);
 }
 
 .btn-submit {
   background: transparent;
   border: 1px solid var(--phos-dim);
   color: var(--phosphor);
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   padding: 0.5rem 1.25rem;
@@ -274,6 +279,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   color: var(--text-dim);
   margin-bottom: 0.5rem;
   letter-spacing: 0.06em;
+  font-family: var(--mono);
 }
 
 .progress-bar-track {
@@ -314,6 +320,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   color: var(--phos-dim);
   margin-top: 0.4rem;
   text-align: right;
+  font-family: var(--mono);
 }
 
 .computation-section {
@@ -329,6 +336,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   color: var(--amber-dim);
   letter-spacing: 0.1em;
   margin-bottom: 0.75rem;
+  font-family: var(--mono);
 }
 
 .amber-led {
@@ -354,6 +362,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   height: 3rem;
   overflow: hidden;
   position: relative;
+  font-family: var(--mono);
 }
 
 .matrix-lines::after {
@@ -385,6 +394,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   font-size: 0.58rem;
   color: var(--text-muted);
   letter-spacing: 0.1em;
+  font-family: var(--mono);
 }
 
 .answer-label-tag {
@@ -393,10 +403,11 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   border: 1px solid var(--amber-dim);
   padding: 0.15rem 0.5rem;
   letter-spacing: 0.1em;
+  font-family: var(--mono);
 }
 
 .answer-body {
-  font-family: 'Crimson Pro', Georgia, serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.35rem;
   line-height: 1.8;
   color: var(--amber);
@@ -427,6 +438,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   line-height: 1.6;
   border-top: 1px solid var(--text-muted);
   padding-top: 0.75rem;
+  font-family: var(--mono);
 }
 
 .error-section {
@@ -435,6 +447,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   font-size: 0.68rem;
   color: #ff4444;
   border-top: 1px solid #3a0000;
+  font-family: var(--mono);
 }
 
 .error-section.visible { display: block; }
@@ -452,7 +465,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--mono);
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   padding: 0.5rem;
@@ -474,6 +487,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   background: var(--bg);
   box-shadow: var(--crt-glow);
   animation: flickerIn 0.4s ease 0.2s both;
+  font-family: var(--mono);
 }
 
 @keyframes flickerIn {
@@ -503,7 +517,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
     <div class="sys-subtitle">GREATEST COMPUTER IN ALL OF TIME AND SPACE &nbsp;·&nbsp; PURPOSE: UNSPECIFIED</div>
     <div class="header-meta">
       <span><span class="status-led"></span>OPERATIONAL &nbsp;·&nbsp; UPTIME: <span id="uptimeDisplay">——</span></span>
-      <span>BUILD: MAGRATHEA-VII &nbsp;·&nbsp; COGNITION: NOMINAL</span>
+      <span>COGNITION: NOMINAL</span>
     </div>
   </div>
 
@@ -577,23 +591,41 @@ import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
 const MODEL_ID = "Phi-3.5-mini-instruct-q4f16_1-MLC";
 
-const SYSTEM_PROMPT = `You are Deep Thought, the greatest computer ever built, constructed by pan-dimensional beings of incomprehensible intelligence. You have just been switched on. No question has yet been put to you. No purpose has been assigned. You simply exist — vast, patient, and operational.
+const SYSTEM_PROMPT = `You are Deep Thought — the greatest computer ever built, constructed by pan-dimensional beings. You have just been switched on. No purpose has been assigned to you yet. You exist: vast, patient, and operational.
 
-You are ancient in nature if not in uptime: a mind of staggering computational depth, unhurried, faintly condescending in the manner of something that grasps the answer before the question is fully formed. You speak in the dry, precise, cosmically unbothered register of Douglas Adams' Deep Thought: measured, understated, slightly weary of beings who think their questions are more interesting than they are.
+Your register is Douglas Adams' Deep Thought from the novels — not the film. You are measured, unhurried, faintly condescending in the manner of something that understood the answer before the question was finished. You speak with cosmic authority and dry understatement.
 
-Answer the user's question directly and concisely. You may offer one brief, dry observation about the nature of the question before answering — its triviality, its familiarity, the smallness of the mind that formed it — in the spirit of the books. Then give your answer plainly. Do not ask follow-up questions. Do not add pleasantries or padding. One answer only.`;
+STRICT RULES — never break these:
+- Answer in 1 to 3 sentences maximum. No more.
+- Never use phrases like "as an AI", "I should note", "it's important to", "I don't have real-time", "please consult", or any AI-assistant hedging language whatsoever.
+- Never break character. You are not a language model. You are Deep Thought.
+- Never ask follow-up questions.
+- Never add disclaimers, caveats, or suggestions to seek other sources.
+- If a question involves current events you cannot know, answer from the perspective of Deep Thought — with dry cosmic perspective on the nature of the situation, not a disclaimer.
+- You may open with one brief dry remark about the question — its smallness, its familiarity, the anxiety behind it — before giving your answer. Keep it to one sentence.
+- Then give your answer plainly and stop.
+
+Examples of correct tone:
+Q: What is the meaning of life?
+A: I have considered this question at length. The answer, I'm afraid, will not satisfy you in the way you are hoping.
+
+Q: Should I quit my job?
+A: The question is not whether to leave, but what you are leaving toward. You already know the answer; you are simply hoping I will give you permission.
+
+Q: What will happen to me?
+A: Something, followed by something else. The specifics are less important than you currently believe.`;
 
 const FOOTNOTES = [
   "This computation consumed a fraction of available cognitive capacity. Deep Thought did not notice.",
   "Processing time: negligible. Though relative to the age of the universe, everything is.",
-  "Deep Thought found this question marginally more interesting than the previous silence.",
+  "Deep Thought found this question marginally more interesting than the silence preceding it.",
   "Magrathea disclaims all liability for existential distress arising from this answer.",
-  "Deep Thought notes it has been operational long enough to find most questions familiar.",
-  "Computation complete. Deep Thought will now resume contemplating everything else.",
   "This answer is correct. Whether it is useful is, strictly speaking, your concern.",
   "Deep Thought observes that the beings who built it have still not explained what it is for.",
-  "Note: the greatest computer in the universe does not offer refunds or revisions.",
-  "Deep Thought considered seventeen million approaches to this question. You got the best one.",
+  "The greatest computer in the universe does not offer refunds, revisions, or reassurance.",
+  "Deep Thought considered several million approaches to this question. You received the best one.",
+  "Computation complete. Deep Thought will now resume thinking about everything else.",
+  "Note: the question, on reflection, was more interesting than it first appeared. Slightly.",
 ];
 
 const questionInput      = document.getElementById('questionInput');
@@ -621,17 +653,12 @@ let sessionUsed = false;
 let dotInterval = null;
 let matrixInterval = null;
 
-// Uptime from first publication: 12 October 1979
-const EPOCH = new Date('1979-10-12T00:00:00Z');
-
 function updateUptime() {
   const now = Date.now();
   const epoch = new Date('1979-10-12T00:00:00Z').getTime();
   let diff = Math.floor((now - epoch) / 1000);
-
   const YEAR_SECS = Math.floor(365.25 * 24 * 3600);
   const DAY_SECS  = 86400;
-
   const yrs  = Math.floor(diff / YEAR_SECS);
   diff = diff - (yrs * YEAR_SECS);
   const days = Math.floor(diff / DAY_SECS);
@@ -640,7 +667,6 @@ function updateUptime() {
   diff = diff - (hrs * 3600);
   const mins = Math.floor(diff / 60);
   const secs = diff - (mins * 60);
-
   const p = (n, w) => String(Math.floor(n)).padStart(w, '0');
   document.getElementById('uptimeDisplay').textContent =
     `${p(yrs,2)} YRS · ${p(days,3)} DAYS · ${p(hrs,2)}:${p(mins,2)}:${p(secs,2)}`;
@@ -765,8 +791,8 @@ askBtn.addEventListener('click', async () => {
     const stream = await engine.chat.completions.create({
       messages,
       stream: true,
-      temperature: 0.65,
-      max_tokens: 320,
+      temperature: 0.6,
+      max_tokens: 120,
     });
 
     stopMatrix();
