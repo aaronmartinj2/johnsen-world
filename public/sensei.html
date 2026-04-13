@@ -441,7 +441,7 @@ async function runScreen() {
   const systemPrompt = 'You are SENsei, an educational stock screening tool on johnsen.world. Today is ' + todayStr + '. You do NOT give investment advice. You identify stocks with notable momentum characteristics for informational and entertainment screening purposes only. Use web search to find current market conditions.\n\nReturn ONLY valid JSON, no markdown fences, no preamble:\n{\n  "marketContext": "2-3 sentences of observable market conditions today — factual, neutral tone",\n  "picks": [\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "POSITIVE MOMENTUM",\n      "confidence": 75,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Use neutral observational language: exhibits, shows, has reported, analysts note. Do NOT say buy, sell, should, recommend."\n    },\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "NEGATIVE MOMENTUM",\n      "confidence": 68,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Neutral observational language describing headwinds."\n    }\n  ]\n}'
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/sensei', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
