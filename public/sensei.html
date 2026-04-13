@@ -319,6 +319,7 @@ a:hover { text-decoration: underline; }
 
 <script>
 const KEYS = { ACK: 'sensei_ack', HISTORY: 'sensei_history', THEME: 'sensei_theme' }
+const COOLDOWN_MS = 23 * 60 * 60 * 1000
 
 const HAIKUS = [
   'Market winds shift · The sensei listens · Two names shall emerge',
@@ -421,7 +422,6 @@ function startHaiku() {
 function stopHaiku() { clearInterval(haikuInterval); document.getElementById('haikuText').textContent = '' }
 
 // ── 23-hour cooldown ──
-const COOLDOWN_MS = 23 * 60 * 60 * 1000
 
 function getLastRunTime() {
   try {
