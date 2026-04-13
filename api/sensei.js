@@ -1,3 +1,4 @@
+// SENsei API proxy v2
 export default async function handler(req, res) {
   // Only allow POST
   if (req.method !== 'POST') {
