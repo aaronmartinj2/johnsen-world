@@ -11,6 +11,14 @@ const projects = [
   },
   {
     id: '002',
+    title: 'SENSEI',
+    desc: 'Daily stock screening powered by AI and free public market data. Two momentum screens every day. Educational and entertainment purposes only.',
+    tags: ['AI', 'Finance', 'Yahoo Finance'],
+    href: '/sensei.html',
+    live: true,
+  },
+  {
+    id: '003',
     title: 'NEWPLAN',
     desc: 'A HOP-focused EHS platform for event learning and safety intelligence. Currently in development.',
     tags: ['SaaS', 'EHS', 'HOP'],
@@ -18,7 +26,7 @@ const projects = [
     live: true,
   },
   {
-    id: '003',
+    id: '004',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],
@@ -30,7 +38,6 @@ const projects = [
 
 function ProjectCard({ project }) {
   const isSoon = !project.live
-
   const inner = (
     <>
       <div className="card-number">PROJECT — {project.id}</div>
@@ -50,11 +57,9 @@ function ProjectCard({ project }) {
       )}
     </>
   )
-
   if (isSoon) {
     return <div className="project-card card-soon">{inner}</div>
   }
-
   return (
     <a className="project-card" href={project.href}>
       {inner}
