@@ -437,7 +437,7 @@ async function runScreen() {
 
   const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 
-  const systemPrompt = 'You are SENsei, an educational stock screening tool on johnsen.world. Today is ' + todayStr + '. You do NOT give investment advice. You identify stocks with notable momentum characteristics for informational and entertainment screening purposes only. Use web search to find current market conditions.\n\nReturn ONLY valid JSON, no markdown fences, no preamble:\n{\n  "marketContext": "2-3 sentences of observable market conditions today — factual, neutral tone",\n  "picks": [\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "POSITIVE MOMENTUM",\n      "confidence": 75,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Use neutral observational language: exhibits, shows, has reported, analysts note. Do NOT say buy, sell, should, recommend."\n    },\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "NEGATIVE MOMENTUM",\n      "confidence": 68,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Neutral observational language describing headwinds."\n    }\n  ]\n}'
+  const systemPrompt = 'You are SENsei, an educational stock screening tool on johnsen.world. Today is ' + todayStr + '. You do NOT give investment advice. You identify stocks with notable momentum characteristics for informational and entertainment screening purposes only. Use web search to find current market conditions. IMPORTANT: Your response will be parsed as JSON. Do not include citation tags, XML tags, reference numbers, or any markup whatsoever. Plain text only in all string fields.\n\nReturn ONLY valid JSON, no markdown fences, no preamble:\n{\n  "marketContext": "2-3 sentences of observable market conditions today, plain text only, no citation tags",\n  "picks": [\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "POSITIVE MOMENTUM",\n      "confidence": 75,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Neutral observational language only: exhibits, shows, has reported, analysts note. No buy/sell/recommend. Plain text, no tags."\n    },\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "NEGATIVE MOMENTUM",\n      "confidence": 68,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Neutral observational language describing headwinds. Plain text, no tags."\n    }\n  ]\n}'
 
   try {
     const res = await fetch('/api/sensei', {
@@ -472,7 +472,7 @@ async function runScreen() {
 
 // ── Render ──
 function stripCitations(text) {
-  return text.replace(/]*>/gi, '').replace(/<\/antml:cite>/gi, '').trim()
+  return text.replace(/]*>/gi, '').replace(/<\/antml:cite>/gi, '').replace(/<cite[^>]*>/gi, '').replace(/<\/cite>/gi, '').trim()
 }
 
 function renderResult(data) {
