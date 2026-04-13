@@ -392,14 +392,13 @@ document.getElementById('ackCheck').addEventListener('change', function() {
 
 checkAck()
 
-// ── Yahoo price ──
+// ── Yahoo price via Vercel proxy ──
 async function fetchPrice(ticker) {
   try {
-    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=2d'
-    const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url)
-    const res = await fetch(proxy)
-    const outer = await res.json()
-    const data = JSON.parse(outer.contents)
+    const yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=2d'
+    const res = await fetch('/api/price?ticker=' + encodeURIComponent(ticker))
+    if (!res.ok) throw new Error('price fetch failed')
+    const data = await res.json()
     const meta = data.chart.result[0].meta
     const price = meta.regularMarketPrice
     const prev = meta.chartPreviousClose
@@ -472,8 +471,12 @@ async function runScreen() {
 }
 
 // ── Render ──
+function stripCitations(text) {
+  return text.replace(/]*>/gi, '').replace(/<\/antml:cite>/gi, '').trim()
+}
+
 function renderResult(data) {
-  document.getElementById('mktCtxText').textContent = data.marketContext
+  document.getElementById('mktCtxText').textContent = stripCitations(data.marketContext)
   document.getElementById('mktCtx').classList.add('show')
   const grid = document.getElementById('picksGrid')
   grid.innerHTML = ''
