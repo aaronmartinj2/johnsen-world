@@ -321,6 +321,10 @@ a:hover { text-decoration: underline; }
 const KEYS = { ACK: 'sensei_ack', HISTORY: 'sensei_history', THEME: 'sensei_theme' }
 const COOLDOWN_MS = 23 * 60 * 60 * 1000
 
+// ── History (loaded early so cooldown can read it) ──
+let history = []
+try { history = JSON.parse(localStorage.getItem(KEYS.HISTORY) || '[]') } catch {}
+
 const HAIKUS = [
   'Market winds shift · The sensei listens · Two names shall emerge',
   'Candles rise and fall · Patience reads the tea leaves · Wisdom costs nothing',
@@ -567,9 +571,6 @@ document.getElementById('shareBtn').addEventListener('click', () => {
 })
 
 // ── History ──
-let history = []
-try { history = JSON.parse(localStorage.getItem(KEYS.HISTORY) || '[]') } catch {}
-
 function saveHistory(data) {
   const entry = { timestamp: new Date().toISOString(), ...data }
   history = [entry, ...history].slice(0, 30)
