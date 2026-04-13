@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SENsei — Daily Stock Screening · johnsen.world</title>
+<meta name="description" content="Daily AI-powered stock momentum screening. Educational and entertainment purposes only. Not investment advice." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:             #0f0e0c;
+  --surface:        #161410;
+  --surface2:       #1d1a16;
+  --border:         #2a2520;
+  --border-strong:  #3d3830;
+  --text:           #d4c9b0;
+  --text-muted:     #7a7068;
+  --text-faint:     #3d3830;
+  --accent:         #b8860b;
+  --accent-dim:     #7a5c08;
+  --green:          #1a6b3a;
+  --green-bg:       rgba(26,107,58,0.08);
+  --red:            #8b1a1a;
+  --red-bg:         rgba(139,26,26,0.08);
+  --mono:           'Courier Prime', 'Courier New', monospace;
+  --serif:          'Noto Serif JP', Georgia, serif;
+}
+
+body.light {
+  --bg:             #f5f0e8;
+  --surface:        #faf7f2;
+  --surface2:       #ede7d9;
+  --border:         #c8bfad;
+  --border-strong:  #9a8f80;
+  --text:           #1a1410;
+  --text-muted:     #6b6050;
+  --text-faint:     #b0a898;
+  --green:          #1a6b3a;
+  --red:            #8b1a1a;
+}
+
+body.light {
+  background-image: repeating-linear-gradient(
+    0deg, transparent, transparent 31px,
+    var(--border) 31px, var(--border) 32px
+  );
+}
+
+html, body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier Prime', 'Courier New', monospace;
+  transition: background 0.3s, color 0.3s;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.page { max-width: 860px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ── Header ── */
+.s-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 16px; gap: 12px; }
+.s-back { font-size: 10px; letter-spacing: 0.2em; color: var(--text-muted); text-decoration: none; white-space: nowrap; transition: color 0.15s; }
+.s-back:hover { color: var(--text); text-decoration: none; }
+.s-logo { text-align: center; flex: 1; }
+.s-kanji { font-family: 'Noto Serif JP', Georgia, serif; font-size: 11px; color: var(--text-faint); letter-spacing: 0.3em; margin-bottom: 2px; }
+.s-wordmark { font-size: clamp(26px,5vw,40px); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--text); }
+.s-wordmark .sen { color: var(--accent); border-bottom: 3px solid var(--accent); }
+.s-sub { font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+.s-header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 80px; }
+.theme-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); width: 28px; height: 28px; cursor: pointer; font-size: 14px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+.s-date { font-size: 9px; color: var(--text-muted); letter-spacing: 0.08em; text-align: right; }
+.gold-rule { height: 3px; background: linear-gradient(90deg, var(--accent) 60%, transparent); }
+
+/* ── Nav ── */
+.s-nav { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+.s-tab { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-family: 'Courier Prime', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; padding: 12px 20px; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; }
+.s-tab:hover { color: var(--text); }
+.s-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Views ── */
+.view { display: none; }
+.view.active { display: block; }
+
+.sec-label { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-muted); border-top: 2px solid var(--border-strong); border-bottom: 1px solid var(--border); padding: 6px 0; margin-bottom: 24px; }
+
+/* ── Ack Gate ── */
+.ack-gate { border: 2px solid var(--border-strong); padding: 28px; background: var(--surface); margin-bottom: 32px; }
+.ack-kicker { font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 10px; }
+.ack-title { font-size: 14px; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 20px; color: var(--text); }
+.ack-body { font-family: 'Noto Serif JP', Georgia, serif; font-size: 13px; line-height: 1.85; color: var(--text-muted); margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; }
+.ack-body strong { color: var(--text); }
+.ack-note { font-size: 11px; color: var(--text-faint); font-style: italic; }
+.ack-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-family: 'Noto Serif JP', Georgia, serif; font-size: 12px; color: var(--text); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 18px; }
+.ack-label input { margin-top: 3px; width: 14px; height: 14px; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+
+/* ── CTA ── */
+.cta-box { border: 2px solid var(--border-strong); padding: 28px; background: var(--surface); text-align: center; margin-bottom: 20px; }
+.cta-orn { font-size: 10px; color: var(--accent); letter-spacing: 0.3em; margin-bottom: 12px; }
+.cta-lead { font-family: 'Noto Serif JP', Georgia, serif; font-size: 13px; color: var(--text-muted); font-style: italic; margin-bottom: 20px; }
+.run-btn { background: var(--text); color: var(--bg); border: none; padding: 14px 40px; font-family: 'Courier Prime', 'Courier New', monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px; }
+.run-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.run-btn:disabled { background: var(--border-strong); color: var(--text-muted); cursor: not-allowed; }
+.spin { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.haiku { margin-top: 14px; font-family: 'Noto Serif JP', Georgia, serif; font-size: 12px; color: var(--text-muted); font-style: italic; min-height: 18px; }
+.ack-stamp { margin-top: 14px; font-size: 9px; color: var(--accent-dim); letter-spacing: 0.1em; }
+
+/* ── Notice bar ── */
+.notice-bar { border: 1px solid var(--border); padding: 10px 16px; background: var(--surface); font-size: 10px; color: var(--text-muted); line-height: 1.7; display: flex; gap: 8px; align-items: flex-start; margin-bottom: 28px; }
+.notice-bar strong { color: var(--text); }
+
+/* ── Error ── */
+.s-error { border: 1px solid var(--red); padding: 14px 18px; background: var(--red-bg); color: var(--red); font-size: 12px; margin-bottom: 24px; display: none; }
+.s-error.show { display: block; }
+
+/* ── Market context ── */
+.mkt-ctx { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); padding: 18px 22px; margin-bottom: 24px; display: none; }
+.mkt-ctx.show { display: block; }
+.mkt-ctx-label { font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+.mkt-ctx p { font-family: 'Noto Serif JP', Georgia, serif; font-size: 13.5px; line-height: 1.8; color: var(--text-muted); font-weight: 300; }
+
+/* ── Pick cards ── */
+.picks-grid { display: none; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+.picks-grid.show { display: grid; }
+.pick-card { background: var(--surface); border: 1px solid var(--border); opacity: 0; transform: translateY(10px); transition: opacity 0.4s ease, transform 0.4s ease; }
+.pick-card.visible { opacity: 1; transform: translateY(0); }
+.pick-card.positive { border-top: 3px solid var(--green); }
+.pick-card.negative { border-top: 3px solid var(--red); }
+.pick-flag { padding: 8px 16px; font-size: 9px; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; color: #fff; }
+.positive .pick-flag { background: var(--green); }
+.negative .pick-flag { background: var(--red); }
+.pick-body { padding: 20px; }
+.pick-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.pick-ticker { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.positive .pick-ticker { color: var(--green); }
+.negative .pick-ticker { color: var(--red); }
+.pick-co { font-family: 'Noto Serif JP', Georgia, serif; font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 3px; }
+.pick-price-block { text-align: right; }
+.pick-price { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+.pick-chg { font-size: 12px; margin-top: 2px; }
+.pick-chg.up { color: var(--green); }
+.pick-chg.down { color: var(--red); }
+.pick-live { font-size: 9px; color: var(--accent); letter-spacing: 0.1em; margin-top: 2px; }
+.pick-meter { margin-bottom: 14px; }
+.pick-meter-lbl { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
+.pick-meter-track { height: 5px; background: var(--surface2); border: 1px solid var(--border); }
+.pick-meter-fill { height: 100%; width: 0; transition: width 1.1s cubic-bezier(0.4,0,0.2,1) 0.2s; }
+.positive .pick-meter-fill { background: var(--green); }
+.negative .pick-meter-fill { background: var(--red); }
+.pick-signals { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.pick-sig { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--border); padding: 2px 8px; color: var(--text-muted); background: var(--bg); }
+.pick-rat { font-family: 'Noto Serif JP', Georgia, serif; font-size: 12px; line-height: 1.75; color: var(--text-muted); font-weight: 300; border-top: 1px solid var(--border); padding-top: 12px; }
+
+/* ── Share ── */
+.share-row { display: none; align-items: center; gap: 14px; margin-bottom: 12px; }
+.share-row.show { display: flex; }
+.share-btn { background: none; border: 1px solid var(--border-strong); color: var(--text-muted); font-family: 'Courier Prime', 'Courier New', monospace; font-size: 11px; letter-spacing: 0.1em; padding: 8px 18px; cursor: pointer; transition: all 0.15s; }
+.share-btn:hover { border-color: var(--accent); color: var(--accent); }
+.share-msg { font-size: 11px; color: var(--green); letter-spacing: 0.1em; }
+
+/* ── History ── */
+.hist-empty { font-family: 'Noto Serif JP', Georgia, serif; font-size: 13px; color: var(--text-muted); font-style: italic; padding: 32px 0; text-align: center; }
+.hist-entry { border: 1px solid var(--border); background: var(--surface); margin-bottom: 6px; }
+.hist-row { width: 100%; display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: none; border: none; color: var(--text); font-family: 'Courier Prime', 'Courier New', monospace; font-size: 11px; cursor: pointer; text-align: left; transition: background 0.15s; }
+.hist-row:hover { background: var(--surface2); }
+.hist-date { color: var(--text-muted); letter-spacing: 0.05em; min-width: 110px; flex-shrink: 0; }
+.hist-tickers { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+.hist-ticker { font-size: 11px; font-weight: 700; padding: 2px 8px; border: 1px solid var(--border); }
+.hist-ticker.positive { color: var(--green); border-color: var(--green); }
+.hist-ticker.negative { color: var(--red); border-color: var(--red); }
+.hist-chev { color: var(--text-faint); font-size: 9px; margin-left: auto; }
+.hist-detail { padding: 16px; border-top: 1px solid var(--border); display: none; flex-direction: column; gap: 14px; }
+.hist-detail.open { display: flex; }
+.hist-ctx { font-family: 'Noto Serif JP', Georgia, serif; font-size: 12px; line-height: 1.7; color: var(--text-muted); font-style: italic; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.hist-pick { display: flex; flex-direction: column; gap: 4px; }
+.hist-pick-lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.hist-pick-lbl.positive { color: var(--green); }
+.hist-pick-lbl.negative { color: var(--red); }
+.hist-pick p { font-family: 'Noto Serif JP', Georgia, serif; font-size: 12px; line-height: 1.65; color: var(--text-muted); font-weight: 300; }
+
+/* ── About ── */
+.about-panel { max-width: 580px; }
+.about-kicker { font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+.about-kanji { font-family: 'Noto Serif JP', Georgia, serif; font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.about-meaning { font-size: 10px; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 28px; }
+.about-body { font-family: 'Noto Serif JP', Georgia, serif; font-size: 13.5px; line-height: 1.85; color: var(--text-muted); font-weight: 300; display: flex; flex-direction: column; gap: 16px; margin-bottom: 28px; border-left: 3px solid var(--border-strong); padding-left: 20px; }
+.about-body strong { color: var(--text); }
+.about-stack { display: flex; flex-wrap: wrap; gap: 8px; }
+.about-stack-item { font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; border: 1px solid var(--border); padding: 4px 10px; color: var(--text-muted); }
+
+/* ── Footer ── */
+.s-footer { border-top: 1px solid var(--border); padding: 20px 0; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: var(--text-faint); letter-spacing: 0.08em; flex-wrap: wrap; gap: 8px; }
+
+/* ── Mobile ── */
+@media (max-width: 600px) {
+  .s-header-right { display: none; }
+  .s-wordmark { font-size: 26px; }
+  .s-tab { padding: 10px 12px; font-size: 10px; }
+  .picks-grid { grid-template-columns: 1fr; }
+  .run-btn { width: 100%; justify-content: center; }
+  .ack-gate, .cta-box { padding: 20px 16px; }
+  .s-footer { flex-direction: column; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="s-header">
+    <a class="s-back" href="/">← JOHNSEN</a>
+    <div class="s-logo">
+      <div class="s-kanji">先生 · 市場 · 知恵</div>
+      <div class="s-wordmark"><span class="sen">SEN</span>sei</div>
+      <div class="s-sub">Daily Stock Screening</div>
+    </div>
+    <div class="s-header-right">
+      <button class="theme-btn" id="themeBtn" title="Toggle theme">☀</button>
+      <div class="s-date" id="headerDate"></div>
+    </div>
+  </header>
+
+  <div class="gold-rule"></div>
+
+  <nav class="s-nav">
+    <button class="s-tab active" data-tab="screen">⚡ Screen</button>
+    <button class="s-tab" data-tab="history">📋 History</button>
+    <button class="s-tab" data-tab="about">ℹ About</button>
+  </nav>
+
+  <!-- SCREEN VIEW -->
+  <div class="view active" id="view-screen">
+
+    <div id="ackGate" class="ack-gate">
+      <div class="ack-kicker">⚠ Required Before Continuing</div>
+      <div class="ack-title">IMPORTANT — PLEASE READ</div>
+      <div class="ack-body">
+        <p>SENsei is an <strong>educational and entertainment tool only</strong>. It does <strong>not</strong> provide investment advice, financial advice, or securities recommendations of any kind.</p>
+        <p>SENsei is <strong>not a registered investment adviser</strong> under the Investment Advisers Act of 1940, nor is it registered with the SEC or any state securities authority. Nothing produced by this tool constitutes a solicitation, offer, or recommendation to buy or sell any security.</p>
+        <p>All output is generated by AI using publicly available information and is provided <strong>for entertainment and educational purposes only</strong>. It may be inaccurate, incomplete, or outdated. <strong>You may lose money on any investment.</strong></p>
+        <p><strong>Always consult a licensed financial advisor before making any investment decision.</strong></p>
+        <p class="ack-note">By checking the box below, your acknowledgment is saved in your browser's local storage with a timestamp as a record that this disclosure was presented to you.</p>
+      </div>
+      <label class="ack-label">
+        <input type="checkbox" id="ackCheck">
+        <span>I understand SENsei is for educational and entertainment purposes only, does not provide investment advice, and I accept full responsibility for any investment decisions I make.</span>
+      </label>
+    </div>
+
+    <div id="ctaBox" class="cta-box" style="display:none">
+      <div class="cta-orn">✦ ✦ ✦</div>
+      <p class="cta-lead">The sensei reads the market. Two screens. Every day.</p>
+      <button class="run-btn" id="runBtn">✦ Run Daily Screen</button>
+      <div class="haiku" id="haikuText"></div>
+      <div class="ack-stamp" id="ackStamp"></div>
+    </div>
+
+    <div class="notice-bar" id="noticeBar" style="display:none">
+      <span style="color:var(--accent);flex-shrink:0">⚠</span>
+      <span><strong>For educational and entertainment purposes only. Not investment advice.</strong> SENsei screens publicly available market data using AI. Not registered with any securities authority. Consult a licensed financial advisor before trading.</span>
+    </div>
+
+    <div class="s-error" id="errBox"></div>
+
+    <div class="mkt-ctx" id="mktCtx">
+      <div class="mkt-ctx-label">▸ Market Context</div>
+      <p id="mktCtxText"></p>
+    </div>
+
+    <div class="picks-grid" id="picksGrid"></div>
+
+    <div class="share-row" id="shareRow">
+      <button class="share-btn" id="shareBtn">↗ Share Today's Screens</button>
+      <span class="share-msg" id="shareMsg"></span>
+    </div>
+
+  </div>
+
+  <!-- HISTORY VIEW -->
+  <div class="view" id="view-history">
+    <div class="sec-label">Past Screens</div>
+    <div id="histList"></div>
+  </div>
+
+  <!-- ABOUT VIEW -->
+  <div class="view" id="view-about">
+    <div class="about-panel">
+      <div class="about-kicker">About SENsei</div>
+      <div class="about-kanji">先生 · 市場 · 知恵</div>
+      <div class="about-meaning">Teacher · Market · Wisdom</div>
+      <div class="about-body">
+        <p>SENsei is a daily stock screening tool built by <a href="https://ajohnsen.com" target="_blank" rel="noreferrer">Aaron Johnsen</a>. The name is a nod to the <em>sen</em> in Johnsen — and to 先生, the Japanese word for teacher or master, someone who came before and knows more.</p>
+        <p>Every day, SENsei uses AI (Claude with web search) and free public market data (Yahoo Finance) to surface two stocks with notable momentum characteristics — one positive, one negative. No subscriptions. No paywalls. No paid data feeds.</p>
+        <p><strong>This is not investment advice.</strong> SENsei is an educational and entertainment tool. It identifies observable market signals, not trading recommendations. Always do your own research and consult a licensed financial advisor before making any investment decision.</p>
+        <p>SENsei is not registered with the SEC or any securities regulatory authority. It operates under the general publisher exclusion for educational financial content.</p>
+      </div>
+      <div class="about-stack">
+        <span class="about-stack-item">Claude AI</span>
+        <span class="about-stack-item">Yahoo Finance</span>
+        <span class="about-stack-item">No subscription</span>
+        <span class="about-stack-item">johnsen.world</span>
+      </div>
+    </div>
+  </div>
+
+  <footer class="s-footer">
+    <span>© <span id="footYear"></span> Aaron Johnsen · SENsei</span>
+    <span>Data: Yahoo Finance · AI: Anthropic Claude · <a href="/">johnsen.world</a></span>
+  </footer>
+
+</div>
+
+<script>
+const KEYS = { ACK: 'sensei_ack', HISTORY: 'sensei_history', THEME: 'sensei_theme' }
+
+const HAIKUS = [
+  'Market winds shift · The sensei listens · Two names shall emerge',
+  'Candles rise and fall · Patience reads the tea leaves · Wisdom costs nothing',
+  'Charts speak in shapes · The sensei interprets signs · Do your own research',
+  'Free data flows · Like a river to the sea · Yahoo, give us truth',
+]
+
+// ── Date ──
+const today = new Date()
+document.getElementById('headerDate').textContent = today.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+document.getElementById('footYear').textContent = today.getFullYear()
+
+// ── Theme ──
+let theme = 'light'
+try { theme = localStorage.getItem(KEYS.THEME) || 'light' } catch {}
+applyTheme(theme)
+
+function applyTheme(t) {
+  theme = t
+  document.body.classList.toggle('light', t === 'light')
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀' : '☾'
+  try { localStorage.setItem(KEYS.THEME, t) } catch {}
+}
+document.getElementById('themeBtn').addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'))
+
+// ── Nav ──
+document.querySelectorAll('.s-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'))
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
+    btn.classList.add('active')
+    document.getElementById('view-' + btn.dataset.tab).classList.add('active')
+    if (btn.dataset.tab === 'history') renderHistory()
+  })
+})
+
+// ── Acknowledgment ──
+let ackTimestamp = null
+
+function checkAck() {
+  try {
+    const raw = localStorage.getItem(KEYS.ACK)
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (p.acknowledged) { ackTimestamp = p.timestamp; showTool(); return }
+    }
+  } catch {}
+}
+
+function showTool() {
+  document.getElementById('ackGate').style.display = 'none'
+  document.getElementById('ctaBox').style.display = 'block'
+  document.getElementById('noticeBar').style.display = 'flex'
+  if (ackTimestamp) {
+    document.getElementById('ackStamp').textContent = '✓ Disclaimer acknowledged · ' + new Date(ackTimestamp).toLocaleString()
+  }
+}
+
+document.getElementById('ackCheck').addEventListener('change', function() {
+  if (!this.checked) return
+  const ts = new Date().toISOString()
+  try {
+    localStorage.setItem(KEYS.ACK, JSON.stringify({
+      acknowledged: true, timestamp: ts,
+      userAgent: navigator.userAgent, url: window.location.href, version: '1.0'
+    }))
+  } catch {}
+  ackTimestamp = ts
+  showTool()
+})
+
+checkAck()
+
+// ── Yahoo price ──
+async function fetchPrice(ticker) {
+  try {
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '?interval=1d&range=2d'
+    const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url)
+    const res = await fetch(proxy)
+    const outer = await res.json()
+    const data = JSON.parse(outer.contents)
+    const meta = data.chart.result[0].meta
+    const price = meta.regularMarketPrice
+    const prev = meta.chartPreviousClose
+    const pct = ((price - prev) / prev) * 100
+    return { price: '$' + price.toFixed(2), change: (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%', up: pct >= 0, live: true }
+  } catch {
+    return { price: 'N/A', change: '—', up: true, live: false }
+  }
+}
+
+// ── Haiku ──
+let haikuInterval = null
+function startHaiku() {
+  let i = 0
+  document.getElementById('haikuText').textContent = HAIKUS[0]
+  haikuInterval = setInterval(() => { i = (i + 1) % HAIKUS.length; document.getElementById('haikuText').textContent = HAIKUS[i] }, 2600)
+}
+function stopHaiku() { clearInterval(haikuInterval); document.getElementById('haikuText').textContent = '' }
+
+// ── Run screen ──
+let lastResult = null
+
+document.getElementById('runBtn').addEventListener('click', runScreen)
+
+async function runScreen() {
+  const btn = document.getElementById('runBtn')
+  const errBox = document.getElementById('errBox')
+  btn.disabled = true
+  btn.innerHTML = '<span class="spin"></span> Reading the market...'
+  errBox.classList.remove('show')
+  document.getElementById('mktCtx').classList.remove('show')
+  document.getElementById('picksGrid').classList.remove('show')
+  document.getElementById('shareRow').classList.remove('show')
+  document.getElementById('picksGrid').innerHTML = ''
+  startHaiku()
+
+  const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+
+  const systemPrompt = 'You are SENsei, an educational stock screening tool on johnsen.world. Today is ' + todayStr + '. You do NOT give investment advice. You identify stocks with notable momentum characteristics for informational and entertainment screening purposes only. Use web search to find current market conditions.\n\nReturn ONLY valid JSON, no markdown fences, no preamble:\n{\n  "marketContext": "2-3 sentences of observable market conditions today — factual, neutral tone",\n  "picks": [\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "POSITIVE MOMENTUM",\n      "confidence": 75,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Use neutral observational language: exhibits, shows, has reported, analysts note. Do NOT say buy, sell, should, recommend."\n    },\n    {\n      "ticker": "TICKER",\n      "company": "Full Company Name",\n      "screen": "NEGATIVE MOMENTUM",\n      "confidence": 68,\n      "signals": ["Signal1", "Signal2", "Signal3"],\n      "rationale": "3-4 sentences. Neutral observational language describing headwinds."\n    }\n  ]\n}'
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: systemPrompt,
+        messages: [{ role: 'user', content: 'Today is ' + todayStr + '. Search current market conditions and return two stock screens as JSON.' }]
+      })
+    })
+    const data = await res.json()
+    const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+    const [p1, p2] = await Promise.all([fetchPrice(parsed.picks[0].ticker), fetchPrice(parsed.picks[1].ticker)])
+    parsed.picks[0].priceData = p1
+    parsed.picks[1].priceData = p2
+    lastResult = parsed
+    renderResult(parsed)
+    saveHistory(parsed)
+  } catch (e) {
+    errBox.textContent = 'The sensei is silent: ' + e.message
+    errBox.classList.add('show')
+  } finally {
+    stopHaiku()
+    btn.disabled = false
+    btn.innerHTML = '✦ Run Daily Screen'
+  }
+}
+
+// ── Render ──
+function renderResult(data) {
+  document.getElementById('mktCtxText').textContent = data.marketContext
+  document.getElementById('mktCtx').classList.add('show')
+  const grid = document.getElementById('picksGrid')
+  grid.innerHTML = ''
+  grid.classList.add('show')
+  data.picks.forEach((pick, i) => {
+    const isPos = pick.screen === 'POSITIVE MOMENTUM'
+    const pd = pick.priceData || {}
+    const card = document.createElement('div')
+    card.className = 'pick-card ' + (isPos ? 'positive' : 'negative')
+    card.innerHTML = '<div class="pick-flag">' + (isPos ? '▲ POSITIVE MOMENTUM' : '▼ NEGATIVE MOMENTUM') + '</div><div class="pick-body"><div class="pick-head"><div><div class="pick-ticker">' + pick.ticker + '</div><div class="pick-co">' + pick.company + '</div></div><div class="pick-price-block"><div class="pick-price">' + (pd.price || 'N/A') + '</div><div class="pick-chg ' + (pd.up ? 'up' : 'down') + '">' + (pd.change || '—') + '</div><div class="pick-live">' + (pd.live ? '● LIVE' : '○ UNAVAIL') + '</div></div></div><div class="pick-meter"><div class="pick-meter-lbl"><span>Screening Score</span><span>' + pick.confidence + '%</span></div><div class="pick-meter-track"><div class="pick-meter-fill" data-w="' + pick.confidence + '"></div></div></div><div class="pick-signals">' + (pick.signals || []).map(s => '<span class="pick-sig">' + s + '</span>').join('') + '</div><div class="pick-rat">' + pick.rationale + '</div></div>'
+    grid.appendChild(card)
+    setTimeout(() => {
+      card.classList.add('visible')
+      card.querySelector('.pick-meter-fill').style.width = pick.confidence + '%'
+    }, i * 200 + 100)
+  })
+  document.getElementById('shareRow').classList.add('show')
+}
+
+// ── Share ──
+document.getElementById('shareBtn').addEventListener('click', () => {
+  if (!lastResult) return
+  const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const lines = ['SENsei · ' + todayStr, '', ...lastResult.picks.map(p => (p.screen === 'POSITIVE MOMENTUM' ? '▲' : '▼') + ' ' + p.ticker + ' — ' + p.screen + ' (' + p.confidence + '%)'), '', 'johnsen.world/sensei', '⚠ For educational & entertainment purposes only. Not investment advice.']
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    document.getElementById('shareMsg').textContent = 'Copied to clipboard!'
+    setTimeout(() => document.getElementById('shareMsg').textContent = '', 2500)
+  }).catch(() => { document.getElementById('shareMsg').textContent = 'Copy failed' })
+})
+
+// ── History ──
+let history = []
+try { history = JSON.parse(localStorage.getItem(KEYS.HISTORY) || '[]') } catch {}
+
+function saveHistory(data) {
+  const entry = { timestamp: new Date().toISOString(), ...data }
+  history = [entry, ...history].slice(0, 30)
+  try { localStorage.setItem(KEYS.HISTORY, JSON.stringify(history)) } catch {}
+}
+
+function renderHistory() {
+  const list = document.getElementById('histList')
+  list.innerHTML = ''
+  if (history.length === 0) {
+    list.innerHTML = '<div class="hist-empty">No screens yet. Run your first daily screen to start building history.</div>'
+    return
+  }
+  history.forEach((entry, i) => {
+    const el = document.createElement('div')
+    el.className = 'hist-entry'
+    const tickers = (entry.picks || []).map(p => '<span class="hist-ticker ' + (p.screen === 'POSITIVE MOMENTUM' ? 'positive' : 'negative') + '">' + p.ticker + '</span>').join('')
+    const dateStr = new Date(entry.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const detail = (entry.picks || []).map(p => '<div class="hist-pick"><div class="hist-pick-lbl ' + (p.screen === 'POSITIVE MOMENTUM' ? 'positive' : 'negative') + '">' + p.ticker + ' — ' + p.screen + '</div><p>' + p.rationale + '</p></div>').join('')
+    el.innerHTML = '<button class="hist-row" data-idx="' + i + '"><span class="hist-date">' + dateStr + '</span><span class="hist-tickers">' + tickers + '</span><span class="hist-chev">▼</span></button><div class="hist-detail" id="hd-' + i + '"><p class="hist-ctx">' + (entry.marketContext || '') + '</p>' + detail + '</div>'
+    list.appendChild(el)
+  })
+  list.querySelectorAll('.hist-row').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.idx
+      const detail = document.getElementById('hd-' + idx)
+      const isOpen = detail.classList.contains('open')
+      document.querySelectorAll('.hist-detail').forEach(d => d.classList.remove('open'))
+      document.querySelectorAll('.hist-chev').forEach(c => c.textContent = '▼')
+      if (!isOpen) { detail.classList.add('open'); btn.querySelector('.hist-chev').textContent = '▲' }
+    })
+  })
+}
+</script>
+</body>
+</html>
