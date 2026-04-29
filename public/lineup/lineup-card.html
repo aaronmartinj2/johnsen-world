@@ -1178,8 +1178,17 @@ function buildPrintHTML(){
     </div>`;
   }).join('');
 
-  // Decide grid columns based on inning count for best fit
-  const cols = numInnings <= 2 ? numInnings : numInnings <= 4 ? 2 : 3;
+  // Decide grid columns based on inning count for best one-page fit on landscape letter
+  // Available diamond area is roughly 9.7" wide x 6.5" tall (after header & batting column)
+  let cols;
+  if (numInnings <= 2)      cols = numInnings;
+  else if (numInnings <= 3) cols = 3;
+  else if (numInnings <= 4) cols = 4;
+  else if (numInnings <= 6) cols = 3;
+  else                       cols = 5; // 7-9 innings: 5 columns
+
+  // Cap diamond max-width so 1-2 inning layouts don't blow up
+  const diamondMaxWidth = numInnings === 1 ? '4.5in' : numInnings === 2 ? '4in' : '100%';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1187,28 +1196,29 @@ function buildPrintHTML(){
 <meta charset="UTF-8"/>
 <title>${escHtml(teamName)} — Lineup Card</title>
 <style>
-  @page { size: landscape; margin: 0.4in; }
+  @page { size: landscape; margin: 0.35in; }
   *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;}
   body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .page{max-width:11in;margin:0 auto;padding:0;}
-  .page-header{display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #1a4a22;padding-bottom:6px;margin-bottom:10px;}
-  .title-row{display:flex;align-items:baseline;gap:14px;}
-  .page-title{font-size:22px;font-weight:800;letter-spacing:0.05em;color:#1a4a22;text-transform:uppercase;}
-  .team-name{font-size:16px;font-weight:600;color:#444;letter-spacing:0.02em;}
-  .page-date{font-size:10px;color:#666;letter-spacing:0.06em;}
-  .main-row{display:flex;gap:14px;align-items:flex-start;}
-  .field-section{flex:1;min-width:0;}
-  .innings-grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:10px;}
-  .inning-block{display:flex;flex-direction:column;gap:4px;}
-  .inning-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a4a22;background:#e8f0e0;padding:3px 10px;border-radius:11px;align-self:flex-start;}
-  .diamond{border-radius:8px;overflow:hidden;border:1px solid #c8d8c0;background:#1e5c26;width:100%;}
-  .batting-section{width:160px;flex-shrink:0;}
-  .bat-header{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1a4a22;border-bottom:1.5px solid #1a4a22;padding-bottom:4px;margin-bottom:6px;}
-  .bat-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #eee;}
-  .bat-num{font-size:14px;font-weight:800;color:#c89020;width:18px;flex-shrink:0;}
-  .bat-j{font-size:10px;font-weight:700;color:#c89020;background:rgba(212,168,67,0.15);border-radius:6px;padding:1px 5px;line-height:1.3;}
-  .bat-name{font-size:12px;font-weight:600;color:#222;}
-  .bat-empty{font-size:11px;color:#999;font-style:italic;}
+  .page{display:flex;flex-direction:column;height:100%;max-height:7.7in;}
+  .page-header{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #1a4a22;padding-bottom:4px;margin-bottom:8px;flex-shrink:0;}
+  .title-row{display:flex;align-items:baseline;gap:12px;}
+  .page-title{font-size:18px;font-weight:800;letter-spacing:0.04em;color:#1a4a22;text-transform:uppercase;}
+  .team-name{font-size:14px;font-weight:600;color:#444;}
+  .page-date{font-size:9px;color:#666;letter-spacing:0.05em;}
+  .main-row{display:flex;gap:12px;align-items:flex-start;flex:1;min-height:0;}
+  .field-section{flex:1;min-width:0;display:flex;align-items:flex-start;}
+  .innings-grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;width:100%;}
+  .inning-block{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .inning-label{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a4a22;background:#e8f0e0;padding:2px 8px;border-radius:9px;align-self:flex-start;}
+  .diamond{overflow:hidden;background:#1e5c26;width:100%;max-width:${diamondMaxWidth};border-radius:4px;}
+  .batting-section{width:130px;flex-shrink:0;}
+  .bat-header{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1a4a22;border-bottom:1.5px solid #1a4a22;padding-bottom:3px;margin-bottom:4px;}
+  .bat-row{display:flex;align-items:center;gap:5px;padding:2px 0;border-bottom:1px solid #f0f0f0;}
+  .bat-num{font-size:12px;font-weight:800;color:#c89020;width:15px;flex-shrink:0;text-align:right;}
+  .bat-j{font-size:9px;font-weight:700;color:#c89020;background:rgba(212,168,67,0.15);border-radius:5px;padding:0px 4px;line-height:1.3;}
+  .bat-name{font-size:11px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bat-empty{font-size:10px;color:#999;font-style:italic;}
 </style>
 </head>
 <body>
