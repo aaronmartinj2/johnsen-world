@@ -27,6 +27,14 @@ const projects = [
   },
   {
     id: '004',
+    title: 'LINEUP CARD',
+    desc: 'Youth baseball roster manager. Drag-and-drop fielding assignments, randomized batting orders, and printable lineup cards for game day.',
+    tags: ['Baseball', 'PWA', 'Drag & Drop'],
+    href: '/lineup/',
+    live: true,
+  },
+  {
+    id: '005',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],
