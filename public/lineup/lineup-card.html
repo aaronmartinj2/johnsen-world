@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lineup Card</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#152b18;--cream:#f2ede3;--cream-dim:#c9bfa8;--tan:#9e8e74;
+  --gold:#d4a843;--white:#fafaf7;
+  --surface:rgba(255,255,255,.05);--surface-hover:rgba(255,255,255,.09);
+  --border:rgba(255,255,255,.09);--border-strong:rgba(255,255,255,.2);
+  --red-soft:rgba(240,112,112,.85);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--green);background-image:radial-gradient(ellipse 80% 60% at 15% 40%,rgba(45,96,53,.18) 0%,transparent 70%),radial-gradient(ellipse 60% 80% at 85% 70%,rgba(30,64,36,.25) 0%,transparent 70%);font-family:'DM Sans',sans-serif;min-height:100vh;color:var(--cream);-webkit-tap-highlight-color:transparent;}
+.app{max-width:880px;margin:0 auto;padding:1.5rem 1rem 5rem;}
+/* HEADER */
+.header{text-align:center;margin-bottom:1.4rem;position:relative;}
+.header-line{width:48px;height:2px;background:var(--gold);margin:0 auto .6rem;}
+.header h1{font-family:'Bebas Neue',sans-serif;font-size:50px;letter-spacing:.07em;color:var(--cream);line-height:1;}
+.header p{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--tan);margin-top:3px;}
+.back-btn{position:absolute;top:0;left:0;display:flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tan);background:none;border:none;cursor:pointer;padding:4px 0;transition:color .15s;text-decoration:none;}
+.back-btn:hover{color:var(--cream);}
+.back-btn span{font-size:16px;line-height:1;}
+.team-badge{display:inline-flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tan);margin-top:4px;}
+.team-badge-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+/* TABS */
+.tabs{display:flex;gap:3px;background:rgba(0,0,0,.3);border-radius:11px;padding:4px;margin-bottom:1.3rem;}
+.tab{flex:1;padding:9px 3px;border:none;border-radius:8px;background:transparent;color:var(--tan);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:all .18s;}
+.tab.active{background:var(--cream);color:var(--green);font-weight:500;}
+.tab:not(.active):hover{color:var(--cream-dim);background:rgba(255,255,255,.05);}
+.panel{display:none;}.panel.active{display:block;}
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.3rem;margin-bottom:.75rem;}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.06em;color:var(--cream);}
+.badge{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:20px;font-weight:500;}
+.badge-gold{background:var(--gold);color:var(--green);}
+.badge-dim{background:rgba(255,255,255,.08);color:var(--tan);}
+/* BUTTONS */
+.btn-row{display:flex;gap:7px;margin-top:.85rem;flex-wrap:wrap;}
+.btn{flex:1;min-width:72px;padding:10px 8px;border:none;border-radius:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .15s;font-weight:500;}
+.btn-primary{background:var(--cream);color:var(--green);}
+.btn-primary:hover{background:var(--white);transform:translateY(-1px);}
+.btn-outline{background:transparent;color:var(--cream-dim);border:1px solid var(--border-strong);}
+.btn-outline:hover{background:var(--surface-hover);color:var(--cream);}
+.btn-gold{background:var(--gold);color:var(--green);}
+.btn-gold:hover{opacity:.88;transform:translateY(-1px);}
+.btn-danger{background:rgba(184,48,48,.18);color:#f07070;border:1px solid rgba(240,112,112,.22);}
+.btn-danger:hover{background:rgba(184,48,48,.28);}
+.btn-sm{flex:none;padding:7px 12px;font-size:10px;}
+/* FIELD CONTROLS */
+.field-controls{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:.8rem;flex-wrap:wrap;}
+.left-controls{display:flex;flex-direction:column;gap:7px;}
+.right-controls{display:flex;gap:6px;flex-shrink:0;}
+.ctrl-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.controls-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tan);white-space:nowrap;}
+/* INNING BUTTONS — scrollable row for 1-9 */
+.inning-btns{display:flex;gap:3px;flex-wrap:wrap;}
+.inn-btn{width:30px;height:30px;border:1px solid var(--border-strong);border-radius:7px;background:transparent;color:var(--cream-dim);font-family:'Bebas Neue',sans-serif;font-size:16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+.inn-btn.active{background:var(--gold);color:var(--green);border-color:var(--gold);}
+.inn-btn:not(.active):hover{background:var(--surface-hover);color:var(--cream);}
+/* FILL MODE TOGGLE */
+.fill-toggle{display:flex;gap:3px;background:rgba(0,0,0,.25);border-radius:8px;padding:3px;}
+.fill-btn{padding:5px 11px;border:none;border-radius:6px;background:transparent;color:var(--tan);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.fill-btn.active{background:var(--gold);color:var(--green);font-weight:500;}
+/* INNING TABS */
+.inning-tabs{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:.8rem;}
+.itab{padding:5px 12px;border:1px solid var(--border-strong);border-radius:7px;background:transparent;color:var(--cream-dim);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.itab.active{background:var(--gold);color:var(--green);border-color:var(--gold);font-weight:500;}
+.itab:not(.active):hover{background:var(--surface-hover);color:var(--cream);}
+/* STATUS */
+.status-bar{display:flex;gap:7px;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;}
+.status-pill{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;padding:4px 10px;border-radius:20px;font-weight:500;}
+.sp-empty{background:rgba(255,255,255,.07);color:var(--tan);}
+.sp-partial{background:rgba(212,168,67,.16);color:var(--gold);border:1px solid rgba(212,168,67,.3);}
+.sp-full{background:rgba(30,100,40,.32);color:#7ecf8a;border:1px solid rgba(126,207,138,.28);}
+/* FIELD SVG */
+.field-wrap{position:relative;width:100%;max-width:760px;margin:0 auto .85rem;user-select:none;}
+.field-wrap svg{width:100%;height:auto;display:block;}
+/* DROP ZONES — circular badges with name labels */
+.drop-zone{cursor:pointer;}
+.dz-dot{transition:filter .15s,stroke-width .15s;}
+.dz-plate{transition:fill .15s,stroke .15s;}
+.dz-label-group{transition:opacity .15s;}
+/* Empty positions: hide label group, fade dot */
+.drop-zone:not(.occupied) .dz-label-group{display:none;}
+.drop-zone:not(.occupied) .dz-dot{opacity:.5;filter:saturate(.6);}
+.drop-zone:not(.occupied) .dz-num{opacity:.65;}
+/* Hover (interactive feedback) */
+.drop-zone:hover .dz-dot{stroke-width:3;filter:brightness(1.18);opacity:1;}
+.drop-zone:hover .dz-num{opacity:1;}
+.drop-zone:hover .dz-plate{stroke:rgba(255,255,255,.7)!important;}
+/* Drag over */
+.drop-zone.drag-over .dz-dot{stroke:#d4a843!important;stroke-width:4;filter:drop-shadow(0 0 6px #d4a843);}
+.drop-zone.drag-over .dz-plate{fill:rgba(168,118,8,.95)!important;stroke:#d4a843!important;}
+/* Hidden positions */
+.drop-zone.pos-hidden{display:none;}
+/* Field dragging (player being moved) */
+.drop-zone.field-dragging .dz-dot{opacity:.35;}
+.drop-zone.field-dragging .dz-label-group{opacity:.3;}
+/* BENCH */
+.bench-section{margin-bottom:.75rem;}
+.bench-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--tan);margin-bottom:.4rem;}
+.bench{display:flex;flex-wrap:wrap;gap:6px;padding:.8rem;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:12px;min-height:48px;}
+.bench-empty{font-family:'DM Mono',monospace;font-size:11px;color:var(--tan);opacity:.55;align-self:center;}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;background:rgba(255,255,255,.1);border:1px solid var(--border-strong);border-radius:20px;font-size:13px;font-weight:500;color:var(--cream);cursor:grab;user-select:none;transition:all .15s;white-space:nowrap;touch-action:none;}
+.chip-jersey{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--gold);background:rgba(212,168,67,.18);border-radius:10px;padding:1px 6px;line-height:1;}
+.bat-jersey{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--gold);background:rgba(212,168,67,.15);border-radius:8px;padding:2px 6px;line-height:1;flex-shrink:0;}
+.chip:hover{background:rgba(255,255,255,.15);transform:translateY(-1px);}
+.chip.dragging{opacity:.32;cursor:grabbing;}
+.chip.selected{outline:2px solid var(--gold);background:rgba(212,168,67,.16);}
+/* ROSTER ROWS */
+.roster-list{display:flex;flex-direction:column;gap:5px;}
+.roster-row{display:flex;align-items:center;gap:9px;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;transition:border-color .2s;}
+.roster-row:focus-within{border-color:var(--border-strong);}
+.roster-row.on-bench{background:rgba(212,168,67,.06);border-color:rgba(212,168,67,.3);}
+.roster-idx{font-family:'Bebas Neue',sans-serif;font-size:19px;color:var(--gold);width:20px;text-align:center;flex-shrink:0;}
+.roster-jersey{width:42px;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid var(--border-strong);border-radius:6px;padding:4px 6px;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:var(--gold);text-align:center;outline:none;caret-color:var(--gold);}
+.roster-jersey::placeholder{color:var(--tan);opacity:.5;}
+.roster-jersey:focus{border-color:var(--gold);}
+.roster-input{flex:1;background:transparent;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;color:var(--cream);caret-color:var(--gold);min-width:0;}
+.roster-input::placeholder{color:var(--tan);font-weight:400;}
+.bench-toggle{background:none;border:1px solid var(--border-strong);border-radius:6px;cursor:pointer;color:var(--tan);font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.06em;padding:3px 8px;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.bench-toggle:hover{color:var(--cream);border-color:var(--border-strong);background:var(--surface-hover);}
+.bench-toggle.benched{background:rgba(212,168,67,.18);color:var(--gold);border-color:rgba(212,168,67,.4);}
+.roster-del{background:none;border:none;cursor:pointer;color:var(--tan);font-size:15px;padding:2px 3px;border-radius:4px;transition:color .15s;line-height:1;flex-shrink:0;}
+.roster-del:hover{color:#f07070;}
+.add-row{display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px dashed rgba(255,255,255,.14);border-radius:9px;cursor:pointer;color:var(--tan);font-size:13px;transition:all .15s;margin-top:4px;}
+.add-row:hover{border-color:var(--border-strong);color:var(--cream);background:var(--surface-hover);}
+.bench-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--tan);margin-top:.5rem;line-height:1.5;}
+/* BATTING */
+.batting-list{display:flex;flex-direction:column;gap:5px;}
+.bat-row{display:flex;align-items:center;gap:11px;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;cursor:grab;user-select:none;transition:all .15s;touch-action:none;}
+.bat-row:hover{border-color:var(--border-strong);background:var(--surface-hover);}
+.bat-row.dragging{opacity:.32;cursor:grabbing;}
+.bat-row.drag-over-top{border-top:2px solid var(--gold);}
+.bat-row.drag-over-bot{border-bottom:2px solid var(--gold);}
+.bat-row.bat-sitting{opacity:.55;border-style:dashed;}
+.bat-num{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);width:24px;line-height:1;}
+.bat-row.bat-sitting .bat-num{color:var(--tan);}
+.bat-name{font-size:14px;font-weight:500;color:var(--cream);flex:1;}
+.drag-handle{color:var(--tan);font-size:13px;cursor:grab;}
+.bat-sitting-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--tan);background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:2px 7px;white-space:nowrap;}
+.bat-divider{display:flex;align-items:center;gap:10px;margin:6px 0 4px;padding:0 2px;}
+.bat-divider::before,.bat-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.bat-divider span{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--tan);white-space:nowrap;}
+/* POSITIONS */
+.pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px;}
+.pos-card{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:all .15s;user-select:none;}
+.pos-card:hover{background:rgba(255,255,255,.07);border-color:var(--border-strong);}
+.pos-card.pos-on{border-color:rgba(212,168,67,.55);background:rgba(212,168,67,.08);}
+.pos-check{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;transition:all .15s;color:transparent;}
+.pos-on .pos-check{background:var(--gold);border-color:var(--gold);color:var(--green);}
+.pos-name-lbl{font-size:13px;font-weight:500;color:var(--cream);}
+.pos-zone-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--tan);letter-spacing:.07em;margin-top:1px;}
+/* MISC */
+.warn-box{background:rgba(184,48,48,.12);border:1px solid rgba(240,112,112,.2);border-radius:9px;padding:9px 13px;font-size:12px;color:#f07070;margin-top:.55rem;font-family:'DM Mono',monospace;line-height:1.6;}
+.info-box{background:rgba(40,80,160,.12);border:1px solid rgba(128,176,240,.2);border-radius:9px;padding:9px 13px;font-size:12px;color:#80b0f0;margin-top:.55rem;font-family:'DM Mono',monospace;line-height:1.6;}
+.ok-box{background:rgba(30,100,40,.2);border:1px solid rgba(126,207,138,.25);border-radius:9px;padding:9px 13px;font-size:12px;color:#7ecf8a;margin-top:.55rem;font-family:'DM Mono',monospace;line-height:1.6;}
+#drag-ghost{position:fixed;pointer-events:none;z-index:9999;padding:6px 14px;background:var(--gold);color:var(--green);border-radius:20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;opacity:.92;transform:translate(-50%,-50%);display:none;white-space:nowrap;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:fadeUp .2s ease forwards;opacity:0;}
+</style>
+</head>
+<body>
+<div id="drag-ghost"></div>
+<div class="app">
+
+  <div class="header">
+    <a class="back-btn" href="index.html"><span>&#8249;</span> Teams</a>
+    <div class="header-line"></div>
+    <h1>Lineup Card</h1>
+    <div class="team-badge">
+      <div class="team-badge-dot" id="team-badge-dot"></div>
+      <span id="team-badge-name">Team</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('field',this)">Field</button>
+    <button class="tab" onclick="showTab('batting',this)">Batting</button>
+    <button class="tab" onclick="showTab('roster',this)">Roster</button>
+    <button class="tab" onclick="showTab('positions',this)">Positions</button>
+  </div>
+
+  <!-- ═══ FIELD ═══ -->
+  <div class="panel active" id="panel-field">
+    <div class="field-controls">
+      <div class="left-controls">
+        <div class="ctrl-row">
+          <span class="controls-label">Innings:</span>
+          <div class="inning-btns" id="inning-btns"></div>
+        </div>
+        <div class="ctrl-row">
+          <span class="controls-label">Fill:</span>
+          <div class="fill-toggle">
+            <button class="fill-btn active" id="fill-random" onclick="setFillMode('random',this)">Randomize</button>
+            <button class="fill-btn" id="fill-same" onclick="setFillMode('same',this)">Keep Same</button>
+          </div>
+        </div>
+      </div>
+      <div class="right-controls">
+        <button class="btn btn-sm btn-outline" onclick="clearCurrentInning()">Clear</button>
+        <button class="btn btn-sm btn-gold" onclick="autoFillAll()">&#9881; Auto Fill All</button>
+        <button class="btn btn-sm btn-outline" onclick="printPDF()">&#128438; Print PDF</button>
+      </div>
+    </div>
+
+    <div class="inning-tabs" id="inning-tabs"></div>
+    <div class="status-bar" id="status-bar"></div>
+
+    <div class="field-wrap">
+      <svg id="field-svg" viewBox="0 0 600 525" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="gstripe" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 300 300)">
+            <rect width="11" height="22" fill="#2a7a32"/><rect x="11" width="11" height="22" fill="#237029"/>
+          </pattern>
+          <pattern id="pdirt" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+            <rect width="4" height="4" fill="#a0714a"/>
+            <circle cx="1" cy="1" r=".5" fill="#8a5f3a" opacity=".5"/>
+            <circle cx="3" cy="3" r=".4" fill="#b8835c" opacity=".4"/>
+          </pattern>
+          <pattern id="wtrack" x="0" y="0" width="6" height="6" patternUnits="userSpaceOnUse">
+            <rect width="6" height="6" fill="#b8925a"/>
+            <circle cx="1.5" cy="1.5" r=".8" fill="#9a7840" opacity=".4"/>
+          </pattern>
+          <radialGradient id="fdepth" cx="50%" cy="88%" r="70%">
+            <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+            <stop offset="100%" stop-color="#000" stop-opacity=".38"/>
+          </radialGradient>
+          <radialGradient id="ifgrass" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#2d8038"/><stop offset="100%" stop-color="#237029"/>
+          </radialGradient>
+          <radialGradient id="mound3d" cx="38%" cy="32%" r="62%">
+            <stop offset="0%" stop-color="#c4895e"/><stop offset="100%" stop-color="#7a4f2a"/>
+          </radialGradient>
+          <clipPath id="fclip">
+            <path d="M 300 578 L 44 578 L 44 208 Q 300 -18 556 208 L 556 578 Z"/>
+          </clipPath>
+        </defs>
+        <rect width="600" height="525" fill="#1e5c26"/>
+        <g clip-path="url(#fclip)"><rect width="600" height="525" fill="url(#gstripe)"/></g>
+        <path d="M 300 578 L 62 578 L 62 212 Q 300 10 538 212 L 538 578 Z" fill="url(#wtrack)"/>
+        <path d="M 300 578 L 87 578 L 87 224 Q 300 40 513 224 L 513 578 Z" fill="url(#gstripe)"/>
+        <!-- Skinned infield: diamond shape with arc behind 2nd base (the "infield") -->
+        <!-- This is the dirt area inside the bases plus the arc-cut behind the diamond -->
+        <path d="M 300 458
+                 L 158 308
+                 Q 158 152 300 130
+                 Q 442 152 442 308
+                 L 300 458 Z" fill="url(#pdirt)"/>
+        <!-- Grass infield (between bases) — the diamond-shaped grass in the middle -->
+        <path d="M 300 218
+                 L 380 308
+                 L 300 398
+                 L 220 308 Z" fill="url(#ifgrass)"/>
+        <path d="M 300 218
+                 L 380 308
+                 L 300 398
+                 L 220 308 Z" fill="url(#gstripe)" opacity=".5"/>
+        <!-- Dirt cutouts at each base (small dirt circles) -->
+        <circle cx="300" cy="182" r="20" fill="url(#pdirt)"/>
+        <circle cx="435" cy="308" r="20" fill="url(#pdirt)"/>
+        <circle cx="165" cy="308" r="20" fill="url(#pdirt)"/>
+        <!-- Mound dirt area (centered on pitcher's mound) -->
+        <circle cx="300" cy="313" r="32" fill="url(#pdirt)"/>
+        <!-- Home plate dirt area -->
+        <ellipse cx="300" cy="455" rx="32" ry="22" fill="url(#pdirt)"/>
+        <!-- Foul lines (chalk) -->
+        <line x1="300" y1="445" x2="62" y2="578" stroke="#e8e0c8" stroke-width="2.5" opacity=".9"/>
+        <line x1="300" y1="445" x2="538" y2="578" stroke="#e8e0c8" stroke-width="2.5" opacity=".9"/>
+        <line x1="300" y1="445" x2="66" y2="228" stroke="#e8e0c8" stroke-width="1.5" opacity=".33" stroke-dasharray="4,7"/>
+        <line x1="300" y1="445" x2="534" y2="228" stroke="#e8e0c8" stroke-width="1.5" opacity=".33" stroke-dasharray="4,7"/>
+        <!-- Base paths (chalk lines connecting the bases) -->
+        <line x1="300" y1="445" x2="435" y2="308" stroke="#e8e0c8" stroke-width="2.5" opacity=".75"/>
+        <line x1="435" y1="308" x2="300" y2="182" stroke="#e8e0c8" stroke-width="2.5" opacity=".75"/>
+        <line x1="300" y1="182" x2="165" y2="308" stroke="#e8e0c8" stroke-width="2.5" opacity=".75"/>
+        <line x1="165" y1="308" x2="300" y2="445" stroke="#e8e0c8" stroke-width="2.5" opacity=".75"/>
+        <!-- Pitcher's mound -->
+        <ellipse cx="300" cy="313" rx="22" ry="18" fill="url(#mound3d)" stroke="#7a4f2a" stroke-width="1"/>
+        <rect x="291" y="308" width="18" height="6" rx="1" fill="#e8e0d0" stroke="#aaa090" stroke-width=".5"/>
+        <g transform="translate(300,182) rotate(45)"><rect x="-10" y="-10" width="20" height="20" rx="2" fill="#f0ede0" stroke="#c8c0a0" stroke-width="1.5"/><rect x="-6" y="-6" width="12" height="12" rx="1" fill="#fff" opacity=".6"/></g>
+        <g transform="translate(435,308) rotate(45)"><rect x="-10" y="-10" width="20" height="20" rx="2" fill="#f0ede0" stroke="#c8c0a0" stroke-width="1.5"/><rect x="-6" y="-6" width="12" height="12" rx="1" fill="#fff" opacity=".6"/></g>
+        <g transform="translate(165,308) rotate(45)"><rect x="-10" y="-10" width="20" height="20" rx="2" fill="#f0ede0" stroke="#c8c0a0" stroke-width="1.5"/><rect x="-6" y="-6" width="12" height="12" rx="1" fill="#fff" opacity=".6"/></g>
+        <polygon points="300,459 313,448 313,436 287,436 287,448" fill="#f0ede0" stroke="#c0b890" stroke-width="1.5"/>
+        <rect x="271" y="438" width="14" height="23" rx="1" fill="none" stroke="#e0d8b8" stroke-width="1.2" opacity=".6"/>
+        <rect x="315" y="438" width="14" height="23" rx="1" fill="none" stroke="#e0d8b8" stroke-width="1.2" opacity=".6"/>
+        <rect x="281" y="459" width="38" height="20" rx="1" fill="none" stroke="#e0d8b8" stroke-width="1" opacity=".4"/>
+        <path d="M 66 230 Q 300 26 534 230" fill="none" stroke="#5a4030" stroke-width="8" opacity=".9"/>
+        <path d="M 66 230 Q 300 26 534 230" fill="none" stroke="#8a6848" stroke-width="3" opacity=".8"/>
+        <line x1="66" y1="225" x2="66" y2="240" stroke="#5a4030" stroke-width="5"/>
+        <line x1="534" y1="225" x2="534" y2="240" stroke="#5a4030" stroke-width="5"/>
+        <rect width="600" height="525" fill="url(#fdepth)"/>
+        <!-- 11 DROP ZONES — circular badges with name labels -->
+        <!-- PITCHER (on the mound) -->
+        <g class="drop-zone" id="dz-Pitcher" data-pos="Pitcher" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="300" cy="313" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="300" cy="313" r="19" fill="#7d3c98" stroke="#c890f0" stroke-width="2"/>
+          <text class="dz-num" x="300" y="319" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="19" fill="#fff" font-weight="700">P</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="256.0" y="340" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="300" y="360.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- CATCHER (behind home plate, label ABOVE since dot is at bottom) -->
+        <g class="drop-zone" id="dz-Catcher" data-pos="Catcher" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="300" cy="498" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="300" cy="498" r="19" fill="#7d3c98" stroke="#c890f0" stroke-width="2"/>
+          <text class="dz-num" x="300" y="504" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="19" fill="#fff" font-weight="700">C</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="256.0" y="441" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="300" y="461.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- OUTFIELD: Left -->
+        <g class="drop-zone" id="dz-Left" data-pos="Left" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="115" cy="200" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="115" cy="200" r="19" fill="#2471a3" stroke="#80c8e8" stroke-width="2"/>
+          <text class="dz-num" x="115" y="206" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">LF</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="71.0" y="227" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="115" y="247.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- OUTFIELD: Left Center -->
+        <g class="drop-zone" id="dz-Left C" data-pos="Left C" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="208" cy="115" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="208" cy="115" r="19" fill="#2471a3" stroke="#80c8e8" stroke-width="2"/>
+          <text class="dz-num" x="208" y="121" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="15" fill="#fff" font-weight="700">LC</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="164.0" y="142" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="208" y="162.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- OUTFIELD: Center -->
+        <g class="drop-zone" id="dz-Center" data-pos="Center" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="300" cy="78" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="300" cy="78" r="19" fill="#2471a3" stroke="#80c8e8" stroke-width="2"/>
+          <text class="dz-num" x="300" y="84" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">CF</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="256.0" y="105" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="300" y="125.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- OUTFIELD: Right Center -->
+        <g class="drop-zone" id="dz-Right C" data-pos="Right C" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="392" cy="115" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="392" cy="115" r="19" fill="#2471a3" stroke="#80c8e8" stroke-width="2"/>
+          <text class="dz-num" x="392" y="121" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="15" fill="#fff" font-weight="700">RC</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="348.0" y="142" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="392" y="162.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- OUTFIELD: Right -->
+        <g class="drop-zone" id="dz-Right" data-pos="Right" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="485" cy="200" r="38" fill="transparent"/>
+          <circle class="dz-dot" cx="485" cy="200" r="19" fill="#2471a3" stroke="#80c8e8" stroke-width="2"/>
+          <text class="dz-num" x="485" y="206" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">RF</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="441.0" y="227" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="485" y="247.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- INFIELD: Third Base -->
+        <g class="drop-zone" id="dz-Third" data-pos="Third" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="135" cy="320" r="36" fill="transparent"/>
+          <circle class="dz-dot" cx="135" cy="320" r="19" fill="#b7950b" stroke="#e0c070" stroke-width="2"/>
+          <text class="dz-num" x="135" y="326" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">3B</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="91.0" y="347" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="135" y="367.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- INFIELD: Shortstop -->
+        <g class="drop-zone" id="dz-Shortstop" data-pos="Shortstop" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="220" cy="248" r="36" fill="transparent"/>
+          <circle class="dz-dot" cx="220" cy="248" r="19" fill="#b7950b" stroke="#e0c070" stroke-width="2"/>
+          <text class="dz-num" x="220" y="254" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">SS</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="176.0" y="275" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="220" y="295.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- INFIELD: Second Base -->
+        <g class="drop-zone" id="dz-Second" data-pos="Second" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="380" cy="248" r="36" fill="transparent"/>
+          <circle class="dz-dot" cx="380" cy="248" r="19" fill="#b7950b" stroke="#e0c070" stroke-width="2"/>
+          <text class="dz-num" x="380" y="254" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">2B</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="336.0" y="275" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="380" y="295.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+
+        <!-- INFIELD: First Base -->
+        <g class="drop-zone" id="dz-First" data-pos="First" onclick="dzClick(this)" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,this)">
+          <circle class="dz-hit" cx="465" cy="320" r="36" fill="transparent"/>
+          <circle class="dz-dot" cx="465" cy="320" r="19" fill="#b7950b" stroke="#e0c070" stroke-width="2"/>
+          <text class="dz-num" x="465" y="326" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="16" fill="#fff" font-weight="700">1B</text>
+          <g class="dz-label-group">
+            <rect class="dz-plate" x="421.0" y="347" width="88" height="30" rx="15" fill="rgba(0,0,0,.88)" stroke="rgba(212,168,67,.6)" stroke-width="1.5"/>
+            <text class="dz-name" x="465" y="367.0" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="15" font-weight="600" fill="#ffe878">—</text>
+          </g>
+        </g>
+        
+      </svg>
+    </div>
+
+    <div class="bench-section">
+      <p class="bench-label">Unplaced players — drag onto field, or tap to select then tap a position</p>
+      <div class="bench" id="bench"></div>
+    </div>
+    <div id="field-msg"></div>
+  </div>
+
+  <!-- ═══ BATTING ═══ -->
+  <div class="panel" id="panel-batting">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Batting Order</span>
+        <span class="badge badge-gold" id="bat-count">—</span>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--tan);margin-bottom:.7rem;letter-spacing:.05em;">Reflects field placement for <span id="bat-inning-label">Inning 1</span> · drag to reorder</p>
+      <div class="batting-list" id="batting-list"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="shuffleBatting()">&#8635; Shuffle</button>
+    </div>
+  </div>
+
+  <!-- ═══ ROSTER ═══ -->
+  <div class="panel" id="panel-roster">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Players</span>
+        <span class="badge badge-gold" id="roster-count">0</span>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--tan);margin-bottom:.8rem;line-height:1.55;">Edit names · use <strong style="color:var(--gold)">Bench</strong> to sit a player out — benched players are excluded from the field and batting order.</p>
+      <div class="roster-list" id="roster-list"></div>
+      <div class="add-row" onclick="addPlayer()">
+        <span style="font-size:17px;line-height:1">+</span> Add player
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveRoster()">&#10003; Save &amp; Apply</button>
+      <button class="btn btn-danger" onclick="clearRoster()">Clear</button>
+    </div>
+    <div id="roster-msg"></div>
+  </div>
+
+  <!-- ═══ POSITIONS ═══ -->
+  <div class="panel" id="panel-positions">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Active Positions</span>
+        <span class="badge badge-gold" id="pos-count">0</span>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;color:var(--tan);margin-bottom:.9rem;line-height:1.55;">Toggle which positions appear on the field and are used in Auto Fill.</p>
+      <div class="pos-grid" id="pos-grid"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="applyPositions()">&#10003; Apply</button>
+      <button class="btn btn-danger" onclick="clearPositions()">Clear</button>
+    </div>
+    <div id="pos-msg"></div>
+  </div>
+
+</div>
+<script>
+// ═══════════════════ MASTER DATA ═════════════════════════════════════════════
+const POS_MASTER=[
+  {id:'Pitcher',   label:'Pitcher',      zone:'special',  svgId:'dz-Pitcher',   num:'1' },
+  {id:'Catcher',   label:'Catcher',      zone:'special',  svgId:'dz-Catcher',   num:'2' },
+  {id:'First',     label:'First Base',   zone:'infield',  svgId:'dz-First',     num:'3' },
+  {id:'Second',    label:'Second Base',  zone:'infield',  svgId:'dz-Second',    num:'4' },
+  {id:'Shortstop', label:'Shortstop',    zone:'infield',  svgId:'dz-Shortstop', num:'6' },
+  {id:'Third',     label:'Third Base',   zone:'infield',  svgId:'dz-Third',     num:'5' },
+  {id:'Left',      label:'Left Field',   zone:'outfield', svgId:'dz-Left',      num:'7' },
+  {id:'Left C',    label:'Left Center',  zone:'outfield', svgId:'dz-Left C',    num:'LC'},
+  {id:'Center',    label:'Center Field', zone:'outfield', svgId:'dz-Center',    num:'8' },
+  {id:'Right C',   label:'Right Center', zone:'outfield', svgId:'dz-Right C',   num:'RC'},
+  {id:'Right',     label:'Right Field',  zone:'outfield', svgId:'dz-Right',     num:'9' },
+];
+const DEFAULT_ACTIVE=['Left','Left C','Right C','Right','Third','Shortstop','Second','First'];
+const DEFAULT_PLAYERS=[];
+
+// ── Read team context from URL ────────────────────────────────────────────────
+const _urlParams = new URLSearchParams(window.location.search);
+const _teamId = _urlParams.get('team') || '1';
+const SK_R=`lc_r_t${_teamId}_v7`, SK_P=`lc_p_t${_teamId}_v7`;
+
+// Team display info
+function _initTeamBadge(){
+  try{
+    const teams = JSON.parse(localStorage.getItem('lc_teams_v1')||'[]');
+    const team = teams.find(t=>String(t.id)===_teamId);
+    if(team){
+      const colorMap = {
+        red:'#c0392b',blue:'#2471a3',green:'#1e8449',purple:'#7d3c98',
+        orange:'#ca6f1e',teal:'#148f77',gold:'#b7950b',maroon:'#922b21',navy:'#1a5276'
+      };
+      const dot = document.getElementById('team-badge-dot');
+      const name = document.getElementById('team-badge-name');
+      if(dot) dot.style.background = colorMap[team.color]||'var(--gold)';
+      if(name) name.textContent = team.name;
+      document.title = team.name + ' — Lineup Card';
+    }
+  }catch(e){}
+}
+_initTeamBadge();
+
+// ═══════════════════ STATE ════════════════════════════════════════════════════
+// players: array of {name, benched}
+let players      = loadLS(SK_R, DEFAULT_PLAYERS.map(n=>({name:n,benched:false})));
+let draftPlayers = players.map(p=>({...p}));
+let activePosIds = loadLS(SK_P, DEFAULT_ACTIVE);
+let draftPosIds  = [...activePosIds];
+
+let numInnings  = 3;
+let curInning   = 0;
+let innings     = Array.from({length:numInnings},()=>({}));
+let fillMode    = 'random'; // 'random' | 'same'
+let currentBatting = [];
+let selectedChip   = null;
+let fieldDragSrc   = null;
+
+const ghost = document.getElementById('drag-ghost');
+
+// ═══════════════════ UTILS ════════════════════════════════════════════════════
+function loadLS(k,fb){
+  try{
+    const s=localStorage.getItem(k);
+    if(s){
+      const v=JSON.parse(s);
+      if(Array.isArray(v)&&v.length) return v;
+    }
+  }catch(e){}
+  return fb;
+}
+function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function shuffle(a){const r=[...a];for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}return r;}
+function activePlayers(){return players.filter(p=>p.name&&p.name.trim()&&!p.benched).map(p=>p.name);}
+function jerseyOf(name){const p=players.find(pl=>pl.name===name);return p&&p.jersey?p.jersey:'';}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function posById(id){return POS_MASTER.find(p=>p.id===id);}
+function zoneOf(id){const p=posById(id);return p?p.zone:'';}
+function activeByZone(z){return activePosIds.filter(id=>zoneOf(id)===z);}
+
+// ═══════════════════ TABS ════════════════════════════════════════════════════
+function showTab(tab,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+tab).classList.add('active');
+  if(tab==='roster'){draftPlayers=players.map(p=>({...p}));renderRosterEditor();}
+  if(tab==='batting'){
+    ensureBattingSync();
+    const lbl=document.getElementById('bat-inning-label');
+    if(lbl) lbl.textContent=`Inning ${curInning+1}`;
+    renderBatting();
+  }
+  if(tab==='positions'){draftPosIds=[...activePosIds];renderPositionsPanel();}
+}
+
+// ═══════════════════ FILL MODE ═══════════════════════════════════════════════
+function setFillMode(mode,btn){
+  fillMode=mode;
+  document.querySelectorAll('.fill-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ═══════════════════ INNING COUNT ════════════════════════════════════════════
+function buildInningBtns(){
+  document.getElementById('inning-btns').innerHTML=
+    [1,2,3,4,5,6,7,8,9].map(n=>`<button class="inn-btn ${n===numInnings?'active':''}" onclick="setNumInnings(${n},this)">${n}</button>`).join('');
+}
+function setNumInnings(n,btn){
+  numInnings=n;
+  document.querySelectorAll('.inn-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  while(innings.length<numInnings) innings.push({});
+  while(innings.length>numInnings) innings.pop();
+  if(curInning>=numInnings) curInning=numInnings-1;
+  renderInningTabs();
+  renderField();
+}
+function renderInningTabs(){
+  document.getElementById('inning-tabs').innerHTML=
+    innings.map((_,i)=>`<button class="itab ${i===curInning?'active':''}" onclick="switchInning(${i})">Inning ${i+1}</button>`).join('');
+}
+function switchInning(i){curInning=i;renderInningTabs();renderField();clearSelection();}
+
+// ═══════════════════ FIELD RENDER ════════════════════════════════════════════
+function renderField(){
+  const assignment=innings[curInning]||{};
+  POS_MASTER.forEach(p=>{
+    const dz=document.getElementById(p.svgId);if(!dz)return;
+    const nameEl=dz.querySelector('.dz-name');
+    const active=activePosIds.includes(p.id);
+    dz.classList.toggle('pos-hidden',!active);
+    if(!active)return;
+    const player=assignment[p.id]||null;
+    if(player){
+      const jersey=jerseyOf(player);
+      nameEl.textContent = jersey ? `#${jersey} ${player}` : player;
+      dz.classList.add('occupied');
+    } else {
+      nameEl.textContent='';
+      dz.classList.remove('occupied');
+    }
+    dz.classList.remove('field-dragging');
+  });
+  renderBench();
+  renderStatusBar();
+}
+function renderBench(){
+  const assignment=innings[curInning]||{};
+  const placed=new Set(Object.values(assignment));
+  const unplaced=activePlayers().filter(p=>!placed.has(p));
+  const bench=document.getElementById('bench');
+  if(!unplaced.length){bench.innerHTML='<span class="bench-empty">All players placed ✓</span>';return;}
+  bench.innerHTML=unplaced.map(p=>{
+    const jersey=jerseyOf(p);
+    return `
+    <div class="chip ${selectedChip===p?'selected':''}" draggable="true" data-player="${esc(p)}"
+      ondragstart="chipDragStart(event)" ondragend="chipDragEnd(event)"
+      ontouchstart="touchChipStart(event)" ontouchmove="touchChipMove(event)" ontouchend="touchChipEnd(event)"
+      onclick="chipTap('${esc(p)}')">${jersey?`<span class="chip-jersey">${esc(jersey)}</span>`:''}${esc(p)}</div>`;
+  }).join('');
+}
+function renderStatusBar(){
+  const assignment=innings[curInning]||{};
+  const filled=Object.keys(assignment).length;
+  const total=activePosIds.length;
+  let cls,txt;
+  if(filled===0){cls='sp-empty';txt='No players placed';}
+  else if(filled<total){cls='sp-partial';txt=`${filled} / ${total} positions filled`;}
+  else{cls='sp-full';txt=`All ${total} positions filled ✓`;}
+  document.getElementById('status-bar').innerHTML=`<span class="status-pill ${cls}">${txt}</span>`;
+}
+
+// ═══════════════════ AUTO FILL ════════════════════════════════════════════════
+function autoFillAll(){
+  const active=activePlayers();
+  if(!active.length||!activePosIds.length){showMsg('field-msg','Add active players and enable positions first.','warn');return;}
+
+  if(fillMode==='same'){
+    // Fill inning 1 with smart assign, copy to all innings
+    const assignment=buildSmartInning(active,activePosIds,{},{out:0,inf:0,sp:0});
+    for(let i=0;i<numInnings;i++) innings[i]={...assignment};
+  } else {
+    // Randomize each inning, no repeat positions per player
+    const posUsed={},zoneCount={};
+    for(const p of active){posUsed[p]=new Set();zoneCount[p]={out:0,inf:0,sp:0};}
+    for(let inn=0;inn<numInnings;inn++){
+      const perInning=Math.min(active.length,activePosIds.length);
+      const usedPos=activePosIds.slice(0,perInning);
+      let pit=active.length<=perInning?[...active]:rotatedPit(active,innings,inn,perInning);
+      const forbidden={};
+      for(const p of pit) forbidden[p]=new Set([...posUsed[p]]);
+      const result=trySmartAssign(pit,usedPos,forbidden,zoneCount,3000)||tryAssignNoBal(pit,usedPos,forbidden,2000)||shuffle(pit);
+      const newA={};
+      usedPos.forEach((pos,i)=>{
+        const pl=result[i%result.length];
+        newA[pos]=pl;
+        posUsed[pl].add(pos);
+        const z=zoneOf(pos);
+        if(z==='outfield')zoneCount[pl].out++;
+        else if(z==='infield')zoneCount[pl].inf++;
+        else zoneCount[pl].sp++;
+      });
+      innings[inn]=newA;
+    }
+  }
+  renderInningTabs();renderField();
+  showMsg('field-msg',fillMode==='same'?'All innings filled with the same lineup. Drag to adjust.':'All innings filled with varied positions. Drag to adjust.','ok');
+}
+
+function buildSmartInning(active,posList,forbidden,zoneCount){
+  const perInning=Math.min(active.length,posList.length);
+  const usedPos=posList.slice(0,perInning);
+  const fb={};for(const p of active) fb[p]=new Set(forbidden[p]||[]);
+  const result=trySmartAssign(active,usedPos,fb,zoneCount,3000)||tryAssignNoBal(active,usedPos,fb,2000)||shuffle(active);
+  const a={};usedPos.forEach((pos,i)=>{a[pos]=result[i%result.length];});return a;
+}
+function rotatedPit(active,innings,inn,perInning){
+  const pc=active.map(p=>innings.slice(0,inn).filter(lu=>Object.values(lu||{}).includes(p)).length);
+  return active.map((p,i)=>({p,c:pc[i]})).sort((a,b)=>a.c-b.c).slice(0,perInning).map(x=>x.p);
+}
+function trySmartAssign(players,positions,forbidden,zoneCount,tries){
+  const outfield=activeByZone('outfield'),infield=activeByZone('infield');
+  for(let t=0;t<tries;t++){
+    const s=shuffle(players);let ok=true;
+    for(let i=0;i<positions.length;i++){
+      if(forbidden[s[i]]&&forbidden[s[i]].has(positions[i])){ok=false;break;}
+    }
+    if(!ok)continue;
+    let bal=true;
+    for(let i=0;i<positions.length;i++){
+      const pl=s[i],pos=positions[i];
+      const zc=zoneCount[pl]||{out:0,inf:0,sp:0};
+      const isOut=outfield.includes(pos),isIn=infield.includes(pos);
+      const nOut=zc.out+(isOut?1:0),nIn=zc.inf+(isIn?1:0);
+      const tot=nOut+nIn;
+      if(tot>=2&&outfield.length>0&&infield.length>0&&(nOut===tot||nIn===tot)){bal=false;break;}
+    }
+    if(bal)return s;
+  }
+  return tryAssignNoBal(players,positions,forbidden,tries);
+}
+function tryAssignNoBal(players,positions,forbidden,tries){
+  for(let t=0;t<tries;t++){
+    const s=shuffle(players);let ok=true;
+    for(let i=0;i<positions.length;i++){if(forbidden[s[i]]&&forbidden[s[i]].has(positions[i])){ok=false;break;}}
+    if(ok)return s;
+  }
+  return null;
+}
+
+function clearCurrentInning(){innings[curInning]={};renderField();clearSelection();}
+
+// ═══════════════════ PLACE / SWAP ════════════════════════════════════════════
+function placePlayer(player,targetPos){
+  const inn=innings[curInning];
+  const srcPos=Object.keys(inn).find(k=>inn[k]===player);
+  const displaced=inn[targetPos]||null;
+  if(srcPos){inn[srcPos]=displaced||undefined;if(!displaced)delete inn[srcPos];}
+  inn[targetPos]=player;
+  renderField();clearSelection();
+}
+function swapPositions(posA,posB){
+  const inn=innings[curInning];
+  const pA=inn[posA]||null,pB=inn[posB]||null;
+  if(pA)inn[posB]=pA;else delete inn[posB];
+  if(pB)inn[posA]=pB;else delete inn[posA];
+  renderField();
+}
+
+// ═══════════════════ CHIP DRAG (bench→field) ══════════════════════════════════
+let draggingChip=null;
+function chipDragStart(e){
+  draggingChip=e.currentTarget.dataset.player;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',JSON.stringify({type:'bench',player:draggingChip}));
+}
+function chipDragEnd(e){e.currentTarget.classList.remove('dragging');draggingChip=null;}
+
+// ═══════════════════ FIELD SLOT DRAG ══════════════════════════════════════════
+function setupFieldDrag(){
+  POS_MASTER.forEach(p=>{
+    const dz=document.getElementById(p.svgId);if(!dz)return;
+    dz.setAttribute('draggable','true');
+    dz.addEventListener('dragstart',e=>{
+      if(!innings[curInning][p.id])return;
+      fieldDragSrc=p.id;
+      dz.classList.add('field-dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',JSON.stringify({type:'field',pos:p.id}));
+    });
+    dz.addEventListener('dragend',()=>{dz.classList.remove('field-dragging');if(fieldDragSrc===p.id)fieldDragSrc=null;});
+  });
+}
+
+// ═══════════════════ DZ HANDLERS ══════════════════════════════════════════════
+function dzOver(e,dz){e.preventDefault();if(!dz.classList.contains('pos-hidden'))dz.classList.add('drag-over');}
+function dzLeave(dz){dz.classList.remove('drag-over');}
+function dzDrop(e,dz){
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const targetPos=dz.dataset.pos;
+  if(!activePosIds.includes(targetPos))return;
+
+  // Field-to-field drag (player already on field being moved)
+  if(fieldDragSrc){
+    const src=fieldDragSrc;
+    fieldDragSrc=null;
+    document.querySelectorAll('.drop-zone').forEach(d=>d.classList.remove('field-dragging'));
+    if(src!==targetPos) swapPositions(src,targetPos);
+    return;
+  }
+
+  // Bench chip drag
+  let player=draggingChip;
+  if(!player){
+    try{
+      const data=JSON.parse(e.dataTransfer.getData('text/plain'));
+      if(data&&data.player) player=data.player;
+    }catch(err){}
+  }
+  if(player) placePlayer(player,targetPos);
+  draggingChip=null;
+}
+function dzClick(dz){
+  const pos=dz.dataset.pos;
+  if(!activePosIds.includes(pos))return;
+  if(selectedChip){placePlayer(selectedChip,pos);clearSelection();return;}
+  const cur=innings[curInning]&&innings[curInning][pos];
+  if(cur){selectedChip=cur;document.querySelectorAll('.drop-zone').forEach(d=>d.classList.remove('field-selected'));dz.classList.add('field-selected');}
+}
+
+// ═══════════════════ TAP CHIP ════════════════════════════════════════════════
+function chipTap(player){
+  if(selectedChip===player){clearSelection();return;}
+  clearSelection();
+  selectedChip=player;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('selected',c.dataset.player===player));
+}
+function clearSelection(){
+  selectedChip=null;fieldDragSrc=null;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('.drop-zone').forEach(d=>d.classList.remove('field-selected','field-dragging'));
+}
+
+// ═══════════════════ TOUCH (bench→field) ═════════════════════════════════════
+let touchingChip=null;
+function touchChipStart(e){touchingChip=e.currentTarget.dataset.player;e.currentTarget.classList.add('dragging');ghost.textContent=touchingChip;ghost.style.display='block';movGhost(e.touches[0]);}
+function touchChipMove(e){e.preventDefault();movGhost(e.touches[0]);document.querySelectorAll('.drop-zone').forEach(d=>d.classList.remove('drag-over'));const el=document.elementFromPoint(e.touches[0].clientX,e.touches[0].clientY);const dz=el&&el.closest('.drop-zone:not(.pos-hidden)');if(dz)dz.classList.add('drag-over');}
+function touchChipEnd(e){
+  ghost.style.display='none';
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('dragging'));
+  document.querySelectorAll('.drop-zone').forEach(d=>d.classList.remove('drag-over'));
+  if(!touchingChip)return;
+  const t=e.changedTouches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const dz=el&&el.closest('.drop-zone:not(.pos-hidden)');
+  if(dz)placePlayer(touchingChip,dz.dataset.pos);
+  touchingChip=null;
+}
+function movGhost(touch){ghost.style.left=touch.clientX+'px';ghost.style.top=touch.clientY+'px';}
+
+// ═══════════════════ BATTING ══════════════════════════════════════════════════
+function fieldBenchPlayers(){
+  // Players who are active (not roster-benched) but not placed in ANY inning's current field
+  // We show status based on curInning
+  const placed=new Set(Object.values(innings[curInning]||{}));
+  return activePlayers().filter(p=>!placed.has(p));
+}
+
+function ensureBattingSync(){
+  const active=activePlayers();
+  currentBatting=currentBatting.filter(p=>active.includes(p));
+  active.forEach(p=>{if(!currentBatting.includes(p))currentBatting.push(p);});
+}
+
+function shuffleBatting(){currentBatting=shuffle(activePlayers());renderBatting();}
+
+function renderBatting(){
+  const active=activePlayers();
+  const fieldBench=new Set(fieldBenchPlayers());
+  const inOrder=currentBatting.filter(p=>active.includes(p));
+  const battingUp=inOrder.filter(p=>!fieldBench.has(p));
+  const sittingOut=inOrder.filter(p=>fieldBench.has(p));
+
+  document.getElementById('bat-count').textContent=battingUp.length+' batting';
+
+  const makeRow=(p,i,isDimmed)=>{
+    const jersey=jerseyOf(p);
+    return `
+    <div class="bat-row ${isDimmed?'bat-sitting':''}" draggable="true" data-idx="${currentBatting.indexOf(p)}"
+      ondragstart="batDragStart(event)" ondragend="batDragEnd(event)"
+      ondragover="batDragOver(event)" ondragleave="batDragLeave(event)" ondrop="batDrop(event)"
+      ontouchstart="batTouchStart(event)" ontouchmove="batTouchMove(event)" ontouchend="batTouchEnd(event)">
+      <span class="drag-handle">&#8942;&#8942;</span>
+      <span class="bat-num">${i+1}</span>
+      ${jersey?`<span class="bat-jersey">#${esc(jersey)}</span>`:''}
+      <span class="bat-name">${esc(p)}</span>
+      ${isDimmed?`<span class="bat-sitting-badge">Not on field</span>`:''}
+    </div>`;
+  };
+
+  let html='';
+  if(battingUp.length){
+    html+=battingUp.map((p,i)=>makeRow(p,i,false)).join('');
+  } else {
+    html+='<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--tan);padding:8px 0;">No players placed on field this inning.</div>';
+  }
+
+  if(sittingOut.length){
+    html+=`<div class="bat-divider">
+      <span>Not placed in Inning ${curInning+1}</span>
+    </div>`;
+    html+=sittingOut.map((p,i)=>makeRow(p,battingUp.length+i,true)).join('');
+  }
+
+  document.getElementById('batting-list').innerHTML=html;
+}
+let batDragIdx=null;
+function batDragStart(e){
+  batDragIdx=+e.currentTarget.dataset.idx;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function batDragEnd(e){
+  e.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.bat-row').forEach(r=>r.classList.remove('drag-over-top','drag-over-bot'));
+}
+function batDragOver(e){
+  e.preventDefault();const r=e.currentTarget;
+  const mid=r.getBoundingClientRect().top+r.getBoundingClientRect().height/2;
+  r.classList.remove('drag-over-top','drag-over-bot');
+  r.classList.add(e.clientY<mid?'drag-over-top':'drag-over-bot');
+}
+function batDragLeave(e){e.currentTarget.classList.remove('drag-over-top','drag-over-bot');}
+function batDrop(e){
+  e.preventDefault();
+  const r=e.currentTarget;
+  const toIdx=+r.dataset.idx;
+  const after=e.clientY>r.getBoundingClientRect().top+r.getBoundingClientRect().height/2;
+  if(batDragIdx===null||batDragIdx===toIdx)return;
+  const moved=currentBatting.splice(batDragIdx,1)[0];
+  // Adjust destination index after splice
+  let dest=toIdx;
+  if(batDragIdx<toIdx) dest=after?toIdx:toIdx-1;
+  else dest=after?toIdx+1:toIdx;
+  currentBatting.splice(dest,0,moved);
+  renderBatting();
+}
+let batTouchIdx=null;
+function batTouchStart(e){batTouchIdx=+e.currentTarget.dataset.idx;e.currentTarget.classList.add('dragging');ghost.textContent=currentBatting[batTouchIdx];ghost.style.display='block';movGhost(e.touches[0]);}
+function batTouchMove(e){e.preventDefault();movGhost(e.touches[0]);document.querySelectorAll('.bat-row').forEach(r=>r.classList.remove('drag-over-top','drag-over-bot'));const el=document.elementFromPoint(e.touches[0].clientX,e.touches[0].clientY);const row=el&&el.closest('.bat-row');if(row){const rc=row.getBoundingClientRect();row.classList.add(e.touches[0].clientY<rc.top+rc.height/2?'drag-over-top':'drag-over-bot');}}
+function batTouchEnd(e){
+  ghost.style.display='none';document.querySelectorAll('.bat-row').forEach(r=>r.classList.remove('dragging','drag-over-top','drag-over-bot'));
+  if(batTouchIdx===null)return;
+  const t=e.changedTouches[0];const el=document.elementFromPoint(t.clientX,t.clientY);const row=el&&el.closest('.bat-row');
+  if(row){const toIdx=+row.dataset.idx;const rc=row.getBoundingClientRect();const after=t.clientY>rc.top+rc.height/2;
+    if(batTouchIdx!==toIdx){const moved=currentBatting.splice(batTouchIdx,1)[0];let dest=batTouchIdx<toIdx?(after?toIdx:toIdx-1):(after?toIdx+1:toIdx);currentBatting.splice(dest,0,moved);renderBatting();}}
+  batTouchIdx=null;
+}
+
+// ═══════════════════ ROSTER ═══════════════════════════════════════════════════
+function renderRosterEditor(){
+  document.getElementById('roster-list').innerHTML=draftPlayers.map((p,i)=>`
+    <div class="roster-row ${p.benched?'on-bench':''}">
+      <span class="roster-idx">${i+1}</span>
+      <input class="roster-jersey" type="text" value="${esc(p.jersey||'')}" placeholder="#" maxlength="3"
+        oninput="draftPlayers[${i}].jersey=this.value.replace(/[^0-9]/g,'').slice(0,3)" id="rjersey-${i}"/>
+      <input class="roster-input" type="text" value="${esc(p.name)}" placeholder="Player name"
+        oninput="draftPlayers[${i}].name=this.value" onkeydown="if(event.key==='Enter')addPlayer()" id="rinput-${i}"/>
+      <button class="bench-toggle ${p.benched?'benched':''}" onclick="toggleBench(${i})">${p.benched?'Bench':'Active'}</button>
+      <button class="roster-del" onclick="removePlayer(${i})">&#10005;</button>
+    </div>`).join('');
+  const total=draftPlayers.filter(p=>p.name.trim()).length;
+  const benched=draftPlayers.filter(p=>p.name.trim()&&p.benched).length;
+  document.getElementById('roster-count').textContent=`${total-benched} active · ${benched} bench`;
+}
+function toggleBench(idx){
+  draftPlayers[idx].benched=!draftPlayers[idx].benched;
+  renderRosterEditor();
+}
+function addPlayer(){draftPlayers.push({name:'',benched:false,jersey:''});renderRosterEditor();setTimeout(()=>{const el=document.getElementById('rinput-'+(draftPlayers.length-1));if(el)el.focus();},30);}
+function removePlayer(idx){draftPlayers.splice(idx,1);renderRosterEditor();}
+function saveRoster(){
+  players=draftPlayers.map(p=>({name:p.name.trim(),benched:p.benched,jersey:(p.jersey||'').trim()})).filter(p=>p.name);
+  draftPlayers=players.map(p=>({...p}));
+  saveLS(SK_R,players);
+
+  // Find names that are now benched or removed
+  const activeNow=new Set(activePlayers());
+  // Remove those players from all innings assignments (don't wipe everything)
+  innings=innings.map(inn=>{
+    const cleaned={};
+    Object.entries(inn).forEach(([pos,name])=>{
+      if(activeNow.has(name)) cleaned[pos]=name;
+    });
+    return cleaned;
+  });
+
+  ensureBattingSync();
+  renderRosterEditor();
+  renderInningTabs();
+  renderField();
+  showMsg('roster-msg','Roster saved! Benched players removed from field.','ok');
+}
+function clearRoster(){
+  draftPlayers=[];renderRosterEditor();
+}
+
+// ═══════════════════ POSITIONS ════════════════════════════════════════════════
+function renderPositionsPanel(){
+  const zl={outfield:'Outfield',infield:'Infield',special:'Battery'};
+  document.getElementById('pos-grid').innerHTML=POS_MASTER.map(p=>{
+    const on=draftPosIds.includes(p.id);
+    return`<div class="pos-card ${on?'pos-on':''}" onclick="togglePos('${p.id}',this)">
+      <div class="pos-check">${on?'&#10003;':''}</div>
+      <div><div class="pos-name-lbl">${p.label}</div><div class="pos-zone-lbl">${zl[p.zone]}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('pos-count').textContent=draftPosIds.length+' active';
+}
+function togglePos(id,card){
+  if(draftPosIds.includes(id)){draftPosIds=draftPosIds.filter(p=>p!==id);card.classList.remove('pos-on');card.querySelector('.pos-check').innerHTML='';}
+  else{draftPosIds.push(id);card.classList.add('pos-on');card.querySelector('.pos-check').innerHTML='&#10003;';}
+  document.getElementById('pos-count').textContent=draftPosIds.length+' active';
+}
+function applyPositions(){
+  activePosIds=[...draftPosIds];saveLS(SK_P,activePosIds);
+  innings=Array.from({length:numInnings},()=>({}));
+  renderInningTabs();renderField();
+  showMsg('pos-msg','Positions applied! Field cleared.','ok');
+}
+function clearPositions(){draftPosIds=[];renderPositionsPanel();}
+
+// ═══════════════════ MSG HELPER ═══════════════════════════════════════════════
+function showMsg(id,txt,type){
+  const el=document.getElementById(id);if(!el)return;
+  const cls=type==='warn'?'warn-box':type==='ok'?'ok-box':'info-box';
+  el.innerHTML=`<div class="${cls}">${txt}</div>`;
+  setTimeout(()=>el.innerHTML='',4000);
+}
+
+
+// ═══════════════════ PRINT PDF ════════════════════════════════════════════════
+function printPDF(){
+  // Build a printable document with one page: header, all innings (mini diamonds with names),
+  // and batting order side panel.
+  const html = buildPrintHTML();
+
+  // Strategy 1: Try direct print via inline iframe (works in normal browsers)
+  // Strategy 2: If blocked or fails, fall back to Blob download
+  try {
+    const printFrame = document.createElement('iframe');
+    printFrame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(printFrame);
+
+    const idoc = printFrame.contentDocument || printFrame.contentWindow.document;
+    idoc.open();
+    idoc.write(html);
+    idoc.close();
+
+    // Give the browser time to layout, then attempt to print
+    setTimeout(()=>{
+      try {
+        printFrame.contentWindow.focus();
+        printFrame.contentWindow.print();
+        // Clean up after a delay (let print dialog close first)
+        setTimeout(()=>{ printFrame.remove(); }, 1000);
+      } catch(err){
+        // Direct print blocked — fall back to download
+        printFrame.remove();
+        downloadPrintFile(html);
+      }
+    }, 250);
+  } catch(err){
+    downloadPrintFile(html);
+  }
+}
+
+function downloadPrintFile(html){
+  try {
+    const blob = new Blob([html], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'lineup-card.html';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    showMsg('field-msg','Lineup downloaded — open it and press Ctrl+P (or Cmd+P) to print or save as PDF.','ok');
+  } catch(e){
+    showMsg('field-msg','Print failed. Try opening the file in your browser directly.','warn');
+  }
+}
+
+function buildPrintHTML(){
+  // Get the field SVG markup with current state baked in for each inning
+  // We'll generate one mini-field per inning by extracting the SVG and customizing names
+  const teamName = document.getElementById('team-badge-name')?.textContent || 'Team';
+  const dateStr = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Position coordinates for placing names in the print SVG (mirrors the on-screen field)
+  const POS_COORDS = {
+    'Pitcher':   {dx:300, dy:313, lx:300, ly:355, above:false},
+    'Catcher':   {dx:300, dy:498, lx:300, ly:456, above:true },
+    'Left':      {dx:115, dy:200, lx:115, ly:242, above:false},
+    'Left C':    {dx:208, dy:115, lx:208, ly:157, above:false},
+    'Center':    {dx:300, dy: 78, lx:300, ly:120, above:false},
+    'Right C':   {dx:392, dy:115, lx:392, ly:157, above:false},
+    'Right':     {dx:485, dy:200, lx:485, ly:242, above:false},
+    'Third':     {dx:135, dy:320, lx:135, ly:362, above:false},
+    'Shortstop': {dx:220, dy:248, lx:220, ly:290, above:false},
+    'Second':    {dx:380, dy:248, lx:380, ly:290, above:false},
+    'First':     {dx:465, dy:320, lx:465, ly:362, above:false},
+  };
+
+  const POS_COLOR = {
+    'Pitcher':'#7d3c98','Catcher':'#7d3c98',
+    'First':'#b7950b','Second':'#b7950b','Third':'#b7950b','Shortstop':'#b7950b',
+    'Left':'#2471a3','Left C':'#2471a3','Center':'#2471a3','Right C':'#2471a3','Right':'#2471a3'
+  };
+  const POS_ABBR = {
+    'Pitcher':'P','Catcher':'C','First':'1B','Second':'2B','Third':'3B','Shortstop':'SS',
+    'Left':'LF','Left C':'LC','Center':'CF','Right C':'RC','Right':'RF'
+  };
+
+  function miniSVG(assignment, inn){
+    const positions = activePosIds.map(posId=>{
+      const c = POS_COORDS[posId]; if(!c) return '';
+      const player = assignment[posId];
+      const color = POS_COLOR[posId];
+      const abbr = POS_ABBR[posId];
+      const hasPlayer = !!player;
+      const labelY = c.above ? c.dy - 20 - 8 : c.dy + 19 + 8 + 24;
+      const labelTop = c.above ? c.dy - 20 - 8 - 24 : c.dy + 19 + 8;
+      const dotOpacity = hasPlayer ? 1 : 0.4;
+      const labelOpacity = hasPlayer ? 1 : 0;
+      const jersey = hasPlayer ? jerseyOf(player) : '';
+      const displayName = jersey ? `#${jersey} ${player}` : (player||'');
+      return `
+        <g>
+          <circle cx="${c.dx}" cy="${c.dy}" r="19" fill="${color}" stroke="#fff" stroke-width="1.5" opacity="${dotOpacity}"/>
+          <text x="${c.dx}" y="${c.dy+5}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="${abbr.length>1?14:18}" fill="#fff" font-weight="700">${abbr}</text>
+          ${hasPlayer ? `
+          <rect x="${c.lx-50}" y="${labelTop}" width="100" height="22" rx="11" fill="#000" stroke="${color}" stroke-width="1.2"/>
+          <text x="${c.lx}" y="${labelTop+15}" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="11" font-weight="600" fill="#ffe878">${escHtml(displayName)}</text>
+          ` : ''}
+        </g>`;
+    }).join('');
+
+    return `
+    <svg viewBox="0 0 600 525" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+      <defs>
+        <pattern id="gs${inn}" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(-45 300 300)">
+          <rect width="11" height="22" fill="#2a7a32"/><rect x="11" width="11" height="22" fill="#237029"/>
+        </pattern>
+        <pattern id="pd${inn}" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+          <rect width="4" height="4" fill="#a0714a"/>
+        </pattern>
+      </defs>
+      <rect width="600" height="525" fill="#1e5c26"/>
+      <rect width="600" height="525" fill="url(#gs${inn})"/>
+      <ellipse cx="300" cy="308" rx="142" ry="138" fill="url(#pd${inn})"/>
+      <path d="M 300 218 L 380 308 L 300 398 L 220 308 Z" fill="#237029"/>
+      <circle cx="300" cy="182" r="20" fill="url(#pd${inn})"/>
+      <circle cx="435" cy="308" r="20" fill="url(#pd${inn})"/>
+      <circle cx="165" cy="308" r="20" fill="url(#pd${inn})"/>
+      <circle cx="300" cy="313" r="32" fill="url(#pd${inn})"/>
+      <ellipse cx="300" cy="455" rx="32" ry="22" fill="url(#pd${inn})"/>
+      <line x1="300" y1="445" x2="62" y2="525" stroke="#e8e0c8" stroke-width="2" opacity=".8"/>
+      <line x1="300" y1="445" x2="538" y2="525" stroke="#e8e0c8" stroke-width="2" opacity=".8"/>
+      <line x1="300" y1="445" x2="435" y2="308" stroke="#e8e0c8" stroke-width="2" opacity=".7"/>
+      <line x1="435" y1="308" x2="300" y2="182" stroke="#e8e0c8" stroke-width="2" opacity=".7"/>
+      <line x1="300" y1="182" x2="165" y2="308" stroke="#e8e0c8" stroke-width="2" opacity=".7"/>
+      <line x1="165" y1="308" x2="300" y2="445" stroke="#e8e0c8" stroke-width="2" opacity=".7"/>
+      <g transform="translate(300,182) rotate(45)"><rect x="-9" y="-9" width="18" height="18" fill="#f0ede0"/></g>
+      <g transform="translate(435,308) rotate(45)"><rect x="-9" y="-9" width="18" height="18" fill="#f0ede0"/></g>
+      <g transform="translate(165,308) rotate(45)"><rect x="-9" y="-9" width="18" height="18" fill="#f0ede0"/></g>
+      <polygon points="300,459 313,448 313,436 287,436 287,448" fill="#f0ede0"/>
+      ${positions}
+    </svg>`;
+  }
+
+  // Generate inning blocks
+  const inningBlocks = innings.slice(0, numInnings).map((assignment,i)=>`
+    <div class="inning-block">
+      <div class="inning-label">Inning ${i+1}</div>
+      <div class="diamond">${miniSVG(assignment, i)}</div>
+    </div>`).join('');
+
+  const battingHTML = currentBatting.map((p,i)=>{
+    const j = jerseyOf(p);
+    return `
+    <div class="bat-row">
+      <span class="bat-num">${i+1}</span>
+      ${j?`<span class="bat-j">#${escHtml(j)}</span>`:''}
+      <span class="bat-name">${escHtml(p)}</span>
+    </div>`;
+  }).join('');
+
+  // Decide grid columns based on inning count for best fit
+  const cols = numInnings <= 2 ? numInnings : numInnings <= 4 ? 2 : 3;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>${escHtml(teamName)} — Lineup Card</title>
+<style>
+  @page { size: landscape; margin: 0.4in; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page{max-width:11in;margin:0 auto;padding:0;}
+  .page-header{display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #1a4a22;padding-bottom:6px;margin-bottom:10px;}
+  .title-row{display:flex;align-items:baseline;gap:14px;}
+  .page-title{font-size:22px;font-weight:800;letter-spacing:0.05em;color:#1a4a22;text-transform:uppercase;}
+  .team-name{font-size:16px;font-weight:600;color:#444;letter-spacing:0.02em;}
+  .page-date{font-size:10px;color:#666;letter-spacing:0.06em;}
+  .main-row{display:flex;gap:14px;align-items:flex-start;}
+  .field-section{flex:1;min-width:0;}
+  .innings-grid{display:grid;grid-template-columns:repeat(${cols},1fr);gap:10px;}
+  .inning-block{display:flex;flex-direction:column;gap:4px;}
+  .inning-label{font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a4a22;background:#e8f0e0;padding:3px 10px;border-radius:11px;align-self:flex-start;}
+  .diamond{border-radius:8px;overflow:hidden;border:1px solid #c8d8c0;background:#1e5c26;width:100%;}
+  .batting-section{width:160px;flex-shrink:0;}
+  .bat-header{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1a4a22;border-bottom:1.5px solid #1a4a22;padding-bottom:4px;margin-bottom:6px;}
+  .bat-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #eee;}
+  .bat-num{font-size:14px;font-weight:800;color:#c89020;width:18px;flex-shrink:0;}
+  .bat-j{font-size:10px;font-weight:700;color:#c89020;background:rgba(212,168,67,0.15);border-radius:6px;padding:1px 5px;line-height:1.3;}
+  .bat-name{font-size:12px;font-weight:600;color:#222;}
+  .bat-empty{font-size:11px;color:#999;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-header">
+    <div class="title-row">
+      <span class="page-title">Lineup Card</span>
+      <span class="team-name">${escHtml(teamName)}</span>
+    </div>
+    <span class="page-date">${escHtml(dateStr)}</span>
+  </div>
+  <div class="main-row">
+    <div class="field-section">
+      <div class="innings-grid">${inningBlocks}</div>
+    </div>
+    <div class="batting-section">
+      <div class="bat-header">Batting Order</div>
+      ${battingHTML || '<div class="bat-empty">No batting order set</div>'}
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+function escHtml(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════ INIT ════════════════════════════════════════════════════
+buildInningBtns();
+renderInningTabs();
+renderField();
+ensureBattingSync();
+setupFieldDrag();
+</script>
+</body>
+</html>
