@@ -1161,12 +1161,30 @@ function buildPrintHTML(){
     </svg>`;
   }
 
-  // Generate inning blocks
-  const inningBlocks = innings.slice(0, numInnings).map((assignment,i)=>`
-    <div class="inning-block">
-      <div class="inning-label">Inning ${i+1}</div>
-      <div class="diamond">${miniSVG(assignment, i)}</div>
-    </div>`).join('');
+  // Detect if all innings are identical (Keep Same mode result)
+  const usedInnings = innings.slice(0, numInnings);
+  function inningsEqual(a, b){
+    const ka = Object.keys(a||{}); const kb = Object.keys(b||{});
+    if (ka.length !== kb.length) return false;
+    return ka.every(k => a[k] === b[k]);
+  }
+  const allSame = usedInnings.length > 1 && usedInnings.every(inn => inningsEqual(inn, usedInnings[0]));
+
+  // Generate inning blocks (or just one big diamond if all innings are the same)
+  let inningBlocks;
+  if (allSame) {
+    inningBlocks = `
+      <div class="inning-block all-same">
+        <div class="inning-label">All ${numInnings} Innings</div>
+        <div class="diamond">${miniSVG(usedInnings[0], 0)}</div>
+      </div>`;
+  } else {
+    inningBlocks = usedInnings.map((assignment,i)=>`
+      <div class="inning-block">
+        <div class="inning-label">Inning ${i+1}</div>
+        <div class="diamond">${miniSVG(assignment, i)}</div>
+      </div>`).join('');
+  }
 
   const battingHTML = currentBatting.map((p,i)=>{
     const j = jerseyOf(p);
@@ -1178,17 +1196,30 @@ function buildPrintHTML(){
     </div>`;
   }).join('');
 
-  // Decide grid columns based on inning count for best one-page fit on landscape letter
-  // Available diamond area is roughly 9.7" wide x 6.5" tall (after header & batting column)
-  let cols;
-  if (numInnings <= 2)      cols = numInnings;
-  else if (numInnings <= 3) cols = 3;
-  else if (numInnings <= 4) cols = 4;
-  else if (numInnings <= 6) cols = 3;
-  else                       cols = 5; // 7-9 innings: 5 columns
+  // Bench section: players who exist on the roster but aren't in the active lineup
+  // (these are the roster-benched players, not "unplaced" field players)
+  const benchedPlayers = players.filter(p => p.name && p.name.trim() && p.benched).map(p => p.name);
+  const benchHTML = benchedPlayers.map(p => {
+    const j = jerseyOf(p);
+    return `
+    <div class="bat-row bench-row">
+      ${j?`<span class="bat-j">#${escHtml(j)}</span>`:''}
+      <span class="bat-name">${escHtml(p)}</span>
+    </div>`;
+  }).join('');
 
-  // Cap diamond max-width so 1-2 inning layouts don't blow up
-  const diamondMaxWidth = numInnings === 1 ? '4.5in' : numInnings === 2 ? '4in' : '100%';
+  // Decide grid columns based on inning count for best one-page fit on landscape letter
+  // If allSame, treat it as a single "inning" for layout purposes
+  const layoutCount = allSame ? 1 : numInnings;
+  let cols;
+  if (layoutCount <= 2)      cols = layoutCount;
+  else if (layoutCount === 3) cols = 3;
+  else if (layoutCount <= 4) cols = 4;
+  else if (layoutCount <= 6) cols = 3;
+  else                        cols = 5; // 7-9 innings: 5 columns
+
+  // Cap diamond max-width so single layouts don't blow up
+  const diamondMaxWidth = layoutCount === 1 ? '5.5in' : layoutCount === 2 ? '4in' : '100%';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1212,13 +1243,19 @@ function buildPrintHTML(){
   .inning-block{display:flex;flex-direction:column;gap:3px;min-width:0;}
   .inning-label{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a4a22;background:#e8f0e0;padding:2px 8px;border-radius:9px;align-self:flex-start;}
   .diamond{overflow:hidden;background:#1e5c26;width:100%;max-width:${diamondMaxWidth};border-radius:4px;}
-  .batting-section{width:130px;flex-shrink:0;}
+  .batting-section{width:120px;flex-shrink:0;}
   .bat-header{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1a4a22;border-bottom:1.5px solid #1a4a22;padding-bottom:3px;margin-bottom:4px;}
   .bat-row{display:flex;align-items:center;gap:5px;padding:2px 0;border-bottom:1px solid #f0f0f0;}
   .bat-num{font-size:12px;font-weight:800;color:#c89020;width:15px;flex-shrink:0;text-align:right;}
   .bat-j{font-size:9px;font-weight:700;color:#c89020;background:rgba(212,168,67,0.15);border-radius:5px;padding:0px 4px;line-height:1.3;}
   .bat-name{font-size:11px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .bat-empty{font-size:10px;color:#999;font-style:italic;}
+  .bench-header{margin-top:8px;color:#777;border-bottom-color:#777;}
+  .bench-row{opacity:0.75;}
+  .bench-row .bat-name{font-style:italic;color:#555;}
+  .bench-row .bat-j{background:rgba(120,120,120,0.15);color:#666;}
+  .all-same{align-items:center;}
+  .all-same .inning-label{background:#fff5d8;color:#8a6c20;font-size:11px;padding:3px 12px;}
 </style>
 </head>
 <body>
@@ -1237,6 +1274,9 @@ function buildPrintHTML(){
     <div class="batting-section">
       <div class="bat-header">Batting Order</div>
       ${battingHTML || '<div class="bat-empty">No batting order set</div>'}
+      ${benchHTML ? `
+      <div class="bat-header bench-header">Bench</div>
+      ${benchHTML}` : ''}
     </div>
   </div>
 </div>
