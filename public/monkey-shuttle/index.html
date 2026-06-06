@@ -2406,8 +2406,6 @@ function loop(ts){
   if(gamePaused){requestAnimationFrame(loop);return;}
   // Cap at 60fps for consistent speed on 120Hz displays
   if(ts-lastFrameTime<14){requestAnimationFrame(loop);return;}
-  // Update RAF heartbeat
-  window._rafHeartbeat=Date.now();
   // Track FPS — measured between render frames
   const dt=ts-lastFrameTime;
   if(lastFrameTime>0){
@@ -2417,6 +2415,19 @@ function loop(ts){
   }
   lastFrameTime=ts;
   fpsFrames++;
+  // ── DIAGNOSTIC: log every 1 second to Console ──
+  if(!window._diagLast)window._diagLast=ts;
+  if(ts-window._diagLast>=1000){
+    window._diagLast=ts;
+    const elapsed=Math.round(performance.now()/1000);
+    const avg=fpsSamples.reduce((a,b)=>a+b,0)/Math.max(1,fpsSamples.length);
+    const pipeCount=(typeof pipes!=='undefined')?pipes.length:0;
+    const obsCount=(typeof BNS!=='undefined'&&BNS.obs)?BNS.obs.length:0;
+    const partActive=particlePool.filter(p=>p.active).length;
+    const exhActive=exhaustPool.filter(p=>p.active).length;
+    const mem=(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+'MB':'?');
+    console.log(`[t${elapsed}s] state=${state} fps=${Math.round(avg)} pipes=${pipeCount} bns=${obsCount} prt=${partActive}+${exhActive} mem=${mem} BNS.timer=${BNS&&BNS.timer} BNS.phase=${BNS&&BNS.phase}`);
+  }
   if(ts-fpsLastSample>=500){
     // Compute average over last samples
     const avg=fpsSamples.reduce((a,b)=>a+b,0)/Math.max(1,fpsSamples.length);
@@ -2790,28 +2801,6 @@ function showDead(finalCoins,baseCoins,dm,afterDaily,missionWon){
 }
 
 // ── BOOT ─────────────────────────────────────────────────────────
-window._rafHeartbeat=Date.now();
-// Watchdog: if requestAnimationFrame stops firing for 1+ seconds, force-restart it.
-// This counters an iOS WebView bug where RAF can stop while setInterval keeps running.
-let _rafRecoveryCount=0;
-setInterval(()=>{
-  const sinceHeartbeat=Date.now()-window._rafHeartbeat;
-  if(sinceHeartbeat>1000&&!gamePaused){
-    _rafRecoveryCount++;
-    try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type:'error',msg:'RAF stalled '+sinceHeartbeat+'ms, recovery attempt #'+_rafRecoveryCount}));}catch(_){}
-    // Force canvas to reattach by toggling a CSS property
-    try{
-      const cd=C.style.display;
-      C.style.display='none';
-      void C.offsetHeight; // force reflow
-      C.style.display=cd||'block';
-    }catch(_){}
-    // Re-kickstart the animation frame loop
-    try{requestAnimationFrame(loop);}catch(_){}
-    // Reset heartbeat so we don't immediately retry
-    window._rafHeartbeat=Date.now();
-  }
-},500);
 requestAnimationFrame(loop);
 showMenu();
 </script>
