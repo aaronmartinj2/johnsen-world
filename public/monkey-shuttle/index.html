@@ -807,7 +807,7 @@ function drawSurfaceObsCanvas(o,pl){
     ctx.beginPath();ctx.ellipse(o.x,o.y,rx*.7,ry*.7,0,0,Math.PI*2);ctx.stroke();
 
   }   else if(o.type==='planetwrench'){
-    if(o.collected)return;
+    if(o.collected){ctx.restore();return;}
     ctx.save();ctx.translate(o.x,o.y+Math.sin(o.bob)*4);ctx.rotate(o.rot);
     // Big pulsing outer glow
     ctx.save();ctx.globalAlpha=.25+.2*Math.sin(frame*.12);
@@ -832,7 +832,7 @@ function drawSurfaceObsCanvas(o,pl){
     ctx.fillStyle='#334455';ctx.beginPath();ctx.arc(-12,0,2.5,0,Math.PI*2);ctx.fill();
     ctx.restore();
   } else if(o.type==='fallingbanana'){
-    if(o.collected)return;
+    if(o.collected){ctx.restore();return;}
     // Big glowing banana falling slowly
     ctx.save();ctx.translate(o.x,o.y);
     ctx.fillStyle='#ffdd00';ctx.strokeStyle='#cc9900';ctx.lineWidth=2;
@@ -2415,19 +2415,6 @@ function loop(ts){
   }
   lastFrameTime=ts;
   fpsFrames++;
-  // ── DIAGNOSTIC: log every 1 second to Console ──
-  if(!window._diagLast)window._diagLast=ts;
-  if(ts-window._diagLast>=1000){
-    window._diagLast=ts;
-    const elapsed=Math.round(performance.now()/1000);
-    const avg=fpsSamples.reduce((a,b)=>a+b,0)/Math.max(1,fpsSamples.length);
-    const pipeCount=(typeof pipes!=='undefined')?pipes.length:0;
-    const obsCount=(typeof BNS!=='undefined'&&BNS.obs)?BNS.obs.length:0;
-    const partActive=particlePool.filter(p=>p.active).length;
-    const exhActive=exhaustPool.filter(p=>p.active).length;
-    const mem=(performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+'MB':'?');
-    console.log(`[t${elapsed}s] state=${state} fps=${Math.round(avg)} pipes=${pipeCount} bns=${obsCount} prt=${partActive}+${exhActive} mem=${mem} BNS.timer=${BNS&&BNS.timer} BNS.phase=${BNS&&BNS.phase}`);
-  }
   if(ts-fpsLastSample>=500){
     // Compute average over last samples
     const avg=fpsSamples.reduce((a,b)=>a+b,0)/Math.max(1,fpsSamples.length);
