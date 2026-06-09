@@ -513,67 +513,6 @@ function drawPlanetSprite(c,x,y,r,name,alpha=1){
 }
 
 // ── FLYOVER SURFACE DETAIL ───────────────────────────────────────
-// Distant parallax mountains/mesas drawn behind the main terrain.
-// Scrolls slower than foreground for depth. Deterministic from tOff.
-function drawParallaxHorizon(pl){
-  if(!pl.hasSurface)return;
-  const par=BNS.tOff*0.4; // slower than foreground
-  const horizonY=H-95;
-  ctx.save();
-  if(pl.name==='MOON'){
-    // Distant lighter-grey mountain peaks
-    ctx.fillStyle='rgba(120,128,145,.5)';
-    ctx.beginPath();ctx.moveTo(0,H);
-    for(let x=-40;x<=W+40;x+=40){
-      const sx=x-(par%80);
-      const h=28+Math.sin((x*0.7))*10+Math.cos(x*1.3)*8;
-      ctx.lineTo(sx,horizonY-h);
-      ctx.lineTo(sx+20,horizonY-h*.5);
-    }
-    ctx.lineTo(W,H);ctx.closePath();ctx.fill();
-  } else if(pl.name==='MARS'){
-    // Distant mesas/buttes (flat-topped)
-    ctx.fillStyle='rgba(150,70,45,.5)';
-    for(let x=-60;x<=W+60;x+=110){
-      const sx=x-(par%220);
-      const mw=50+((x*13)%30), mh=35+((x*7)%25);
-      ctx.fillRect(sx,horizonY-mh,mw,mh);
-      // flat shaded top
-      ctx.fillStyle='rgba(170,85,55,.5)';
-      ctx.fillRect(sx,horizonY-mh,mw,5);
-      ctx.fillStyle='rgba(150,70,45,.5)';
-    }
-  } else if(pl.name==='SATURN'){
-    // Distant cloud-tops (soft billows) since it's a gas giant
-    ctx.fillStyle='rgba(200,170,120,.35)';
-    for(let x=-40;x<=W+40;x+=60){
-      const sx=x-(par%120);
-      const cy=horizonY-15-Math.sin(x*0.5)*8;
-      ctx.beginPath();ctx.arc(sx,cy,26,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(sx+22,cy+4,20,0,Math.PI*2);ctx.fill();
-    }
-  } else if(pl.name==='PLUTO'){
-    // Distant icy peaks (blue-white)
-    ctx.fillStyle='rgba(150,165,205,.5)';
-    ctx.beginPath();ctx.moveTo(0,H);
-    for(let x=-30;x<=W+30;x+=55){
-      const sx=x-(par%110);
-      const h=40+Math.sin(x*0.9)*16;
-      ctx.lineTo(sx,horizonY-h);
-      ctx.lineTo(sx+27,horizonY-h*.4);
-    }
-    ctx.lineTo(W,H);ctx.closePath();ctx.fill();
-    // Snowy peak highlights
-    ctx.fillStyle='rgba(220,235,255,.4)';
-    for(let x=-30;x<=W+30;x+=55){
-      const sx=x-(par%110);
-      const h=40+Math.sin(x*0.9)*16;
-      ctx.beginPath();ctx.moveTo(sx-4,horizonY-h+6);ctx.lineTo(sx,horizonY-h);ctx.lineTo(sx+4,horizonY-h+6);ctx.closePath();ctx.fill();
-    }
-  }
-  ctx.restore();
-}
-
 // Surface texture drawn ON TOP of the foreground terrain.
 // Uses scroll offset so features move with the ground. Deterministic.
 function drawSurfaceTexture(pl){
@@ -779,26 +718,57 @@ function drawBonus(){
     ctx.restore();
   }
 
-  // Distant parallax horizon (behind main terrain)
-  drawParallaxHorizon(pl);
-
   // Terrain
   if(pl.hasSurface&&BNS.terrain.length){
-    ctx.beginPath();ctx.moveTo(0,H);
+    // Build terrain top path once
+    const topPts=[];
     for(let sx2=0;sx2<=W;sx2+=6){
-      const ty=terrainY(BNS.terrain,BNS.tOff,sx2);
-      sx2===0?ctx.lineTo(0,ty):ctx.lineTo(sx2,ty);
+      topPts.push([sx2,terrainY(BNS.terrain,BNS.tOff,sx2)]);
     }
+    // Fill the body with the base gradient
+    ctx.beginPath();ctx.moveTo(0,H);
+    for(let i=0;i<topPts.length;i++){i===0?ctx.lineTo(0,topPts[i][1]):ctx.lineTo(topPts[i][0],topPts[i][1]);}
     ctx.lineTo(W,H);ctx.closePath();
     const tgKey='tg_'+pl.name;
-    if(!bgGradCache[tgKey]){const tg=ctx.createLinearGradient(0,H-130,0,H);tg.addColorStop(0,pl.groundCol);tg.addColorStop(1,pl.groundCol2);bgGradCache[tgKey]=tg;}
+    if(!bgGradCache[tgKey]){const tg=ctx.createLinearGradient(0,H-150,0,H);tg.addColorStop(0,hexBright(pl.groundCol,1.15));tg.addColorStop(.5,pl.groundCol);tg.addColorStop(1,pl.groundCol2);bgGradCache[tgKey]=tg;}
     ctx.fillStyle=bgGradCache[tgKey];ctx.fill();
-    ctx.strokeStyle=hexBright(pl.groundCol,1.5);ctx.lineWidth=2;
-    ctx.beginPath();
-    for(let sx2=0;sx2<=W;sx2+=6){const ty=terrainY(BNS.terrain,BNS.tOff,sx2);sx2===0?ctx.moveTo(0,ty):ctx.lineTo(sx2,ty);}
-    ctx.stroke();
-    // Surface texture on top of the ground
+
+    // Clip to the terrain body for all subsequent shading
+    ctx.save();
+    ctx.beginPath();ctx.moveTo(0,H);
+    for(let i=0;i<topPts.length;i++){i===0?ctx.lineTo(0,topPts[i][1]):ctx.lineTo(topPts[i][0],topPts[i][1]);}
+    ctx.lineTo(W,H);ctx.closePath();ctx.clip();
+
+    // Deep shadow band at the very bottom for grounding
+    const shKey='sh_'+pl.name;
+    if(!bgGradCache[shKey]){const shg=ctx.createLinearGradient(0,H-40,0,H);shg.addColorStop(0,'rgba(0,0,0,0)');shg.addColorStop(1,'rgba(0,0,0,.4)');bgGradCache[shKey]=shg;}
+    ctx.fillStyle=bgGradCache[shKey];ctx.fillRect(0,H-40,W,40);
+
+    // Vertical striations — subtle darker columns suggesting rock texture, scrolls with terrain
+    ctx.globalAlpha=.10;ctx.fillStyle=pl.groundCol2;
+    const stScroll=BNS.tOff%48;
+    for(let x=-48;x<W+48;x+=48){
+      const sx=x-stScroll;
+      ctx.fillRect(sx,H-150,16,150);
+    }
+    ctx.globalAlpha=1;
+
+    // Surface texture on top of the ground (craters, rocks, etc.)
     drawSurfaceTexture(pl);
+
+    ctx.restore(); // end terrain clip
+
+    // Sunlit ridge line along the top edge (bright rim)
+    ctx.strokeStyle=hexBright(pl.groundCol,1.8);ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(let i=0;i<topPts.length;i++){i===0?ctx.moveTo(topPts[i][0],topPts[i][1]):ctx.lineTo(topPts[i][0],topPts[i][1]);}
+    ctx.stroke();
+    // Soft secondary highlight just under the ridge
+    ctx.strokeStyle=hexBright(pl.groundCol,1.3);ctx.lineWidth=1;ctx.globalAlpha=.5;
+    ctx.beginPath();
+    for(let i=0;i<topPts.length;i++){const [x,y]=topPts[i];i===0?ctx.moveTo(x,y+3):ctx.lineTo(x,y+3);}
+    ctx.stroke();
+    ctx.globalAlpha=1;
   }
   if(pl.name==='ASTEROIDS'){
     // Distant rocks as bg
