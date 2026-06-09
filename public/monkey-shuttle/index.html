@@ -436,6 +436,21 @@ function bonusJump(){
 function drawPlanetSprite(c,x,y,r,name,alpha=1){
   if(r<2)return;
   c.save();c.globalAlpha=alpha;
+
+  // Saturn's rings — drawn BEFORE the planet, behind it
+  if(name==='SATURN'){
+    c.save();c.globalAlpha=alpha*.6;
+    c.strokeStyle='#ccbb88';c.lineWidth=r*.09;
+    c.beginPath();c.ellipse(x,y,r*1.65,r*.4,0,0,Math.PI*2);c.stroke();
+    c.lineWidth=r*.05;c.strokeStyle='#ddcc99';
+    c.beginPath();c.ellipse(x,y,r*1.95,r*.48,0,0,Math.PI*2);c.stroke();
+    c.restore();
+  }
+
+  // Clip everything inside a circle so the planet body is round
+  c.save();
+  c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.clip();
+
   if(name==='EARTH'){
     const g=c.createRadialGradient(x-r*.3,y-r*.3,r*.05,x,y,r);
     g.addColorStop(0,'#2288dd');g.addColorStop(1,'#114488');
@@ -443,43 +458,208 @@ function drawPlanetSprite(c,x,y,r,name,alpha=1){
     c.fillStyle='#44aa44';
     c.beginPath();c.ellipse(x-r*.1,y-r*.15,r*.38,r*.48,-.4,0,Math.PI*2);c.fill();
     c.beginPath();c.ellipse(x+r*.22,y+r*.2,r*.26,r*.32,.3,0,Math.PI*2);c.fill();
-    c.globalAlpha=.35;c.fillStyle='#fff';
+    c.globalAlpha=alpha*.35;c.fillStyle='#fff';
     c.beginPath();c.ellipse(x-r*.2,y+r*.3,r*.3,r*.07,-.2,0,Math.PI*2);c.fill();
     c.beginPath();c.ellipse(x+r*.1,y-r*.3,r*.25,r*.07,.1,0,Math.PI*2);c.fill();
   } else if(name==='MOON'){
     const g=c.createRadialGradient(x-r*.3,y-r*.3,r*.05,x,y,r);
     g.addColorStop(0,'#ccccdd');g.addColorStop(1,'#6a7080');
     c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
-    c.globalAlpha=.3;c.strokeStyle='#556677';c.lineWidth=1.5;
+    c.globalAlpha=alpha*.3;c.strokeStyle='#556677';c.lineWidth=1.5;
     [[-.3,-.2,.15],[.2,.3,.1],[-.05,.35,.08],[.35,-.1,.06]].forEach(([cx,cy,cr])=>{c.beginPath();c.arc(x+cx*r,y+cy*r,cr*r,0,Math.PI*2);c.stroke();});
   } else if(name==='MARS'){
     const g=c.createRadialGradient(x-r*.3,y-r*.3,r*.05,x,y,r);
     g.addColorStop(0,'#cc5533');g.addColorStop(1,'#882200');
     c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
-    c.globalAlpha=.55;c.fillStyle='#ddeeff';
+    c.globalAlpha=alpha*.55;c.fillStyle='#ddeeff';
     c.beginPath();c.ellipse(x,y-r*.72,r*.22,r*.12,0,0,Math.PI*2);c.fill();
   } else if(name==='JUPITER'){
     c.fillStyle='#cc9944';c.fillRect(x-r,y-r,r*2,r*2);
     [['#ddaa55',-.5,.18],['#bb8833',-.15,.22],['#cc9944',.2,.16],['#bb7722',.5,.14]].forEach(([col,dy,dh])=>{
-      c.globalAlpha=.7;c.fillStyle=col;c.fillRect(x-r,y+dy*r,r*2,dh*r);
+      c.globalAlpha=alpha*.7;c.fillStyle=col;c.fillRect(x-r,y+dy*r,r*2,dh*r);
     });
-    c.globalAlpha=.7;c.fillStyle='#cc3311';c.beginPath();c.ellipse(x+r*.2,y+r*.15,r*.18,r*.09,0,0,Math.PI*2);c.fill();
+    c.globalAlpha=alpha*.7;c.fillStyle='#cc3311';
+    c.beginPath();c.ellipse(x+r*.2,y+r*.15,r*.18,r*.09,0,0,Math.PI*2);c.fill();
   } else if(name==='SATURN'){
     const g=c.createRadialGradient(x-r*.3,y-r*.3,r*.05,x,y,r);
     g.addColorStop(0,'#eedd99');g.addColorStop(1,'#bb9944');
     c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
-    c.restore();c.save();c.globalAlpha=alpha*.6;
-    c.strokeStyle='#ccbb88';c.lineWidth=r*.09;c.beginPath();c.ellipse(x,y,r*1.65,r*.4,0,0,Math.PI*2);c.stroke();
-    c.lineWidth=r*.05;c.strokeStyle='#ddcc99';c.beginPath();c.ellipse(x,y,r*1.95,r*.48,0,0,Math.PI*2);c.stroke();
   } else if(name==='NEPTUNE'){
     const g=c.createRadialGradient(x-r*.3,y-r*.3,r*.05,x,y,r);
     g.addColorStop(0,'#4488cc');g.addColorStop(1,'#113366');
     c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
-    c.globalAlpha=.45;c.fillStyle='#2255aa';c.beginPath();c.ellipse(x+r*.1,y-r*.1,r*.28,r*.14,-.3,0,Math.PI*2);c.fill();
+    c.globalAlpha=alpha*.45;c.fillStyle='#2255aa';
+    c.beginPath();c.ellipse(x+r*.1,y-r*.1,r*.28,r*.14,-.3,0,Math.PI*2);c.fill();
+  } else if(name==='PLUTO'){
+    const g=c.createRadialGradient(x-r*.3,y-r*.3,r*.05,x,y,r);
+    g.addColorStop(0,'#ddccbb');g.addColorStop(1,'#776655');
+    c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
+  } else {
+    // Default fallback — solid grey
+    c.fillStyle='#888';c.fillRect(x-r,y-r,r*2,r*2);
   }
+  c.restore(); // end clip
+
+  // Subtle outer edge highlight (a thin lit rim, not the old blocky glow)
+  c.save();c.globalAlpha=alpha*.25;
+  const rim=c.createRadialGradient(x,y,r*.92,x,y,r);
+  rim.addColorStop(0,'rgba(255,255,255,0)');
+  rim.addColorStop(1,'rgba(255,255,255,.6)');
+  c.fillStyle=rim;
+  c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fill();
   c.restore();
-  // Glow
-  if(name!=='SATURN'){c.save();c.globalAlpha=alpha*.15;c.strokeStyle='#ffffff';c.lineWidth=r*.12;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.stroke();c.restore();}
+
+  c.restore();
+}
+
+// ── FLYOVER SURFACE DETAIL ───────────────────────────────────────
+// Distant parallax mountains/mesas drawn behind the main terrain.
+// Scrolls slower than foreground for depth. Deterministic from tOff.
+function drawParallaxHorizon(pl){
+  if(!pl.hasSurface)return;
+  const par=BNS.tOff*0.4; // slower than foreground
+  const horizonY=H-95;
+  ctx.save();
+  if(pl.name==='MOON'){
+    // Distant lighter-grey mountain peaks
+    ctx.fillStyle='rgba(120,128,145,.5)';
+    ctx.beginPath();ctx.moveTo(0,H);
+    for(let x=-40;x<=W+40;x+=40){
+      const sx=x-(par%80);
+      const h=28+Math.sin((x*0.7))*10+Math.cos(x*1.3)*8;
+      ctx.lineTo(sx,horizonY-h);
+      ctx.lineTo(sx+20,horizonY-h*.5);
+    }
+    ctx.lineTo(W,H);ctx.closePath();ctx.fill();
+  } else if(pl.name==='MARS'){
+    // Distant mesas/buttes (flat-topped)
+    ctx.fillStyle='rgba(150,70,45,.5)';
+    for(let x=-60;x<=W+60;x+=110){
+      const sx=x-(par%220);
+      const mw=50+((x*13)%30), mh=35+((x*7)%25);
+      ctx.fillRect(sx,horizonY-mh,mw,mh);
+      // flat shaded top
+      ctx.fillStyle='rgba(170,85,55,.5)';
+      ctx.fillRect(sx,horizonY-mh,mw,5);
+      ctx.fillStyle='rgba(150,70,45,.5)';
+    }
+  } else if(pl.name==='SATURN'){
+    // Distant cloud-tops (soft billows) since it's a gas giant
+    ctx.fillStyle='rgba(200,170,120,.35)';
+    for(let x=-40;x<=W+40;x+=60){
+      const sx=x-(par%120);
+      const cy=horizonY-15-Math.sin(x*0.5)*8;
+      ctx.beginPath();ctx.arc(sx,cy,26,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(sx+22,cy+4,20,0,Math.PI*2);ctx.fill();
+    }
+  } else if(pl.name==='PLUTO'){
+    // Distant icy peaks (blue-white)
+    ctx.fillStyle='rgba(150,165,205,.5)';
+    ctx.beginPath();ctx.moveTo(0,H);
+    for(let x=-30;x<=W+30;x+=55){
+      const sx=x-(par%110);
+      const h=40+Math.sin(x*0.9)*16;
+      ctx.lineTo(sx,horizonY-h);
+      ctx.lineTo(sx+27,horizonY-h*.4);
+    }
+    ctx.lineTo(W,H);ctx.closePath();ctx.fill();
+    // Snowy peak highlights
+    ctx.fillStyle='rgba(220,235,255,.4)';
+    for(let x=-30;x<=W+30;x+=55){
+      const sx=x-(par%110);
+      const h=40+Math.sin(x*0.9)*16;
+      ctx.beginPath();ctx.moveTo(sx-4,horizonY-h+6);ctx.lineTo(sx,horizonY-h);ctx.lineTo(sx+4,horizonY-h+6);ctx.closePath();ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+// Surface texture drawn ON TOP of the foreground terrain.
+// Uses scroll offset so features move with the ground. Deterministic.
+function drawSurfaceTexture(pl){
+  const scroll=BNS.tOff;
+  ctx.save();
+  if(pl.name==='MOON'){
+    // Scattered small craters + rocks on the grey surface
+    ctx.globalAlpha=.4;
+    for(let i=0;i<14;i++){
+      const wx=(i*180+90); // world x
+      const sx=((wx-scroll)%(W+120)+(W+120))%(W+120)-60;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      if(ty>H-10)continue;
+      const cr=3+((i*7)%5);
+      // crater: dark bowl + light rim
+      ctx.fillStyle='rgba(40,45,60,.5)';
+      ctx.beginPath();ctx.ellipse(sx,ty+8+(i%3)*6,cr,cr*.5,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(190,198,215,.4)';ctx.lineWidth=.8;
+      ctx.beginPath();ctx.ellipse(sx,ty+8+(i%3)*6,cr+1,cr*.5+.5,0,0,Math.PI*2);ctx.stroke();
+    }
+    // Small rocks
+    ctx.globalAlpha=.5;ctx.fillStyle='rgba(60,66,82,.6)';
+    for(let i=0;i<10;i++){
+      const wx=(i*230+50);
+      const sx=((wx-scroll*1.05)%(W+100)+(W+100))%(W+100)-50;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      if(ty>H-6)continue;
+      ctx.beginPath();ctx.arc(sx,ty+4+(i%2)*4,1.5+(i%3),0,Math.PI*2);ctx.fill();
+    }
+  } else if(pl.name==='MARS'){
+    // Darker rock clusters + boulders on red terrain
+    ctx.globalAlpha=.45;
+    for(let i=0;i<12;i++){
+      const wx=(i*200+70);
+      const sx=((wx-scroll)%(W+120)+(W+120))%(W+120)-60;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      if(ty>H-8)continue;
+      ctx.fillStyle='rgba(90,35,20,.6)';
+      const br=2.5+((i*5)%4);
+      ctx.beginPath();ctx.arc(sx,ty+6+(i%3)*5,br,0,Math.PI*2);ctx.fill();
+      // lighter dust patch
+      ctx.fillStyle='rgba(200,110,70,.3)';
+      ctx.beginPath();ctx.ellipse(sx+5,ty+10,br*1.5,br*.5,0,0,Math.PI*2);ctx.fill();
+    }
+    // Dust streaks
+    ctx.globalAlpha=.18;ctx.strokeStyle='#ddaa88';ctx.lineWidth=1;
+    for(let i=0;i<5;i++){
+      const wx=(i*260+30);
+      const sx=((wx-scroll*.9)%(W+100)+(W+100))%(W+100)-50;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      ctx.beginPath();ctx.moveTo(sx,ty+8);ctx.lineTo(sx+30,ty+12);ctx.stroke();
+    }
+  } else if(pl.name==='SATURN'){
+    // Cloud-top wisps on the "surface"
+    ctx.globalAlpha=.25;ctx.fillStyle='#fff5dd';
+    for(let i=0;i<10;i++){
+      const wx=(i*170+40);
+      const sx=((wx-scroll)%(W+120)+(W+120))%(W+120)-60;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      if(ty>H-6)continue;
+      ctx.beginPath();ctx.ellipse(sx,ty+8,12+(i%3)*4,3,0,0,Math.PI*2);ctx.fill();
+    }
+  } else if(pl.name==='PLUTO'){
+    // Ice cracks + frost sheen
+    ctx.globalAlpha=.35;ctx.strokeStyle='rgba(220,235,255,.6)';ctx.lineWidth=1;
+    for(let i=0;i<10;i++){
+      const wx=(i*190+60);
+      const sx=((wx-scroll)%(W+120)+(W+120))%(W+120)-60;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      if(ty>H-8)continue;
+      // jagged crack
+      ctx.beginPath();ctx.moveTo(sx,ty+6);
+      ctx.lineTo(sx+6,ty+10);ctx.lineTo(sx+3,ty+16);ctx.lineTo(sx+9,ty+22);
+      ctx.stroke();
+    }
+    // Frost patches
+    ctx.globalAlpha=.2;ctx.fillStyle='#eaf2ff';
+    for(let i=0;i<8;i++){
+      const wx=(i*240+100);
+      const sx=((wx-scroll*1.04)%(W+120)+(W+120))%(W+120)-60;
+      const ty=terrainY(BNS.terrain,BNS.tOff,sx);
+      if(ty>H-6)continue;
+      ctx.beginPath();ctx.ellipse(sx,ty+8,8,3,0,0,Math.PI*2);ctx.fill();
+    }
+  }
+  ctx.restore();
 }
 
 // ── BONUS DRAW ───────────────────────────────────────────────────
@@ -599,6 +779,9 @@ function drawBonus(){
     ctx.restore();
   }
 
+  // Distant parallax horizon (behind main terrain)
+  drawParallaxHorizon(pl);
+
   // Terrain
   if(pl.hasSurface&&BNS.terrain.length){
     ctx.beginPath();ctx.moveTo(0,H);
@@ -614,10 +797,20 @@ function drawBonus(){
     ctx.beginPath();
     for(let sx2=0;sx2<=W;sx2+=6){const ty=terrainY(BNS.terrain,BNS.tOff,sx2);sx2===0?ctx.moveTo(0,ty):ctx.lineTo(sx2,ty);}
     ctx.stroke();
+    // Surface texture on top of the ground
+    drawSurfaceTexture(pl);
   }
   if(pl.name==='ASTEROIDS'){
     // Distant rocks as bg
     for(let i=0;i<8;i++){ctx.save();ctx.globalAlpha=.2;ctx.fillStyle='#556677';ctx.beginPath();ctx.arc((i*137+frame*.2)%W,(i*93+50)%H,4+i%7,0,Math.PI*2);ctx.fill();ctx.restore();}
+  }
+
+  // ── EASTER EGG SCENES (spawn at 10 seconds = frame 600) ──
+  if(pl.name==='MOON'&&BNS.timer>=600&&BNS.alive){
+    drawApolloScene();
+  }
+  if(pl.name==='MARS'&&BNS.timer>=600&&BNS.alive){
+    drawMarsColony();
   }
 
   // Obstacles
@@ -789,6 +982,398 @@ function buildMarsCanvas(){
   c.restore();
 }
 
+
+// ── EASTER EGG SCENES ────────────────────────────────────────────
+// Persistent footprint trail for Apollo (cleared each level)
+let _apolloFootprints=[];
+function resetApolloFootprints(){_apolloFootprints=[];}
+
+function drawAstronaut(x,y,pose){
+  ctx.save();
+  ctx.translate(x,y);
+  // Legs
+  ctx.fillStyle='#dddddd';
+  ctx.fillRect(-3,-6,2.5,6); // left leg
+  ctx.fillRect(.5,-6,2.5,6); // right leg
+  // Boots
+  ctx.fillStyle='#666677';
+  ctx.fillRect(-3.5,-1,3,2);
+  ctx.fillRect(.3,-1,3,2);
+  // Body (torso suit)
+  ctx.fillStyle='#eeeeee';
+  ctx.beginPath();ctx.roundRect(-4,-13,8,8,1.5);ctx.fill();
+  ctx.strokeStyle='#aaaabb';ctx.lineWidth=.6;ctx.stroke();
+  // Chest control panel
+  ctx.fillStyle='#888899';ctx.fillRect(-2.5,-11,5,3);
+  ctx.fillStyle='#ff4400';ctx.fillRect(-2,-10.5,1,1);
+  ctx.fillStyle='#44ff44';ctx.fillRect(0,-10.5,1,1);
+  // Backpack (PLSS) — peeks out from behind
+  ctx.fillStyle='#cccccc';ctx.fillRect(-4.5,-13,1.5,8);
+  ctx.fillRect(3,-13,1.5,8);
+  // Helmet
+  ctx.fillStyle='#ffffff';
+  ctx.beginPath();ctx.arc(0,-16,4,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#aaaabb';ctx.lineWidth=.7;ctx.stroke();
+  // Gold visor
+  ctx.fillStyle='#ddaa44';
+  ctx.beginPath();ctx.ellipse(0,-16,3,2.6,0,0,Math.PI*2);ctx.fill();
+  // Visor highlight
+  ctx.fillStyle='#ffee88';ctx.globalAlpha=.55;
+  ctx.beginPath();ctx.ellipse(-1,-17,1.2,.6,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+
+  if(pose==='wave'){
+    const wave=Math.sin(frame*.18)*1.5;
+    ctx.fillStyle='#eeeeee';
+    ctx.fillRect(3,-20,2,7); // upper arm extending up
+    ctx.beginPath();ctx.arc(4+wave,-21,1.6,0,Math.PI*2);ctx.fill(); // hand
+    ctx.fillRect(-5,-12,2,7); // left arm at side
+  } else if(pose==='photo'){
+    ctx.fillStyle='#eeeeee';
+    ctx.fillRect(-5,-13,2,4);
+    ctx.fillRect(3,-13,2,4);
+    ctx.fillRect(-3.5,-12,1.6,3);
+    ctx.fillRect(1.9,-12,1.6,3);
+    // Camera body
+    ctx.fillStyle='#222233';
+    ctx.fillRect(-2.5,-15,5,3);
+    ctx.fillStyle='#000';
+    ctx.beginPath();ctx.arc(0,-13.5,1.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#88aaff';
+    ctx.beginPath();ctx.arc(0,-13.5,.6,0,Math.PI*2);ctx.fill();
+    // D) Brighter flash, more frequent (every 50 frames)
+    if(frame%50<5){
+      ctx.save();ctx.globalAlpha=.85-(frame%50)*.15;
+      ctx.fillStyle='#ffffff';
+      ctx.beginPath();ctx.arc(2,-14,6,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha*=.6;
+      ctx.beginPath();ctx.arc(2,-14,10,0,Math.PI*2);ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+
+function drawFarmer(x,y){
+  ctx.save();
+  ctx.translate(x,y);
+  // Legs (blue jeans)
+  ctx.fillStyle='#3366aa';
+  ctx.fillRect(-3,-6,2.5,6);
+  ctx.fillRect(.5,-6,2.5,6);
+  // Boots
+  ctx.fillStyle='#553311';
+  ctx.fillRect(-3.5,-1,3,2);
+  ctx.fillRect(.3,-1,3,2);
+  // Red shirt body
+  ctx.fillStyle='#cc3322';
+  ctx.beginPath();ctx.roundRect(-4,-13,8,8,1.5);ctx.fill();
+  ctx.strokeStyle='#882211';ctx.lineWidth=.6;ctx.stroke();
+  // Head (skin tone)
+  ctx.fillStyle='#ddbb99';
+  ctx.beginPath();ctx.arc(0,-16,3.2,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#aa8866';ctx.lineWidth=.5;ctx.stroke();
+  // Eyes
+  ctx.fillStyle='#000';
+  ctx.fillRect(-1.5,-16.5,.6,.6);
+  ctx.fillRect(.9,-16.5,.6,.6);
+  // Smile
+  ctx.strokeStyle='#553311';ctx.lineWidth=.5;
+  ctx.beginPath();ctx.arc(0,-15.5,1.2,.2,Math.PI-.2);ctx.stroke();
+  // Straw hat
+  ctx.fillStyle='#ddbb55';
+  ctx.beginPath();
+  ctx.ellipse(0,-18.5,5.5,1.2,0,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(-2.5,-20.5,5,2.2);
+  ctx.strokeStyle='#996633';ctx.lineWidth=.4;ctx.stroke();
+  // Hat band
+  ctx.fillStyle='#883322';ctx.fillRect(-2.5,-19,5,.6);
+  // F) Wave with on/off cycle: wave for 30 frames, rest for 30
+  const cycle=Math.floor(frame/30)%2;
+  if(cycle===0){
+    const wave=Math.sin(frame*.2)*1.5;
+    // Arm raised waving
+    ctx.fillStyle='#cc3322';
+    ctx.fillRect(3,-19,2,6);
+    ctx.fillStyle='#ddbb99';
+    ctx.beginPath();ctx.arc(4+wave,-20,1.4,0,Math.PI*2);ctx.fill();
+    // Other arm at side
+    ctx.fillStyle='#cc3322';
+    ctx.fillRect(-5,-12,2,6);
+  } else {
+    // Both arms relaxed at sides
+    ctx.fillStyle='#cc3322';
+    ctx.fillRect(-5,-12,2,6);
+    ctx.fillRect(3,-12,2,6);
+  }
+  ctx.restore();
+}
+
+function drawAlien(x,y){
+  ctx.save();
+  ctx.translate(x,y);
+  // Tentacle legs (2)
+  ctx.strokeStyle='#44aa66';ctx.lineWidth=1.8;
+  ctx.beginPath();ctx.moveTo(-2,-2);ctx.quadraticCurveTo(-3,1,-2,2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(2,-2);ctx.quadraticCurveTo(3,1,2,2);ctx.stroke();
+  // Body (green blob)
+  ctx.fillStyle='#55bb77';
+  ctx.beginPath();ctx.ellipse(0,-7,4.5,5.5,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#338855';ctx.lineWidth=.5;ctx.stroke();
+  // Body spots
+  ctx.fillStyle='#338855';
+  ctx.beginPath();ctx.arc(-1.5,-8,.6,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(1.8,-6,.5,0,Math.PI*2);ctx.fill();
+  // Head (bigger green blob)
+  ctx.fillStyle='#55bb77';
+  ctx.beginPath();ctx.arc(0,-13,4.5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#338855';ctx.lineWidth=.5;ctx.stroke();
+  // Big eyes
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.ellipse(-1.5,-13,1.6,1.9,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(1.5,-13,1.6,1.9,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#000';
+  ctx.beginPath();ctx.arc(-1.5,-12.5,.8,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(1.5,-12.5,.8,0,Math.PI*2);ctx.fill();
+  // Antennae with pulsing tips
+  ctx.strokeStyle='#44aa66';ctx.lineWidth=.8;
+  ctx.beginPath();ctx.moveTo(-2,-16);ctx.lineTo(-3,-20);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(2,-16);ctx.lineTo(3,-20);ctx.stroke();
+  const pulse=.6+.4*Math.sin(frame*.12);
+  ctx.fillStyle='#ffff44';ctx.globalAlpha=pulse;
+  ctx.beginPath();ctx.arc(-3,-20.5,1.1,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(3,-20.5,1.1,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  // Waving tentacle arm (right)
+  const wave=Math.sin(frame*.15)*2;
+  ctx.strokeStyle='#55bb77';ctx.lineWidth=1.8;
+  ctx.beginPath();
+  ctx.moveTo(4,-9);
+  ctx.quadraticCurveTo(8,-12+wave,10,-15+wave*.5);
+  ctx.stroke();
+  // Left arm down
+  ctx.beginPath();ctx.moveTo(-4,-9);ctx.quadraticCurveTo(-6,-7,-5,-4);ctx.stroke();
+  ctx.restore();
+}
+
+function drawApolloScene(){
+  const SCENE_START=600; // frame trigger (10 seconds)
+  const scrolled=(BNS.timer-SCENE_START)*BNS.speed;
+  const baseX=W+200-scrolled;
+  if(baseX<-400)return;
+  const groundY=terrainY(BNS.terrain,BNS.tOff,baseX);
+
+  ctx.save();
+  // Scale everything 1.7x at the scene anchor
+  ctx.translate(baseX,groundY);
+  ctx.scale(1.7,1.7);
+  ctx.translate(-baseX,-groundY);
+
+  // ── A) LEM EXHAUST GLOW (drawn BEHIND LEM) ──
+  const lemX=baseX, lemY=groundY-2;
+  const glowPulse=.4+.3*Math.sin(frame*.1);
+  ctx.save();
+  ctx.globalAlpha=glowPulse*.6;
+  const eg=ctx.createRadialGradient(lemX,lemY+4,2,lemX,lemY+12,18);
+  eg.addColorStop(0,'rgba(255,180,80,.9)');
+  eg.addColorStop(.5,'rgba(255,120,40,.4)');
+  eg.addColorStop(1,'rgba(255,80,20,0)');
+  ctx.fillStyle=eg;
+  ctx.beginPath();ctx.ellipse(lemX,lemY+8,16,12,0,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  // Faint exhaust particles (deterministic, no array growth)
+  ctx.save();
+  ctx.globalAlpha=.35;
+  for(let i=0;i<3;i++){
+    const ph=((frame+i*30)%60)/60;
+    const px=lemX+Math.sin((frame+i*40)*.15)*3;
+    const py=lemY+4+ph*16;
+    ctx.fillStyle=`rgba(255,${180-ph*80|0},${60-ph*30|0},${(1-ph)*.6})`;
+    ctx.beginPath();ctx.arc(px,py,2-ph*1.2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+
+  // ── E) ROVER TIRE TRACKS (extending right from LEM) ──
+  ctx.save();
+  ctx.globalAlpha=.4;
+  ctx.strokeStyle='#444455';ctx.lineWidth=1.2;
+  ctx.setLineDash([3,2]);
+  ctx.beginPath();
+  ctx.moveTo(lemX+15,groundY-1);ctx.lineTo(lemX+90,groundY-1);
+  ctx.moveTo(lemX+15,groundY+1);ctx.lineTo(lemX+90,groundY+1);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // ── LUNAR LANDER (LEM) ──
+  ctx.strokeStyle='#bbbbcc';ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(lemX-22,lemY);ctx.lineTo(lemX-10,lemY-22);
+  ctx.moveTo(lemX+22,lemY);ctx.lineTo(lemX+10,lemY-22);
+  ctx.moveTo(lemX-15,lemY);ctx.lineTo(lemX-6,lemY-22);
+  ctx.moveTo(lemX+15,lemY);ctx.lineTo(lemX+6,lemY-22);
+  ctx.stroke();
+  ctx.fillStyle='#888899';
+  [-22,-15,15,22].forEach(dx=>{ctx.beginPath();ctx.ellipse(lemX+dx,lemY,4,2,0,0,Math.PI*2);ctx.fill();});
+  // Descent stage (gold)
+  ctx.fillStyle='#ddaa44';
+  ctx.beginPath();
+  ctx.moveTo(lemX-13,lemY-22);ctx.lineTo(lemX-16,lemY-30);
+  ctx.lineTo(lemX-13,lemY-38);ctx.lineTo(lemX+13,lemY-38);
+  ctx.lineTo(lemX+16,lemY-30);ctx.lineTo(lemX+13,lemY-22);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#aa7722';ctx.lineWidth=1;ctx.stroke();
+  // Foil panels
+  ctx.strokeStyle='#cc8833';ctx.lineWidth=.8;ctx.globalAlpha=.6;
+  for(let i=-12;i<13;i+=4){ctx.beginPath();ctx.moveTo(lemX+i,lemY-37);ctx.lineTo(lemX+i,lemY-23);ctx.stroke();}
+  ctx.globalAlpha=1;
+  // Ascent stage (silver)
+  ctx.fillStyle='#bbbbcc';
+  ctx.beginPath();
+  ctx.moveTo(lemX-11,lemY-38);ctx.lineTo(lemX-11,lemY-50);
+  ctx.lineTo(lemX-7,lemY-54);ctx.lineTo(lemX+7,lemY-54);
+  ctx.lineTo(lemX+11,lemY-50);ctx.lineTo(lemX+11,lemY-38);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#778899';ctx.lineWidth=1;ctx.stroke();
+  // Two angled windows
+  ctx.fillStyle='#001133';
+  ctx.beginPath();ctx.moveTo(lemX-5,lemY-50);ctx.lineTo(lemX-2,lemY-46);ctx.lineTo(lemX-5,lemY-46);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(lemX+5,lemY-50);ctx.lineTo(lemX+2,lemY-46);ctx.lineTo(lemX+5,lemY-46);ctx.closePath();ctx.fill();
+  // Antenna with sphere
+  ctx.strokeStyle='#aaaabb';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(lemX,lemY-54);ctx.lineTo(lemX-6,lemY-62);ctx.stroke();
+  ctx.fillStyle='#ccccdd';
+  ctx.beginPath();ctx.arc(lemX-6,lemY-62,3,0,Math.PI*2);ctx.fill();
+
+  // ── FLAG ──
+  const flagX=lemX+50,flagY=groundY-2;
+  ctx.strokeStyle='#ddddee';ctx.lineWidth=1.4;
+  ctx.beginPath();ctx.moveTo(flagX,flagY);ctx.lineTo(flagX,flagY-32);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(flagX,flagY-32);ctx.lineTo(flagX+18,flagY-32);ctx.stroke();
+  // Flag base
+  ctx.fillStyle='#fff';ctx.fillRect(flagX,flagY-32,18,11);
+  // Red stripes
+  ctx.fillStyle='#cc0000';
+  for(let i=0;i<4;i++)ctx.fillRect(flagX,flagY-32+i*2.7+1.3,18,1.2);
+  // Blue canton
+  ctx.fillStyle='#003399';ctx.fillRect(flagX,flagY-32,7,5.5);
+  // Star dots (just suggesting them)
+  ctx.fillStyle='#fff';
+  for(let i=0;i<3;i++)for(let j=0;j<2;j++){ctx.beginPath();ctx.arc(flagX+1.5+i*2,flagY-31+j*2,.4,0,Math.PI*2);ctx.fill();}
+
+  // ── B) FOOTPRINTS (existing trail) ──
+  ctx.save();
+  ctx.fillStyle='rgba(60,60,80,.4)';
+  for(let i=0;i<5;i++){
+    ctx.beginPath();ctx.ellipse(flagX-15+i*4,flagY-1+(i%2)*2,1.8,.8,0,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+
+  // ── ASTRONAUTS ──
+  drawAstronaut(flagX+5,flagY-2,'wave');
+  drawAstronaut(flagX+38,groundY-2,'photo');
+
+  ctx.restore();
+}
+
+function drawMarsColony(){
+  const SCENE_START=600;
+  const scrolled=(BNS.timer-SCENE_START)*BNS.speed;
+  const baseX=W+200-scrolled;
+  if(baseX<-500)return;
+  const groundY=terrainY(BNS.terrain,BNS.tOff,baseX);
+
+  ctx.save();
+  ctx.translate(baseX,groundY);
+  ctx.scale(1.6,1.6);
+  ctx.translate(-baseX,-groundY);
+
+  // ── C) UFO/SATELLITE OVERHEAD ──
+  // Drifts slowly right-to-left, looping. Tied to frame so deterministic.
+  const ufoCycle=2400; // frames per full pass
+  const ufoT=(frame%ufoCycle)/ufoCycle;
+  const ufoX=baseX+90-ufoT*180;
+  const ufoY=groundY-95-Math.sin(ufoT*Math.PI*4)*4;
+  ctx.save();
+  // Glow underneath
+  ctx.globalAlpha=.35+.2*Math.sin(frame*.2);
+  const ug=ctx.createRadialGradient(ufoX,ufoY+3,1,ufoX,ufoY+3,8);
+  ug.addColorStop(0,'rgba(180,220,255,.9)');
+  ug.addColorStop(1,'rgba(180,220,255,0)');
+  ctx.fillStyle=ug;
+  ctx.beginPath();ctx.ellipse(ufoX,ufoY+3,8,3,0,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  // Saucer body
+  ctx.fillStyle='#aabbcc';
+  ctx.beginPath();ctx.ellipse(ufoX,ufoY,6,1.6,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#667788';ctx.lineWidth=.4;ctx.stroke();
+  // Saucer dome
+  ctx.fillStyle='#ddeeff';
+  ctx.beginPath();ctx.arc(ufoX,ufoY-.5,2.5,Math.PI,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#88aabb';ctx.lineWidth=.3;ctx.stroke();
+  // Lights underneath (3 little dots)
+  ctx.fillStyle='#ffeeaa';
+  ctx.beginPath();ctx.arc(ufoX-3,ufoY+1,.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(ufoX,ufoY+1,.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(ufoX+3,ufoY+1,.5,0,Math.PI*2);ctx.fill();
+
+  // ── DOME ──
+  const domeX=baseX,domeY=groundY-2,domeR=42;
+  const dg=ctx.createRadialGradient(domeX-10,domeY-domeR-5,5,domeX,domeY-10,domeR);
+  dg.addColorStop(0,'rgba(180,220,255,.55)');
+  dg.addColorStop(.7,'rgba(120,180,220,.35)');
+  dg.addColorStop(1,'rgba(80,140,180,.25)');
+  ctx.fillStyle=dg;
+  ctx.beginPath();ctx.arc(domeX,domeY,domeR,Math.PI,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=.5;
+  ctx.strokeStyle='#88aabb';ctx.lineWidth=1;
+  for(let a=Math.PI;a<=Math.PI*2;a+=Math.PI/6){
+    ctx.beginPath();ctx.moveTo(domeX,domeY);ctx.lineTo(domeX+Math.cos(a)*domeR,domeY+Math.sin(a)*domeR);ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(domeX,domeY,domeR,Math.PI,Math.PI*2);ctx.stroke();
+  ctx.globalAlpha=1;
+
+  // ── HOUSE ──
+  const hx=domeX-12,hy=domeY-2;
+  ctx.fillStyle='#ddccaa';ctx.fillRect(hx-12,hy-18,24,18);
+  ctx.strokeStyle='#998866';ctx.lineWidth=1;ctx.strokeRect(hx-12,hy-18,24,18);
+  // Red roof
+  ctx.fillStyle='#aa4422';
+  ctx.beginPath();ctx.moveTo(hx-14,hy-18);ctx.lineTo(hx,hy-28);ctx.lineTo(hx+14,hy-18);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#882200';ctx.stroke();
+  // Door
+  ctx.fillStyle='#664422';ctx.fillRect(hx-3,hy-10,6,10);
+  // Windows
+  ctx.fillStyle='#ffeeaa';
+  ctx.fillRect(hx-9,hy-15,5,5);ctx.fillRect(hx+4,hy-15,5,5);
+  // Chimney
+  ctx.fillStyle='#666';ctx.fillRect(hx+6,hy-26,3,4);
+
+  // ── CHIMNEY SMOKE (animated) ──
+  ctx.save();ctx.globalAlpha=.4;ctx.fillStyle='#ccc';
+  ctx.beginPath();ctx.arc(hx+7.5,hy-30+Math.sin(frame*.06)*1.5,2,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(hx+9,hy-33+Math.cos(frame*.05)*1.2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+
+  // ── CORN STALKS ──
+  for(let i=0;i<5;i++){
+    const cx=domeX+10+i*5;
+    const cy=domeY-2;
+    ctx.strokeStyle='#558833';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx,cy-12);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-6);ctx.lineTo(cx-3,cy-4);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-9);ctx.lineTo(cx+3,cy-7);ctx.stroke();
+    ctx.fillStyle='#ffcc44';
+    ctx.beginPath();ctx.ellipse(cx+1,cy-10,1.2,2.2,0,0,Math.PI*2);ctx.fill();
+  }
+
+  // ── CHARACTERS ──
+  const fx=domeX+domeR+18,fy=groundY-2;
+  drawFarmer(fx,fy);
+  drawAlien(fx+28,groundY-2);
+
+  ctx.restore();
+}
 
 function drawSurfaceObsCanvas(o,pl){
   ctx.save();
