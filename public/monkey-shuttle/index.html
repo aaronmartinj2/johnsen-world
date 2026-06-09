@@ -2239,11 +2239,15 @@ function updateRepair(){
   if(!repair.active||!p1.alive)return;
   repair.timer++;repair.totalTimer++;
   const limit=REPAIR_PHASES[repair.phase];
+  // Use the correct shuttle anchor: planet bonus uses BNS.sx/sy, gauntlet uses PX_GAUNTLET/p1.y
+  const onPlanet=(state==='bonus'||state==='approach');
+  const anchorX=onPlanet?BNS.sx:PX_GAUNTLET;
+  const anchorY=onPlanet?BNS.sy:p1.y;
   if(repair.phase==='fixing'){
     // Spawn sparks at wing tip every few frames
     if(repair.timer%5===0){
       const dir=repair.targetSide==='left'?-1:1;
-      const wingTipX=PX_GAUNTLET+dir*28,wingTipY=p1.y+12;
+      const wingTipX=anchorX+dir*28,wingTipY=anchorY+12;
       for(let i=0;i<3;i++){
         const pp=getParticle();if(!pp)continue;
         const a=Math.random()*Math.PI*2,sp=1+Math.random()*2.5;
@@ -2258,8 +2262,8 @@ function updateRepair(){
         else if(p1.wingState==='right'&&repair.targetSide==='left')p1.wingState='both';
         else if(p1.wingState!=='both')p1.wingState='both';
         p1.lopsideAngle=0;
-        spawnP(PX_GAUNTLET+(repair.targetSide==='left'?-28:28),p1.y+12,'#44ddff',14);
-        spawnP(PX_GAUNTLET+(repair.targetSide==='left'?-28:28),p1.y+12,'#ffffff',6);
+        spawnP(anchorX+(repair.targetSide==='left'?-28:28),anchorY+12,'#44ddff',14);
+        spawnP(anchorX+(repair.targetSide==='left'?-28:28),anchorY+12,'#ffffff',6);
         sndBounce();
       }
       tone(700+Math.random()*500,.03,'square',.06);
@@ -3095,7 +3099,7 @@ function showResetConfirm(){
     <div style="color:#ff8888;font-size:16px;font-weight:900;letter-spacing:2px;margin-bottom:14px">RESET EVERYTHING?</div>
     <div style="color:#aaa;font-size:11px;line-height:1.5;margin-bottom:18px">This will permanently delete:<br>
       • All bananas (you have ${fmtN(coins)} 🍌)<br>
-      • All upgrades (Nano Hull, Bounce, Magnet, Coin Boost)<br>
+      • All upgrades (Nano Hull, Bounce, Magnet, Banana Boost)<br>
       • Daily Insurance, Coin Doubler, Auto-Repair charges<br>
       • Daily streak (${dailyStreak} day${dailyStreak===1?'':'s'})<br>
       • High score (${fmtN(hiScore)})<br>
@@ -3179,7 +3183,7 @@ function showHowToPlay(){
     <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;margin-bottom:10px">
       <div style="color:#44ddff;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🔧 WRENCH (REPAIR)</div>
       <div style="color:#bbb;font-size:10px;line-height:1.6">
-        A glowing monkey wrench appears occasionally. Grab it to instantly restore both wings and refill 2 bounce charges. Don't miss it!
+        A glowing monkey wrench appears occasionally. Grab it and a repair monkey climbs out and fixes your wings over a few seconds — restoring both wings and refilling 2 bounce charges. Don't miss it!
       </div>
     </div>
 
@@ -3194,6 +3198,13 @@ function showHowToPlay(){
       <div style="color:#ff8866;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🌙 PLANET BONUS LEVELS</div>
       <div style="color:#bbb;font-size:10px;line-height:1.6">
         Score 50 = <b style="color:#aabbcc">MOON</b>, 120 = <b style="color:#ff6644">MARS</b>, 220 = <b style="color:#eedd99">SATURN</b>, 400 = <b style="color:#bbccff">PLUTO</b>. 30 second timed bonus rounds — fly into drifting bananas to collect coins. Rocket auto-launches at 0. At score 500 the singularity awaits.
+      </div>
+    </div>
+
+    <div style="background:rgba(150,80,255,.08);border-radius:8px;padding:10px 12px;margin-bottom:14px;border:1px solid rgba(150,80,255,.3)">
+      <div style="color:#bb88ff;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px">⚫ THE SINGULARITY</div>
+      <div style="color:#bbb;font-size:10px;line-height:1.6">
+        At score 500 you reach a black hole. A timing meter sweeps back and forth — tap when the marker is inside the green <b>TAP HERE</b> zone. Land <b>10 green hits</b> to escape. Miss and your orbit tightens, making the zone harder to hit. Escape successfully for <b style="color:#ffcc00">+5000 🍌</b> and a permanent speed boost. Fail and all your upgrades reset to zero — high risk, high reward.
       </div>
     </div>
 
