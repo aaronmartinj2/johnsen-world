@@ -18,6 +18,8 @@ body{width:100vw;height:100vh;margin:0;padding:0;overflow:hidden;background:#000
 #wrap{position:relative;flex-shrink:0}
 canvas{display:block;border-radius:12px;touch-action:none}
 #score1{position:absolute;top:12px;left:12px;font-size:28px;font-weight:900;color:#fff;text-shadow:0 0 12px #ffaa00;pointer-events:none}
+#pauseBtn{position:absolute;top:10px;right:10px;width:44px;height:44px;border-radius:50%;background:rgba(0,0,10,.45);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);font-size:16px;display:none;align-items:center;justify-content:center;cursor:pointer;user-select:none;-webkit-user-select:none;z-index:5}
+#pauseBtn:active{background:rgba(0,0,10,.75);color:#fff}
 #streakEl{position:absolute;top:96px;left:0;width:100%;text-align:center;font-size:12px;color:#ff9900;opacity:0;transition:opacity .3s;pointer-events:none;letter-spacing:1px;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 #hullEl{position:absolute;top:54px;left:50%;transform:translateX(-50%);pointer-events:none;opacity:0;transition:opacity .3s;display:flex;flex-direction:column;align-items:center;gap:3px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
 #hullLabel{font-size:9px;font-weight:700;letter-spacing:2px;color:#aaccee;text-shadow:0 0 6px #2266aa}
@@ -45,6 +47,7 @@ button{min-height:44px;-webkit-appearance:none;outline:none}
 <body>
 <div id="wrap">
   <canvas id="c"></canvas>
+  <div id="pauseBtn">❚❚</div>
   <div id="score1"></div>
   <div id="streakEl"></div><div id="hullEl"><div id="hullLabel">HULL INTEGRITY</div><div id="hullBar"><div id="hullFill"></div><div id="hullSegments"></div></div></div>
   <div id="pubar"><span id="pulabel">x2 BANANA</span><div id="pufill"><div id="puinner"></div></div></div>
@@ -89,10 +92,40 @@ window.addEventListener('blur',()=>{
   // Don't pause on blur — iOS WebView fires this spuriously
 });
 window.addEventListener('focus',()=>setPaused(false));
-// Safety: every 1s, if document is NOT hidden, force unpause
+// Safety: every 1s, if document is NOT hidden, force unpause.
+// Must cover ALL states (not just gameplay) because gamePaused freezes the
+// entire loop — a spurious iOS pause event on the menu would otherwise
+// freeze the game with no recovery path.
 setInterval(()=>{
   if(!document.hidden&&gamePaused)setPaused(false);
 },1000);
+
+// ── USER PAUSE (deliberate, via pause button) ────────────────────
+// Separate from gamePaused: gamePaused freezes the whole loop (iOS
+// backgrounding) and is force-cleared by the watchdog above. userPaused
+// keeps rendering a frozen frame with an overlay, and skips updates.
+let userPaused=false;
+let pauseMode=null;        // 'paused' | 'countdown'
+let countdownTimer=0;      // frames remaining in 3-2-1 (40 per digit)
+let lastCountdownDigit=0;
+const PAUSABLE_STATES=['playing','bonus','approach','blackhole'];
+function userPause(){
+  if(userPaused||!PAUSABLE_STATES.includes(state))return;
+  userPaused=true;pauseMode='paused';
+  if(AC&&AC.state==='running'){try{AC.suspend();}catch(e){}}
+}
+function startResumeCountdown(){
+  pauseMode='countdown';countdownTimer=120;lastCountdownDigit=0;
+  if(AC&&AC.state==='suspended'){try{AC.resume();}catch(e){}}
+}
+function finishResume(){
+  userPaused=false;pauseMode=null;
+}
+function quitToMenu(){
+  userPaused=false;pauseMode=null;planetCardActive=false;
+  if(AC&&AC.state==='suspended'){try{AC.resume();}catch(e){}}
+  showMenu();
+}
 const W=GAME_W,H=GAME_H;
 const s1El=document.getElementById('score1');
 const streakEl=document.getElementById('streakEl'),hullEl=document.getElementById('hullEl');
@@ -128,27 +161,27 @@ const sndThrust=()=>tone(170,.07,'sawtooth',.07);
 const sndBanana=()=>{tone(880,.05,'sine',.18);tone(1100,.09,'sine',.18,.06);};
 const sndCheer=()=>[523,587,659,784,880].forEach((f,i)=>tone(f,.11,'sine',.16,i*.07));
 const sndUpgrade=()=>{tone(660,.1,'sine',.2);tone(1100,.15,'sine',.2,.12);};
-const sndCoin=()=>tone(1047,.07,'sine',.12);
+const sndBananaChime=()=>tone(1047,.07,'sine',.12);
 const sndBounce=()=>{tone(400,.05,'sine',.25);tone(200,.1,'sine',.15,.05);};
 const sndLucky=()=>{tone(880,.08,'sine',.2);tone(1320,.08,'sine',.2,.06);tone(1760,.12,'sine',.2,.12);};
 const sndWingSnap=()=>{tone(150,.2,'sawtooth',.3);tone(80,.15,'sawtooth',.2,.1);};
-function playCoinSound(){sndCoin();}
+function playBananaSound(){sndBananaChime();}
 function playDeathSound(){tone(300,.14,'sawtooth',.16);tone(180,.2,'sawtooth',.16,.14);tone(100,.35,'sawtooth',.13,.28);}
 
 // ── PLANET & BONUS SYSTEM ────────────────────────────────────────
 const PLANET_SEQ=[
   {name:'MOON',   score:50,  grav:.06, skyTop:'#000008',skyBot:'#050510',
    groundCol:'#7a8090',groundCol2:'#4a5060',accent:'#aabbcc',
-   hasSurface:true, hazard:'fallingbanana', windX:0, bonusCoins:60},
+   hasSurface:true, hazard:'fallingbanana', windX:0, bonusBananas:60},
   {name:'MARS',   score:120, grav:.22, skyTop:'#180800',skyBot:'#2a1000',
    groundCol:'#aa4422',groundCol2:'#882200',accent:'#ff6644',
-   hasSurface:true, hazard:'fallingbanana', windX:.3, bonusCoins:80},
+   hasSurface:true, hazard:'fallingbanana', windX:.3, bonusBananas:80},
   {name:'SATURN', score:220, grav:.30, skyTop:'#0a0600',skyBot:'#140a00',
    groundCol:'#ddbb88',groundCol2:'#bb9966',accent:'#eedd99',
-   hasSurface:true, hazard:'fallingbanana', windX:0, bonusCoins:130},
+   hasSurface:true, hazard:'fallingbanana', windX:0, bonusBananas:130},
   {name:'PLUTO',  score:400, grav:.04, skyTop:'#020010',skyBot:'#070518',
    groundCol:'#aaaacc',groundCol2:'#5566aa',accent:'#bbccff',
-   hasSurface:true, hazard:'fallingbanana', windX:0, bonusCoins:200},
+   hasSurface:true, hazard:'fallingbanana', windX:0, bonusBananas:200},
 ];
 let planetIdx=0, loopCount=0;
 let earthR=42, earthX=0, earthY=0; // Earth in gauntlet background
@@ -159,7 +192,7 @@ let BNS={
   phase:'approach', // approach | surface | depart
   timer:0, departTimer:0,
   sx:80, sy:0, svy:0,       // shuttle pos/vel
-  dist:0, coins:0,
+  dist:0, bananas:0,
   alive:true, crashTimer:0,
   speed:3,
   obs:[],                    // surface obstacles
@@ -293,7 +326,7 @@ function bonusHit(o){
     const radius=14+mag*.3;
     if(dx*dx+dy*dy<(br+radius)*(br+radius)){
       o.collected=true;
-      BNS.coins+=1;
+      BNS.bananas+=1;
       runStats.bananas++;
       sndBanana();spawnP(o.x,o.y,'#ffee00',8);
     }
@@ -305,7 +338,7 @@ function startBonus(planet){
   ensureAC();
   BNS.planet=planet; BNS.phase='approach'; BNS.timer=0;
   BNS.sx=70; BNS.sy=H*.4; BNS.svy=0;
-  BNS.dist=0; BNS.coins=0; BNS.alive=true; BNS.crashed=false; BNS.crashTimer=0;
+  BNS.dist=0; BNS.bananas=0; BNS.alive=true; BNS.crashed=false; BNS.crashTimer=0;
   BNS.wrenchSpawned=false; BNS.wrenchSpawnTime=600+Math.floor(Math.random()*601); // 10-20s
   BNS.speed=3.5+loopCount*.6; BNS.spawnCD=80; BNS.obs=[];
   BNS.tOff=0;
@@ -317,13 +350,16 @@ function startBonus(planet){
 
 function updateBonus(){
   BNS.timer++;
-  if(BNS.phase==='approach'){if(BNS.timer>100){BNS.phase='surface';BNS.timer=0;}return;}
+  if(BNS.phase==='approach'){
+    if(!tipPlanetSeen&&BNS.timer>=60){BNS.timer=60;planetCardActive=true;}
+    if(BNS.timer>100){BNS.phase='surface';BNS.timer=0;}return;
+  }
   if(BNS.phase==='depart'){
     BNS.departTimer++;
     if(BNS.departTimer>90){
       state='resume';
-      const earned=BNS.coins;
-      coinsRun+=earned;
+      const earned=BNS.bananas;
+      bananasRun+=earned;
       showStreak('+'+earned+' 🍌 FROM '+BNS.planet.name+'!');
       if(!BNS.crashed)runStats.planets++;
       planetIdx++;
@@ -362,10 +398,10 @@ function updateBonus(){
     });
   }
   if(BNS.alive&&BNS.timer>1800){
-    // Successful flyby: add planet's bonusCoins as a completion bonus
-    BNS.coins+=BNS.planet.bonusCoins;
+    // Successful flyby: add planet's bonusBananas as a completion bonus
+    BNS.bananas+=BNS.planet.bonusBananas;
     BNS.phase='launch';BNS.launchTimer=0;BNS.alive=false;
-    showStreak('✓ SUCCESSFUL FLYBY! +'+BNS.coins+' 🍌');
+    showStreak('✓ SUCCESSFUL FLYBY! +'+BNS.bananas+' 🍌');
     return;
   }
   // Physics
@@ -374,7 +410,7 @@ function updateBonus(){
   BNS.sx=Math.max(30,Math.min(W-30,BNS.sx));
   BNS.sy+=BNS.svy;
   BNS.dist+=BNS.speed*.018;
-  // Coins are accumulated only by collected bananas — no distance override
+  // Bananas are accumulated only by collected bananas — no distance override
   // Terrain scroll
   BNS.tOff+=BNS.speed;
   // Ceiling/floor
@@ -387,7 +423,7 @@ function updateBonus(){
   BNS.spawnCD--;
   if(BNS.spawnCD<=0){
     spawnSurfaceObs();
-    // Tighter spawn rate for more coins everywhere
+    // Tighter spawn rate for more bananas everywhere
     if(BNS.planet.name==='MOON'){
       BNS.spawnCD=Math.max(15,28-Math.floor(BNS.dist*2));
     } else {
@@ -418,7 +454,7 @@ function updateBonus(){
 
 function bonusCrash(){
   BNS.alive=false;BNS.crashed=true;BNS.crashTimer=0;
-  BNS.coins=Math.floor(BNS.coins*.35);
+  BNS.bananas=Math.floor(BNS.bananas*.35);
   shake=12;flash=.5;flashCol='#ff4400';
   spawnP(BNS.sx,BNS.sy,'#ff6600',14);spawnP(BNS.sx,BNS.sy,'#ffcc00',8);
   tone(300,.14,'sawtooth',.16);tone(100,.35,'sawtooth',.13,.2);
@@ -628,6 +664,22 @@ function drawBonus(){
        wingState:p1.wingState||'both',
        lopsideAngle:p1.lopsideAngle||0,
        graceTimer:0,vy:-2,sweatTimer:0,nearMissTimer:0,fistTimer:0,tearY:0,tearAlpha:0,cheerTimer:0},false);
+    // First-planet intro card (one-time, holds the approach at frame 60)
+    if(planetCardActive){
+      ctx.save();
+      ctx.fillStyle='rgba(0,0,0,.68)';ctx.fillRect(0,0,W,H);
+      ctx.textAlign='center';
+      ctx.fillStyle=planetAccent(pl.name);ctx.font='bold 22px Orbitron,monospace';
+      ctx.fillText('BONUS LEVEL',W/2,H/2-78);
+      ctx.fillStyle='#ccc';ctx.font='12px Orbitron,monospace';
+      ctx.fillText('30 SECONDS OVER THE SURFACE',W/2,H/2-40);
+      ctx.fillText('COLLECT 🍌 AND DODGE THE TERRAIN',W/2,H/2-16);
+      ctx.fillText('🔧 REPAIRS DAMAGED WINGS',W/2,H/2+8);
+      const cpulse=.5+.5*Math.sin(frame*.1);
+      ctx.fillStyle='rgba(255,204,0,'+cpulse+')';ctx.font='bold 16px Orbitron,monospace';
+      ctx.fillText('TAP TO START — GRAB EVERY 🍌',W/2,H/2+58);
+      ctx.restore();
+    }
     return;
   }
 
@@ -640,7 +692,7 @@ function drawBonus(){
     ctx.fillStyle=BNS.crashed?'#ff6644':'#44ff88';ctx.font='bold 18px Orbitron,monospace';ctx.textAlign='center';
     ctx.fillText(BNS.crashed?'✗ CRASH LANDING':'✓ SUCCESSFUL FLYBY',W/2,H/2-30);
     ctx.fillStyle='#ffcc00';ctx.font='bold 28px Orbitron,monospace';
-    ctx.fillText('+'+BNS.coins+' 🍌',W/2,H/2+10);
+    ctx.fillText('+'+BNS.bananas+' 🍌',W/2,H/2+10);
     ctx.fillStyle='#555';ctx.font='10px Orbitron,monospace';
     ctx.fillText(BNS.dist.toFixed(1)+' KM SURVIVED',W/2,H/2+36);
     ctx.restore();
@@ -811,14 +863,14 @@ function drawBonus(){
   // Flash
   if(flash>.01){ctx.save();ctx.globalAlpha=flash;ctx.fillStyle=flashCol;ctx.fillRect(0,0,W,H);ctx.restore();}
 
-  // HUD — planet name top-left, coins top-right
+  // HUD — planet name top-left, bananas top-right
   ctx.fillStyle=planetAccent(pl.name);ctx.font='bold 13px Orbitron,monospace';ctx.textAlign='left';
   ctx.fillText(pl.name,10,22);
   ctx.fillStyle='#ffcc00';ctx.textAlign='right';ctx.font='bold 13px Orbitron,monospace';
   if(pl.name==='MOON'){
-    ctx.fillText('+'+BNS.coins+'🍌',W-10,22);
+    ctx.fillText('+'+BNS.bananas+'🍌',W-58,22);
   } else {
-    ctx.fillText(BNS.dist.toFixed(1)+'km  +'+BNS.coins+'🍌',W-10,22);
+    ctx.fillText(BNS.dist.toFixed(1)+'km  +'+BNS.bananas+'🍌',W-58,22);
   }
   // Timer top-centre
   if(BNS.alive){
@@ -1430,25 +1482,46 @@ const LS={
     LS.set('version',GAME_VERSION);
   }
 })();
-let coins=LS.get('coins',0);
+let bananas=LS.get('coins',0);
 let upgrades=LS.get('upgrades',{hitbox:0,bounce:0,magnet:0,coinbonus:0});
 upgrades={hitbox:0,bounce:0,magnet:0,coinbonus:0,...upgrades};
 let hiScore=LS.get('hi',0),totalRuns=LS.get('runs',0);
 let lastPlayDate=LS.get('lastPlay',''),dailyStreak=LS.get('dailyStreak',0);
 let hasInsurance=LS.get('insurance',false);
-let coinDoublerExpiresAt=LS.get('doublerExp',0); // timestamp ms when doubler expires
-function hasCoinDoubler(){return Date.now()<coinDoublerExpiresAt;}
+let bananaDoublerExpiresAt=LS.get('doublerExp',0); // timestamp ms when doubler expires
+function hasBananaDoubler(){return Date.now()<bananaDoublerExpiresAt;}
 let autoRepairCharges=LS.get('autorepair',0);
+// ── FIRST-ENCOUNTER TEACHING ─────────────────────────────────────
+const tips={banana:LS.get('tip_banana',false),lucky:LS.get('tip_lucky',false),wrench:LS.get('tip_wrench',false)};
+let tipPlanetSeen=LS.get('tip_planet',false);
+let toast=null;            // {text,timer} — one at a time, later replaces earlier
+let slowMoTimer=0,slowMoSkip=false; // real frames of half-speed teaching time
+let planetCardActive=false;
+function teachTip(key,text){
+  if(tips[key])return;
+  tips[key]=true;LS.set('tip_'+key,true);
+  toast={text,timer:140};
+  slowMoTimer=72; // ~1.2s real time, world runs at half speed
+}
 let insuranceUsed=false;
-function saveBoosts(){LS.set('insurance',hasInsurance);LS.set('doublerExp',coinDoublerExpiresAt);LS.set('autorepair',autoRepairCharges);}
+function saveBoosts(){LS.set('insurance',hasInsurance);LS.set('doublerExp',bananaDoublerExpiresAt);LS.set('autorepair',autoRepairCharges);}
 
 
 
 
 const bgGradCache={};
 // ── DAILY STREAK ─────────────────────────────────────────────────
+// Format a Date as local YYYY-MM-DD (shared by streak + missions)
+function dateString(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function updateDailyStreak(){
-  const today=new Date().toDateString(),yesterday=new Date(Date.now()-86400000).toDateString();
+  // Migrate old "Thu Jun 05 2026" format saves to YYYY-MM-DD once
+  if(lastPlayDate&&lastPlayDate.indexOf(' ')!==-1){
+    const parsed=new Date(lastPlayDate);
+    if(!isNaN(parsed))lastPlayDate=dateString(parsed);
+  }
+  const today=dateString(new Date()),yesterday=dateString(new Date(Date.now()-86400000));
   if(lastPlayDate===today)return;
   if(lastPlayDate===yesterday){dailyStreak++;}
   else if(lastPlayDate===''){dailyStreak=1;}
@@ -1469,16 +1542,13 @@ const MISSIONS=[
   {id:'planet',label:'Successfully fly by TARGET planets in one run',target:3,reward:400,tracker:'maxPlanetsInRun'},
   {id:'lucky',label:'Pass TARGET lucky obstacles in one run',target:2,reward:300,tracker:'maxLuckyInRun'},
   {id:'distance',label:'Pass TARGET obstacles without taking damage',target:25,reward:400,tracker:'maxFlawlessStreak'},
-  {id:'coins',label:'Earn TARGET bananas in a single run',target:500,reward:300,tracker:'maxCoinsRun'},
+  {id:'bananas',label:'Earn TARGET bananas in a single run',target:500,reward:300,tracker:'maxBananasEarned'},
 ];
 
 // Hash a date string ("YYYY-MM-DD") to a stable index
 function hashDate(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h+s.charCodeAt(i))|0;}return Math.abs(h);}
 
-function todayString(){
-  const d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
+function todayString(){return dateString(new Date());}
 
 let dailyMissionDate=LS.get('missionDate','');
 let dailyMissionIdx=LS.get('missionIdx',0);
@@ -1504,9 +1574,9 @@ function currentMission(){return MISSIONS[dailyMissionIdx];}
 
 // Track per-run stats so missions can be evaluated at end of run
 let runStats={
-  bananas:0, wrenches:0, planets:0, lucky:0, flawlessStreak:0, coinsCollected:0
+  bananas:0, wrenches:0, planets:0, lucky:0, flawlessStreak:0, bananasEarned:0
 };
-function resetRunStats(){runStats={bananas:0,wrenches:0,planets:0,lucky:0,flawlessStreak:0,coinsCollected:0};}
+function resetRunStats(){runStats={bananas:0,wrenches:0,planets:0,lucky:0,flawlessStreak:0,bananasEarned:0};}
 
 // Called at end of run. fs = final score.
 function evaluateMission(fs){
@@ -1521,7 +1591,7 @@ function evaluateMission(fs){
     case 'maxPlanetsInRun':     achieved=runStats.planets>=m.target; break;
     case 'maxLuckyInRun':       achieved=runStats.lucky>=m.target; break;
     case 'maxFlawlessStreak':   achieved=runStats.flawlessStreak>=m.target; break;
-    case 'maxCoinsRun':         achieved=runStats.coinsCollected>=m.target; break;
+    case 'maxBananasEarned':         achieved=runStats.bananasEarned>=m.target; break;
   }
   // Update progress bar even if not achieved
   let progress=0;
@@ -1532,7 +1602,7 @@ function evaluateMission(fs){
     case 'maxPlanetsInRun':     progress=runStats.planets; break;
     case 'maxLuckyInRun':       progress=runStats.lucky; break;
     case 'maxFlawlessStreak':   progress=runStats.flawlessStreak; break;
-    case 'maxCoinsRun':         progress=runStats.coinsCollected; break;
+    case 'maxBananasEarned':         progress=runStats.bananasEarned; break;
   }
   if(progress>dailyMissionProgress){
     dailyMissionProgress=progress;
@@ -1540,8 +1610,8 @@ function evaluateMission(fs){
   }
   if(achieved){
     dailyMissionClaimed=true;
-    coins+=m.reward;
-    LS.set('coins',coins);
+    bananas+=m.reward;
+    LS.set('coins',bananas);
     LS.set('missionClaimed',true);
   }
   return achieved;
@@ -1563,9 +1633,10 @@ let p1=mkP(H/2);
 const LW=W;   // lane width = 400px
 
 
-let pipes=[],bananas=[],wrenches=[],debris=[],stars=[],planets=[];
+let pipes=[],powerBananas=[],wrenches=[],debris=[],stars=[],planets=[];
 let nextWrenchScore=20+Math.floor(Math.random()*11); // first wrench at score 20-30
-let shake=0,flash=0,flashCol='#ff4400',frame=0,speed=6.0,gapSize=210,blinkT=0,mouthOpen=false,coinsRun=0;
+let shake=0,flash=0,flashCol='#ff4400',frame=0,speed=6.0,gapSize=210,blinkT=0,mouthOpen=false,bananasRun=0;
+let flapCount=0,runSpawnCount=0; // first-run onboarding trackers
 let luckyPipeCountdown=15;
 const MIN_PIPE_SPACING=200;
 
@@ -1732,7 +1803,14 @@ function spawnObs(forceLucky=false){
   if(sc>28&&roll<.40)type='closing';
   if(sc>45&&roll<.52)type='cluster';
   const isLucky=forceLucky;
-  const gap=Math.max(140,gapSize);
+  if(isLucky){
+    type='pair'; // lucky is always a clean two-satellite gate — "between" must be well-defined
+    teachTip('lucky','✦ GOLD GATE — FLY BETWEEN FOR 3×!');
+  }
+  let gap=Math.max(140,gapSize);
+  // First-run onboarding: wider gaps on the first 5 obstacles (+40 decaying to +8)
+  if(totalRuns<2&&runSpawnCount<5)gap+=40-runSpawnCount*8;
+  runSpawnCount++;
   const minY=55,maxY=H-55-gap;
   const topH=minY+Math.random()*(maxY-minY);
   const topSat=randSatType(sc), botSat=randSatType(sc);
@@ -1759,8 +1837,11 @@ function spawnObs(forceLucky=false){
     isLucky,luckyPulse:0,
   });
   // More frequent bananas
-  if(Math.random()<.55)bananas.push({x:W+65,y:topH+gap/2+(Math.random()-.5)*40,
-    bob:Math.random()*Math.PI*2,collected:false,collectedTimer:0});
+  if(Math.random()<.55){
+    powerBananas.push({x:W+65,y:topH+gap/2+(Math.random()-.5)*40,
+      bob:Math.random()*Math.PI*2,collected:false,collectedTimer:0});
+    teachTip('banana','🍌 GRAB IT — 2× BANANAS!');
+  }
 }
 function getTH(p){
   const g=p.gap||gapSize;
@@ -1912,7 +1993,7 @@ function blackholeTap(){
   }
   if(bhState.stage===5){
     if(bhState.releaseGood){
-      coinsRun+=5000;
+      bananasRun+=5000;
       speed=Math.min(speed+1.5,12);
       showStreak('+5000 BANANAS!');
     } else {
@@ -2160,7 +2241,7 @@ function drawBlackhole(){
       ctx.fillStyle='#ff8866';ctx.font='12px Orbitron,monospace';
       ctx.fillText('ALL UPGRADES LOST',W/2,H/2-22);
       ctx.fillStyle='#888';ctx.font='10px Orbitron,monospace';
-      ctx.fillText('Hull, Bounce, Magnet, Coin Boost reset',W/2,H/2+0);
+      ctx.fillText('Hull, Bounce, Magnet, Banana Boost reset',W/2,H/2+0);
       ctx.fillText('Ship survives. Game continues.',W/2,H/2+18);
       ctx.fillStyle='#fff';ctx.font='bold 14px Orbitron,monospace';
       ctx.fillText('TAP TO CONTINUE',W/2,H/2+60);
@@ -2358,9 +2439,11 @@ function drawRepairMonkey(shuttleX,shuttleY){
 }
 
 function resetGame(){
-  p1=mkP(H/2);pipes=[];bananas=[];wrenches=[];debris=[];
+  p1=mkP(H/2);pipes=[];powerBananas=[];wrenches=[];debris=[];
   for(const p of particlePool)p.active=false;for(const p of exhaustPool)p.active=false;
-  shake=0;flash=0;flashCol='#ff4400';frame=0;speed=6.0;gapSize=210;blinkT=0;mouthOpen=false;coinsRun=0;
+  shake=0;flash=0;flashCol='#ff4400';frame=0;speed=6.0;gapSize=210;blinkT=0;mouthOpen=false;bananasRun=0;
+  flapCount=0;runSpawnCount=0;
+  toast=null;slowMoTimer=0;slowMoSkip=false;planetCardActive=false;
   resetRunStats();
   repair={active:false,phase:'idle',timer:0,targetSide:'left',totalTimer:0};
   luckyPipeCountdown=15;
@@ -2383,31 +2466,64 @@ function p1Jump(){
     state='playing';
     pipes=[];spawnObs();
     updateHullUI();
+    userPaused=true;startResumeCountdown();
     return;
   }
   if(state!=='playing')return;
   if(!p1.alive)return;
+  flapCount++;
   p1.vy=flapStr();sndThrust();
   mouthOpen=true;setTimeout(()=>mouthOpen=false,200);
 }
 C.addEventListener('contextmenu',e=>e.preventDefault());
+// ── Pause button + overlay input ──
+const pauseBtn=document.getElementById('pauseBtn');
+let pauseBtnShown=false;
+pauseBtn.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();ensureAC();userPause();
+},{passive:false});
+// Map a pointer event to 400x600 canvas coords (robust to CSS transform scale)
+function evtToCanvas(e){
+  const r=C.getBoundingClientRect();
+  return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H};
+}
+function handlePauseOverlayTap(e){
+  if(pauseMode!=='paused')return true; // countdown: ignore taps
+  const p=evtToCanvas(e);
+  const rz=PAUSE_RESUME_ZONE,qz=PAUSE_QUIT_ZONE;
+  if(p.x>=rz.x&&p.x<=rz.x+rz.w&&p.y>=rz.y&&p.y<=rz.y+rz.h)startResumeCountdown();
+  else if(p.x>=qz.x&&p.x<=qz.x+qz.w&&p.y>=qz.y&&p.y<=qz.y+qz.h)quitToMenu();
+  return true;
+}
 // Unlock audio context on first interaction (iOS requirement)
 document.addEventListener('touchstart',()=>ensureAC(),{once:true});
 C.addEventListener('pointerdown',e=>{
   e.preventDefault();ensureAC();
+  if(planetCardActive){planetCardActive=false;tipPlanetSeen=true;LS.set('tip_planet',true);return;}
+  if(userPaused){handlePauseOverlayTap(e);return;}
   if(state==='playing'||state==='bonus'||state==='resume'||state==='blackhole'){
     p1Jump();
   }
 },{passive:false});
 C.addEventListener('touchstart',e=>{
   e.preventDefault();ensureAC();
+  if(planetCardActive){planetCardActive=false;tipPlanetSeen=true;LS.set('tip_planet',true);return;}
+  if(userPaused)return; // pointerdown handles overlay taps
   for(const t of e.changedTouches){
     if(state==='playing'||state==='bonus'||state==='resume'||state==='blackhole'){
       p1Jump();
     }
   }
 },{passive:false});
-document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();p1Jump();}});
+document.addEventListener('keydown',e=>{
+  if(e.code==='Escape'||e.code==='KeyP'){
+    e.preventDefault();
+    if(userPaused&&pauseMode==='paused')startResumeCountdown();
+    else if(!userPaused)userPause();
+    return;
+  }
+  if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();if(userPaused)return;p1Jump();}
+});
 
 // ── BOUNCE ───────────────────────────────────────────────────────
 function tryBounce(pl,px,fromPipe=false){
@@ -2456,13 +2572,13 @@ function showStreak(m){streakEl.textContent=m;streakEl.style.opacity='1';setTime
 
 function scoreP(pl,isLucky){
   pl.streak++;
-  const luckyMult=pl.luckyTimer>0?3:1;const baseCoins=pl.bananaMulti*luckyMult;
-  const bonusCoins=upgrades.coinbonus;const rawCoins=baseCoins+bonusCoins;
-  pl.score+=baseCoins;coinsRun+=rawCoins;
+  const luckyMult=pl.luckyTimer>0?3:1;const baseBananas=pl.bananaMulti*luckyMult;
+  const bonusBananas=upgrades.coinbonus;const rawBananas=baseBananas+bonusBananas;
+  pl.score+=baseBananas;bananasRun+=rawBananas;
   runStats.flawlessStreak++;
-  runStats.coinsCollected=coinsRun;
+  runStats.bananasEarned=bananasRun;
   if(pl.luckyTimer>0)pl.luckyTimer--;
-  pl.fistTimer=30;playCoinSound();
+  pl.fistTimer=30;playBananaSound();
   if(isLucky&&!pl.luckyTimer){pl.luckyTimer=5;sndLucky();vibrate([10,40,10,40,10]);showStreak('✦ LUCKY! 3x BANANAS ✦');}
   if(pl.streak===10){pl.cheerTimer=60;sndCheer();showStreak('10 STREAK! OOH OOH!');}
   else if(pl.streak%5===0)showStreak(pl.streak+' STREAK!');
@@ -2471,8 +2587,8 @@ function scoreP(pl,isLucky){
   s1El.textContent=fmtN(pl.score);s1El.style.transform='scale(1.3)';setTimeout(()=>s1El.style.transform='',140);
   const sc=p1.score;
   speed=6.0+Math.floor(sc/25)*.3;gapSize=Math.max(150,220-sc*1.8);
-  luckyPipeCountdown--;if(luckyPipeCountdown<=0)luckyPipeCountdown=8+Math.floor(Math.random()*5);
-  if(p1.luckyTimer>0)runStats.lucky++;
+  if(luckyPipeCountdown>0)luckyPipeCountdown--;
+  if(isLucky)runStats.lucky++;
   // Spawn repair wrench at threshold — pin to a far-future pipe's gap centre
   if(p1.score>=nextWrenchScore){
     // Find the rightmost pipe; spawn the wrench off-screen to the right of it
@@ -2494,6 +2610,7 @@ function scoreP(pl,isLucky){
       collected:false,collectedTimer:0,rot:0
     });
     nextWrenchScore=p1.score+20+Math.floor(Math.random()*11);
+    teachTip('wrench','🔧 CATCH IT — REPAIRS YOUR WINGS!');
   }
   // Black hole at score 500 (once per run)
   if(p1.alive&&p1.score>=500&&!blackholeTriggered){
@@ -2514,15 +2631,15 @@ function killP(pl,px,col){
 function endGame(){
   
   totalRuns++;LS.set('runs',totalRuns);
-  const baseCoins=coinsRun;
+  const baseBananas=bananasRun;
   const dm=dailyMultiplier();
-  const afterDaily=Math.round(baseCoins*dm);
-  const finalCoins=hasCoinDoubler()?Math.round(afterDaily*2):afterDaily;
-  coins+=finalCoins;LS.set('coins',coins);
+  const afterDaily=Math.round(baseBananas*dm);
+  const finalBananas=hasBananaDoubler()?Math.round(afterDaily*2):afterDaily;
+  bananas+=finalBananas;LS.set('coins',bananas);
   const fs=p1.score;
   if(fs>hiScore){hiScore=fs;LS.set('hi',hiScore);}
   const missionWon=evaluateMission(fs);
-  state='dead';setTimeout(()=>showDead(finalCoins,baseCoins,dm,afterDaily,missionWon),500);
+  state='dead';setTimeout(()=>showDead(finalBananas,baseBananas,dm,afterDaily,missionWon),500);
 }
 
 // ── UPDATE ───────────────────────────────────────────────────────
@@ -2551,17 +2668,23 @@ function update(){
     const p=pipes[i];p.x-=speed;p.movePhase+=p.moveSpeed;
     if(p.type==='closing'){p.closePhase+=p.closeDir*.008;if(p.closePhase>1||p.closePhase<0)p.closeDir*=-1;}
     if(p.x<-120){pipes.splice(i,1);continue;}
-    if(!p.scored&&p.x+(p.topR||30)+8<PX){p.scored=true;if(p1.alive)scoreP(p1,p.isLucky);}
+    // Lucky gates: track whether the player crosses BETWEEN the satellites.
+    // Over/under disqualifies the bonus; bouncing through the gap does not.
+    if(p.isLucky&&!p.scored&&Math.abs(p.x-PX)<=Math.max(p.topR||30,p.botR||30)+10){
+      const[lt,lb]=getTH(p);
+      if(p1.y<lt||p1.y>lb)p.outOfBand=true;
+    }
+    if(!p.scored&&p.x+(p.topR||30)+8<PX){p.scored=true;if(p1.alive)scoreP(p1,p.isLucky&&!p.outOfBand);}
     if(p1.alive&&p1.graceTimer===0&&checkHit(PX,p1.y,p)){if(!tryBounce(p1,PX,true))killP(p1,PX,'#ff6600');}
 
   }
   // near miss sparks
   for(const p of pipes){if(Math.abs(PX-p.x)<50&&p1.alive){const[t,b]=getTH(p);if(p1.y-t<30||b-p1.y<30){if(!p1.nearMissTimer){const[c1]=nearMissCol();spawnP(PX,p1.y,c1,4);}p1.nearMissTimer=22;}}}
   const mag=upgrades.magnet*12;
-  for(let i=bananas.length-1;i>=0;i--){
-    const b=bananas[i];b.x-=speed;
-    if(b.collected){b.collectedTimer++;if(b.collectedTimer>20){bananas.splice(i,1);continue;}continue;}
-    if(b.x<-30){bananas.splice(i,1);continue;}
+  for(let i=powerBananas.length-1;i>=0;i--){
+    const b=powerBananas[i];b.x-=speed;
+    if(b.collected){b.collectedTimer++;if(b.collectedTimer>20){powerBananas.splice(i,1);continue;}continue;}
+    if(b.x<-30){powerBananas.splice(i,1);continue;}
     if(mag>0&&p1.alive){const dx=PX-b.x,dy=p1.y-(b.y+Math.sin(frame*.08+b.bob)*5);if(dx*dx+dy*dy<(80+mag)*(80+mag)){b.x+=(PX-b.x)*.05;}}
     const colB=(pl)=>{if(!pl.alive)return;const dy=pl.y-(b.y+Math.sin(frame*.08+b.bob)*5);if((PX-b.x)*(PX-b.x)+dy*dy<(22+mag*.3)*(22+mag*.3)){b.collected=true;sndBanana();pl.bananaMulti=2;pl.bananaTimer=300;puBar.style.opacity='1';puInner.style.width='100%';spawnBananaFX(b.x,b.y);showStreak('POWER BANANA x2!');}};
     colB(p1);
@@ -2890,6 +3013,46 @@ function drawWrench(w){
   ctx.restore();
   ctx.restore();
 }
+// Pause overlay tap zones (canvas coords)
+const PAUSE_RESUME_ZONE={x:W/2-110,y:H/2-25,w:220,h:60};
+const PAUSE_QUIT_ZONE={x:W/2-90,y:H/2+70,w:180,h:44};
+function drawPauseOverlay(){
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,.62)';ctx.fillRect(0,0,W,H);
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffcc00';ctx.font='bold 26px Orbitron,monospace';
+  ctx.fillText('PAUSED',W/2,H/2-70);
+  ctx.fillStyle='#aaa';ctx.font='11px Orbitron,monospace';
+  ctx.fillText('SCORE '+fmtN(p1.score)+'   |   +'+fmtN(bananasRun)+' 🍌 THIS RUN',W/2,H/2-45);
+  // RESUME button
+  const rz=PAUSE_RESUME_ZONE,pulse=.85+.15*Math.sin(frame*.08);
+  ctx.fillStyle='rgba(255,170,0,'+(.14*pulse)+')';
+  ctx.strokeStyle='rgba(255,200,0,.8)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(rz.x,rz.y,rz.w,rz.h,10);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#ffcc00';ctx.font='bold 18px Orbitron,monospace';
+  ctx.fillText('▶ RESUME',W/2,rz.y+38);
+  // QUIT button (de-emphasized)
+  const qz=PAUSE_QUIT_ZONE;
+  ctx.fillStyle='rgba(255,255,255,.05)';
+  ctx.strokeStyle='rgba(255,255,255,.25)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(qz.x,qz.y,qz.w,qz.h,8);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#999';ctx.font='12px Orbitron,monospace';
+  ctx.fillText('⌂ QUIT TO MENU',W/2,qz.y+28);
+  ctx.restore();
+}
+function drawCountdown(){
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,0,W,H);
+  const digit=Math.ceil(countdownTimer/40);
+  if(digit!==lastCountdownDigit){lastCountdownDigit=digit;tone(660+digit*60,.08,'sine',.15);}
+  const within=(countdownTimer%40)/40; // 1→0 within each digit window
+  const scale=1+.5*within;
+  ctx.translate(W/2,H/2);ctx.scale(scale,scale);
+  ctx.globalAlpha=.4+.6*within;
+  ctx.fillStyle='#ffcc00';ctx.font='bold 64px Orbitron,monospace';ctx.textAlign='center';
+  ctx.fillText(digit,0,22);
+  ctx.restore();
+}
 function drawResumeOverlay(){
   ctx.save();
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,0,W,H);
@@ -2900,7 +3063,7 @@ function drawResumeOverlay(){
   ctx.font='bold 16px Orbitron,monospace';
   ctx.fillText('TAP TO CONTINUE',W/2,H/2+10);
   ctx.fillStyle='#888';ctx.font='10px Orbitron,monospace';
-  ctx.fillText('+'+coinsRun+' 🍌 collected this run',W/2,H/2+40);
+  ctx.fillText('+'+bananasRun+' 🍌 collected this run',W/2,H/2+40);
   ctx.restore();
 }
 function drawDebris(d){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.rot);ctx.globalAlpha=d.life;ctx.scale(d.scale,d.scale);if(d.type==='fuselage'){ctx.fillStyle='#ddeeff';ctx.beginPath();ctx.roundRect(-8,-20,16,40,4);ctx.fill();}else if(d.type==='wing_l'){ctx.fillStyle='#99aaaa';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-20,14);ctx.lineTo(0,14);ctx.fill();}else if(d.type==='wing_r'){ctx.fillStyle='#99aaaa';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(20,14);ctx.lineTo(0,14);ctx.fill();}else if(d.type==='nose'){ctx.fillStyle='#ccdde8';ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(10,0);ctx.lineTo(-10,0);ctx.fill();}else{ctx.fillStyle='#2266aa';ctx.beginPath();ctx.ellipse(0,0,7,6,0,0,Math.PI*2);ctx.fill();}ctx.restore();}
@@ -2931,7 +3094,7 @@ function draw(ts){
     ctx.restore();
   }
   for(const p of pipes)drawObs(p);
-  for(const b of bananas)if(!b.collected||b.collectedTimer<15)drawBanana(b);
+  for(const b of powerBananas)if(!b.collected||b.collectedTimer<15)drawBanana(b);
   for(const w of wrenches)if(!w.collected||w.collectedTimer<15)drawWrench(w);
   for(const p of exhaustPool){if(!p.active)continue;ctx.save();ctx.globalAlpha=p.life*.7;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.restore();}
   for(const d of debris)drawDebris(d);
@@ -2944,6 +3107,33 @@ function draw(ts){
     }
   }
   for(const p of particlePool){if(!p.active)continue;ctx.save();ctx.globalAlpha=p.life;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.restore();}
+  // First-run hint: shown until the player has flapped 3 times
+  if(state==='playing'&&totalRuns<2&&flapCount<3&&p1.alive){
+    ctx.save();
+    const pulse=.55+.45*Math.sin(frame*.12);
+    ctx.globalAlpha=pulse;
+    ctx.fillStyle='#ffee66';ctx.font='bold 15px Orbitron,monospace';ctx.textAlign='center';
+    ctx.fillText('👆 TAP TO FIRE THRUSTERS',W/2,p1.y+70);
+    ctx.restore();
+  }
+  // Teaching: slow-mo dim + toast pill
+  if(slowMoTimer>0&&state==='playing'){ctx.save();ctx.globalAlpha=.25;ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);ctx.restore();}
+  if(toast&&state==='playing'){
+    toast.timer--;
+    if(toast.timer<=0)toast=null;
+    else{
+      ctx.save();
+      const a=toast.timer>120?(140-toast.timer)/20:Math.min(1,toast.timer/20);
+      ctx.globalAlpha=a;
+      ctx.font='bold 13px Orbitron,monospace';ctx.textAlign='center';
+      const tw=ctx.measureText(toast.text).width+36;
+      ctx.fillStyle='rgba(5,8,20,.88)';
+      ctx.strokeStyle='rgba(255,200,0,.7)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.roundRect(W/2-tw/2,132,tw,34,17);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffdd44';ctx.fillText(toast.text,W/2,154);
+      ctx.restore();
+    }
+  }
   if(flash>.01){ctx.save();ctx.globalAlpha=flash;ctx.fillStyle=flashCol;ctx.fillRect(0,0,W,H);ctx.restore();}
   drawScanline();
   if(shake>.5)ctx.restore();
@@ -3003,18 +3193,31 @@ function loop(ts){
     }
   }
   frame++;
-  // Detect if we've been stuck not running drawBonus for too long
-  if(state==='bonus'||state==='approach'){
-    if(!window._lastBonusDraw)window._lastBonusDraw=ts;
-    if(ts-window._lastBonusDraw>2000){
-      try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type:'error',msg:'drawBonus stalled '+Math.round(ts-window._lastBonusDraw)+'ms in state='+state+' phase='+(BNS&&BNS.phase)+' alive='+(BNS&&BNS.alive)+' crashTimer='+(BNS&&BNS.crashTimer)}));}catch(_){}
-      window._lastBonusDraw=ts; // throttle to once per 2s
-    }
-  } else {
-    window._lastBonusDraw=null;
+  // Pause button visibility (only write DOM on change)
+  const wantBtn=PAUSABLE_STATES.includes(state)&&!userPaused;
+  if(wantBtn!==pauseBtnShown){pauseBtnShown=wantBtn;pauseBtn.style.display=wantBtn?'flex':'none';}
+  // Deliberate user pause: render frozen world + overlay, skip all updates
+  if(userPaused&&PAUSABLE_STATES.includes(state)){
+    try{
+      if(state==='playing')draw(ts);
+      else if(state==='blackhole')drawBlackhole();
+      else drawBonus();
+      if(pauseMode==='paused')drawPauseOverlay();
+      else if(pauseMode==='countdown'){
+        drawCountdown();
+        countdownTimer--;
+        if(countdownTimer<=0)finishResume();
+      }
+    }catch(e){console.error('Pause overlay error:',e);}
+    requestAnimationFrame(loop);
+    return;
   }
   try{
-    if(state==='playing'){update();draw(ts);}
+    if(state==='playing'){
+      if(slowMoTimer>0){slowMoTimer--;slowMoSkip=!slowMoSkip;if(!slowMoSkip)update();}
+      else update();
+      draw(ts);
+    }
     else if(state==='resume'){draw(ts);drawResumeOverlay();}
     else if(state==='blackhole'){updateBlackhole();drawBlackhole();}
     else if(state==='bonus'||state==='approach'){
@@ -3022,7 +3225,6 @@ function loop(ts){
       for(const p of particlePool){if(!p.active)continue;p.x+=p.vx;p.y+=p.vy;p.vy+=.1;p.life-=.03;if(p.life<=0)p.active=false;}
       if(shake>0)shake*=.8;if(flash>0)flash*=.82;
       updateBonus();updateRepair();drawBonus();
-      window._lastBonusDraw=ts;
     }
     else if(state==='menu'){
       if(ts-lastMenuDraw>16){updateMenu();drawMenuScene();lastMenuDraw=ts;}
@@ -3030,7 +3232,7 @@ function loop(ts){
       if(ts-lastMenuDraw>33){for(const s of stars){s.x-=s.spd*.2;if(s.x<0)s.x=W;}for(const p of planets){p.x-=p.spd*.15;if(p.x<-60)p.x=W+60;}starsDirty=true;draw(ts);lastMenuDraw=ts;}
     }
   }catch(e){
-    try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify({type:'error',msg:'loop crashed in state '+state+': '+e.message+' @ '+(e.stack||'').split('\\n')[0]}));}catch(_){}
+    console.error('Game loop error in state '+state+':',e);
   }
   requestAnimationFrame(loop);
 }
@@ -3047,48 +3249,48 @@ const BGreen='background:rgba(0,220,100,.12);border:1px solid rgba(0,220,100,.5)
 
 function boostsHTML(){
   const ins=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,180,0,.15);margin-bottom:6px"><div style="flex:1"><div style="color:#ffcc00;font-size:11px;font-weight:700">DAILY INSURANCE</div><div style="color:#555;font-size:9px;margin-top:2px">Saves streak if you miss a day (1 charge)</div><div style="color:${hasInsurance?'#44ff88':'#555'};font-size:9px">${hasInsurance?'CHARGED':'no charge'}</div></div><button id="btnIns" style="background:${hasInsurance?'rgba(0,200,0,.1)':'rgba(255,180,0,.15)'};border:1px solid ${hasInsurance?'rgba(0,200,0,.4)':'rgba(255,180,0,.5)'};color:${hasInsurance?'#44ff44':'#ffcc00'};font-size:10px;font-weight:700;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:Orbitron,monospace;min-height:42px">${hasInsurance?'READY':'🍌 400'}</button></div>`;
-  const dblActive=hasCoinDoubler();
+  const dblActive=hasBananaDoubler();
   let dblTimeLeft='';
   if(dblActive){
-    const ms=coinDoublerExpiresAt-Date.now();
+    const ms=bananaDoublerExpiresAt-Date.now();
     const hrs=Math.floor(ms/3600000),mins=Math.floor((ms%3600000)/60000);
     dblTimeLeft=hrs>0?hrs+'h '+mins+'m left':mins+'m left';
   }
-  const dbl=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid ${dblActive?'rgba(255,220,0,.3)':'rgba(255,255,255,.1)'}"><div style="flex:1"><div style="color:#ffdd00;font-size:11px;font-weight:700">BANANA DOUBLER ${dblActive?'⚡':''}</div><div style="color:#555;font-size:9px;margin-top:2px">2x all coin earnings for 24 hours</div><div style="color:${dblActive?'#ffdd00':'#555'};font-size:9px">${dblActive?'ACTIVE — '+dblTimeLeft:'extends if already active'}</div></div><button id="btnDbl" style="background:rgba(255,180,0,.15);border:1px solid rgba(255,180,0,.5);color:#ffcc00;font-size:10px;font-weight:700;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:Orbitron,monospace;min-height:42px">🍌 1000</button></div>`;
+  const dbl=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid ${dblActive?'rgba(255,220,0,.3)':'rgba(255,255,255,.1)'}"><div style="flex:1"><div style="color:#ffdd00;font-size:11px;font-weight:700">BANANA DOUBLER ${dblActive?'⚡':''}</div><div style="color:#555;font-size:9px;margin-top:2px">2x all banana earnings for 24 hours</div><div style="color:${dblActive?'#ffdd00':'#555'};font-size:9px">${dblActive?'ACTIVE — '+dblTimeLeft:'extends if already active'}</div></div><button id="btnDbl" style="background:rgba(255,180,0,.15);border:1px solid rgba(255,180,0,.5);color:#ffcc00;font-size:10px;font-weight:700;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:Orbitron,monospace;min-height:42px">🍌 1000</button></div>`;
   const repair=`<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid ${autoRepairCharges>0?'rgba(68,221,255,.3)':'rgba(255,255,255,.1)'};margin-top:6px"><div style="flex:1"><div style="color:#44ddff;font-size:11px;font-weight:700">AUTO-REPAIR ${autoRepairCharges>0?'🔧 x'+autoRepairCharges:''}</div><div style="color:#555;font-size:9px;margin-top:2px">Auto-fixes ship at 0 hull (1 use per charge)</div><div style="color:${autoRepairCharges>0?'#44ddff':'#555'};font-size:9px">${autoRepairCharges>0?autoRepairCharges+' CHARGES READY':'stack multiple charges'}</div></div><button id="btnRep" style="background:rgba(68,221,255,.15);border:1px solid rgba(68,221,255,.5);color:#44ddff;font-size:10px;font-weight:700;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:Orbitron,monospace;min-height:42px">🍌 2000</button></div>`;
   return ins+dbl+repair;
 }
 // ── UPGRADE SHOP ──────────────────────────────────────────────────
 function showUpgradeShop(){
 state='shop';
-  const upRow=(k)=>{const u=UPGRADES[k],lv=upgrades[k],mx=lv>=u.max,cost=mx?0:u.cost[lv],can=coins>=cost,bar='■'.repeat(lv)+'□'.repeat(u.max-lv);
+  const upRow=(k)=>{const u=UPGRADES[k],lv=upgrades[k],mx=lv>=u.max,cost=mx?0:u.cost[lv],can=bananas>=cost,bar='■'.repeat(lv)+'□'.repeat(u.max-lv);
   return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.1)"><div style="flex:1"><div style="color:#ffcc00;font-size:11px;font-weight:700;letter-spacing:1px">${u.name}</div><div style="color:#555;font-size:9px;margin-top:2px">${u.desc} ${bar}</div></div><button id="u_${k}" style="background:${mx?'rgba(0,200,0,.1)':can?'rgba(255,180,0,.15)':'rgba(255,0,0,.1)'};border:1px solid ${mx?'rgba(0,200,0,.4)':can?'rgba(255,180,0,.5)':'rgba(255,0,0,.3)'};color:${mx?'#44ff44':can?'#ffcc00':'#ff6666'};font-size:10px;font-weight:700;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:Orbitron,monospace;min-height:42px">${mx?'MAX':'🍌 '+cost}</button></div>`;};
   const dm=dailyMultiplier();
   OV.style.display='flex';OV.innerHTML=`<div style="width:100%;max-width:360px">
     <div style="color:#ffcc00;font-size:14px;font-weight:900;letter-spacing:3px;text-align:center;margin-bottom:4px">UPGRADES</div>
-    <div style="color:#ffcc00;font-size:11px;text-align:center;margin-bottom:3px">🍌 ${fmtN(coins)} BANANAS</div>
+    <div style="color:#ffcc00;font-size:11px;text-align:center;margin-bottom:3px">🍌 ${fmtN(bananas)} BANANAS</div>
     <div style="color:#888;font-size:9px;text-align:center;margin-bottom:12px">TODAY ${dm}x BANANAS (DAY ${dailyStreak} 🔥)</div>
     ${upRow('hitbox')}${upRow('bounce')}${upRow('magnet')}${upRow('coinbonus')}
     <div style="color:#666;font-size:9px;letter-spacing:2px;margin:14px 0 6px">BOOSTS</div>
     ${boostsHTML()}
     <button id="btnBack2" style="${BSec};margin-top:6px;width:100%">⌂ BACK TO MENU</button>
   </div>`;
-  ['hitbox','bounce','magnet','coinbonus'].forEach(k=>{document.getElementById('u_'+k).onclick=()=>{const u=UPGRADES[k],lv=upgrades[k];if(lv>=u.max)return;const cost=u.cost[lv];if(coins<cost)return;coins-=cost;upgrades[k]++;LS.set('coins',coins);LS.set('upgrades',upgrades);sndUpgrade();showUpgradeShop();};});
+  ['hitbox','bounce','magnet','coinbonus'].forEach(k=>{document.getElementById('u_'+k).onclick=()=>{const u=UPGRADES[k],lv=upgrades[k];if(lv>=u.max)return;const cost=u.cost[lv];if(bananas<cost)return;bananas-=cost;upgrades[k]++;LS.set('coins',bananas);LS.set('upgrades',upgrades);sndUpgrade();showUpgradeShop();};});
   document.getElementById('btnBack2').onclick=()=>showMenu();
   const insBtn=document.getElementById('btnIns');
-  if(insBtn)insBtn.onclick=()=>{if(hasInsurance||coins<400)return;coins-=400;LS.set('coins',coins);hasInsurance=true;saveBoosts();sndUpgrade();showUpgradeShop();};
+  if(insBtn)insBtn.onclick=()=>{if(hasInsurance||bananas<400)return;bananas-=400;LS.set('coins',bananas);hasInsurance=true;saveBoosts();sndUpgrade();showUpgradeShop();};
   const dblBtn=document.getElementById('btnDbl');
   if(dblBtn)dblBtn.onclick=()=>{
-    if(coins<1000)return;
-    coins-=1000;LS.set('coins',coins);
+    if(bananas<1000)return;
+    bananas-=1000;LS.set('coins',bananas);
     // Extend: add 24h to current remaining time (or start 24h from now if expired)
     const now=Date.now();
-    const baseTime=Math.max(now,coinDoublerExpiresAt);
-    coinDoublerExpiresAt=baseTime+24*3600*1000;
+    const baseTime=Math.max(now,bananaDoublerExpiresAt);
+    bananaDoublerExpiresAt=baseTime+24*3600*1000;
     saveBoosts();sndUpgrade();showUpgradeShop();
   };
   const repBtn=document.getElementById('btnRep');
-  if(repBtn)repBtn.onclick=()=>{if(coins<2000)return;coins-=2000;LS.set('coins',coins);autoRepairCharges++;saveBoosts();sndUpgrade();showUpgradeShop();};
+  if(repBtn)repBtn.onclick=()=>{if(bananas<2000)return;bananas-=2000;LS.set('coins',bananas);autoRepairCharges++;saveBoosts();sndUpgrade();showUpgradeShop();};
 }
 
 // ── MENU ─────────────────────────────────────────────────────────
@@ -3098,9 +3300,9 @@ function showResetConfirm(){
     <div style="color:#ff5555;font-size:42px;margin-bottom:12px">⚠</div>
     <div style="color:#ff8888;font-size:16px;font-weight:900;letter-spacing:2px;margin-bottom:14px">RESET EVERYTHING?</div>
     <div style="color:#aaa;font-size:11px;line-height:1.5;margin-bottom:18px">This will permanently delete:<br>
-      • All bananas (you have ${fmtN(coins)} 🍌)<br>
+      • All bananas (you have ${fmtN(bananas)} 🍌)<br>
       • All upgrades (Nano Hull, Bounce, Magnet, Banana Boost)<br>
-      • Daily Insurance, Coin Doubler, Auto-Repair charges<br>
+      • Daily Insurance, Banana Doubler, Auto-Repair charges<br>
       • Daily streak (${dailyStreak} day${dailyStreak===1?'':'s'})<br>
       • High score (${fmtN(hiScore)})<br>
       • Run history
@@ -3112,11 +3314,12 @@ function showResetConfirm(){
   document.getElementById('btnCancelReset').onclick=()=>showOptions();
   document.getElementById('btnConfirmReset').onclick=()=>{
     // Wipe all stored game data
-    coins=0;LS.set('coins',0);
+    bananas=0;LS.set('coins',0);
     upgrades={hitbox:0,bounce:0,magnet:0,coinbonus:0};LS.set('upgrades',upgrades);
-    hasInsurance=false;coinDoublerExpiresAt=0;autoRepairCharges=0;saveBoosts();
+    hasInsurance=false;bananaDoublerExpiresAt=0;autoRepairCharges=0;saveBoosts();
     hiScore=0;LS.set('hi',0);
     totalRuns=0;LS.set('runs',0);
+    tips.banana=false;tips.lucky=false;tips.wrench=false;tipPlanetSeen=false;
     dailyStreak=0;LS.set('dailyStreak',0);
     lastPlayDate='';LS.set('lastPlay','');
     insuranceUsed=false;
@@ -3197,7 +3400,7 @@ function showHowToPlay(){
     <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;margin-bottom:14px">
       <div style="color:#ff8866;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🌙 PLANET BONUS LEVELS</div>
       <div style="color:#bbb;font-size:10px;line-height:1.6">
-        Score 50 = <b style="color:#aabbcc">MOON</b>, 120 = <b style="color:#ff6644">MARS</b>, 220 = <b style="color:#eedd99">SATURN</b>, 400 = <b style="color:#bbccff">PLUTO</b>. 30 second timed bonus rounds — fly into drifting bananas to collect coins. Rocket auto-launches at 0. At score 500 the singularity awaits.
+        Score 50 = <b style="color:#aabbcc">MOON</b>, 120 = <b style="color:#ff6644">MARS</b>, 220 = <b style="color:#eedd99">SATURN</b>, 400 = <b style="color:#bbccff">PLUTO</b>. 30 second timed bonus rounds — fly into drifting bananas to collect them. Rocket auto-launches at 0. At score 500 the singularity awaits.
       </div>
     </div>
 
@@ -3293,7 +3496,7 @@ state='menu';s1El.style.display='block';resize();
     <div style="color:#886644;font-size:11px;margin-bottom:3px">RUNS: ${fmtN(totalRuns)} &nbsp;|&nbsp; BEST: ${fmtN(hiScore)}</div>
     ${streakInfo}
     ${missionCard}
-    <div style="color:#ffcc00;font-size:13px;margin-bottom:12px">🍌 ${fmtN(coins)} BANANAS${hasCoinDoubler()?' ⚡x2':''}</div>
+    <div style="color:#ffcc00;font-size:13px;margin-bottom:12px">🍌 ${fmtN(bananas)} BANANAS${hasBananaDoubler()?' ⚡x2':''}</div>
     <button id="bPlay" style="${BPri};width:240px">▶ PLAY</button>
     <div style="display:flex;gap:6px;margin-top:4px;width:240px">
       <button id="bUpg" style="${BSec};font-size:9px;letter-spacing:.5px">⚡ UPGRADES</button>
@@ -3315,16 +3518,16 @@ function startGame(){
   state='playing';resetGame();resize();
 }
 
-function showDead(finalCoins,baseCoins,dm,afterDaily,missionWon){
+function showDead(finalBananas,baseBananas,dm,afterDaily,missionWon){
   s1El.style.display='block';resize();
 
   const fs=p1.score;
   const rec=fs>=hiScore&&fs>0;
-  // Coin math breakdown
-  let mathRows=`<div style="display:flex;justify-content:space-between;color:#aaa"><span>Collected:</span><span style="color:#fff">${fmtN(baseCoins||0)} 🍌</span></div>`;
+  // Banana math breakdown
+  let mathRows=`<div style="display:flex;justify-content:space-between;color:#aaa"><span>Collected:</span><span style="color:#fff">${fmtN(baseBananas||0)} 🍌</span></div>`;
   if(dm>1){mathRows+=`<div style="display:flex;justify-content:space-between;color:#ffee00"><span>× ${dm} daily streak:</span><span>${fmtN(afterDaily)} 🍌</span></div>`;}
-  if(hasCoinDoubler()){mathRows+=`<div style="display:flex;justify-content:space-between;color:#ffdd00"><span>× 2 banana doubler:</span><span>${fmtN(finalCoins)} 🍌</span></div>`;}
-  const breakdownBox=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:8px 12px;margin:0 auto 10px;width:240px;font-size:11px;font-family:Orbitron,monospace;letter-spacing:.5px">${mathRows}<div style="height:1px;background:rgba(255,255,255,.15);margin:6px 0"></div><div style="display:flex;justify-content:space-between;color:#ffcc00;font-weight:700"><span>EARNED:</span><span>+${fmtN(finalCoins)} 🍌</span></div></div>`;
+  if(hasBananaDoubler()){mathRows+=`<div style="display:flex;justify-content:space-between;color:#ffdd00"><span>× 2 banana doubler:</span><span>${fmtN(finalBananas)} 🍌</span></div>`;}
+  const breakdownBox=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:8px 12px;margin:0 auto 10px;width:240px;font-size:11px;font-family:Orbitron,monospace;letter-spacing:.5px">${mathRows}<div style="height:1px;background:rgba(255,255,255,.15);margin:6px 0"></div><div style="display:flex;justify-content:space-between;color:#ffcc00;font-weight:700"><span>EARNED:</span><span>+${fmtN(finalBananas)} 🍌</span></div></div>`;
   OV.style.display='flex';OV.innerHTML=`<div style="text-align:center;padding:8px 0">
     <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px">HOUSTON WE HAVE</div>
     <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px;margin-bottom:8px">A PROBLEM</div>
@@ -3349,7 +3552,7 @@ function showDead(finalCoins,baseCoins,dm,afterDaily,missionWon){
     c.fillStyle='#888';c.font='11px Orbitron,monospace';c.fillText('BEST: '+fmtN(hiScore)+'  |  DAY '+dailyStreak+' STREAK',200,174);
     const img=sc2.toDataURL();
     OV.innerHTML=`<div style="text-align:center"><img src="${img}" style="border-radius:8px;max-width:320px;width:100%;border:1px solid rgba(255,180,0,.3)"><div style="color:#aaa;font-size:10px;margin-top:8px">HOLD TO SAVE IMAGE</div><button id="sBack" style="${BSec};margin-top:10px">CLOSE</button></div>`;
-    document.getElementById('sBack').onclick=()=>showDead(finalCoins,baseCoins,dm,afterDaily);
+    document.getElementById('sBack').onclick=()=>showDead(finalBananas,baseBananas,dm,afterDaily);
   };
 }
 
