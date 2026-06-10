@@ -2663,7 +2663,7 @@ function update(){
   for(const s of stars){s.x-=s.spd;if(s.x<0)s.x=W;}
   let rightmostX=-9999;for(const p of pipes)if(p.x>rightmostX)rightmostX=p.x;
   const pi=Math.max(75,108-p1.score*2);
-  if(frame%Math.floor(pi)===0&&(rightmostX<0||rightmostX<W-MIN_PIPE_SPACING)){const lucky=luckyPipeCountdown<=0;spawnObs(lucky);if(lucky)luckyPipeCountdown=8+Math.floor(Math.random()*5);}
+  if(frame%Math.floor(pi)===0&&(rightmostX<0||rightmostX<W-MIN_PIPE_SPACING)){const lucky=luckyPipeCountdown<=0&&planetIdx>=1;spawnObs(lucky);if(lucky)luckyPipeCountdown=8+Math.floor(Math.random()*5);}
   for(let i=pipes.length-1;i>=0;i--){
     const p=pipes[i];p.x-=speed;p.movePhase+=p.moveSpeed;
     if(p.type==='closing'){p.closePhase+=p.closeDir*.008;if(p.closePhase>1||p.closePhase<0)p.closeDir*=-1;}
