@@ -3528,9 +3528,25 @@ function showDead(finalBananas,baseBananas,dm,afterDaily,missionWon){
   if(dm>1){mathRows+=`<div style="display:flex;justify-content:space-between;color:#ffee00"><span>× ${dm} daily streak:</span><span>${fmtN(afterDaily)} 🍌</span></div>`;}
   if(hasBananaDoubler()){mathRows+=`<div style="display:flex;justify-content:space-between;color:#ffdd00"><span>× 2 banana doubler:</span><span>${fmtN(finalBananas)} 🍌</span></div>`;}
   const breakdownBox=`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:8px 12px;margin:0 auto 10px;width:240px;font-size:11px;font-family:Orbitron,monospace;letter-spacing:.5px">${mathRows}<div style="height:1px;background:rgba(255,255,255,.15);margin:6px 0"></div><div style="display:flex;justify-content:space-between;color:#ffcc00;font-weight:700"><span>EARNED:</span><span>+${fmtN(finalBananas)} 🍌</span></div></div>`;
+  // Death sayings — classics, originals, and HHGTTG-flavored parodies
+  const DEATH_LINES=[
+    ['HOUSTON WE HAVE','A PROBLEM'],
+    ['DON\'T PANIC',''],
+    ['SO LONG, AND THANKS','FOR ALL THE BANANAS'],
+    ['MOSTLY','HARMLESS'],
+    ['THE ANSWER WAS','NOT 42'],
+    ['FLYING IS MISSING','THE GROUND. YOU DIDN\'T.'],
+    ['RAPID UNSCHEDULED','DISASSEMBLY'],
+    ['GRAVITY: 1','MONKEY: 0'],
+    ['OUT OF BANANAS','AND ALTITUDE'],
+    ['OOH OOH...','UH OH.'],
+    ['SPACE IS','HARD'],
+    ['INSUFFICIENT THRUST','EXCESSIVE SATELLITE'],
+  ];
+  const dl=DEATH_LINES[Math.floor(Math.random()*DEATH_LINES.length)];
   OV.style.display='flex';OV.innerHTML=`<div style="text-align:center;padding:8px 0">
-    <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px">HOUSTON WE HAVE</div>
-    <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px;margin-bottom:8px">A PROBLEM</div>
+    <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px">${dl[0]}</div>
+    <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px;margin-bottom:8px">${dl[1]}</div>
     
     <div style="color:#fff;font-size:56px;font-weight:900;text-shadow:0 0 18px #ffaa00;line-height:1">${fmtN(fs)}</div>
     ${rec?`<div style="color:#ffee00;font-size:12px;font-weight:700;margin:4px 0">⭐ NEW RECORD!</div>`:''}
