@@ -3542,8 +3542,31 @@ function showDead(finalBananas,baseBananas,dm,afterDaily,missionWon){
     ['OOH OOH...','UH OH.'],
     ['SPACE IS','HARD'],
     ['INSUFFICIENT THRUST','EXCESSIVE SATELLITE'],
+    ['LIFE, THE UNIVERSE,','AND SATELLITES'],
+    ['THIS MUST BE','THURSDAY'],
+    ['SHARE','AND ENJOY'],
+    ['RESISTANCE IS','USELESS'],
+    ['SHUTTLES HANG IN THE SKY','EXACTLY LIKE BRICKS DO'],
+    ['NEVER FORGET','YOUR TOWEL'],
+    ['ONE SMALL STEP','ONE GIANT SPLAT'],
+    ['FAILURE IS','ALWAYS AN OPTION'],
+    ['THE EAGLE HAS','CRASH LANDED'],
+    ['MISSION CONTROL','IS SPEECHLESS'],
+    ['BANANA','SPLIT'],
+    ['MONKEY SEE,','MONKEY THUD'],
+    ['100% ORGANIC','SPACE DEBRIS'],
+    ['EVOLUTION TOOK','A STEP BACK'],
+    ['PHYSICS','ALWAYS WINS'],
+    ['SKILL','ISSUE'],
+    ['HAVE YOU TRIED','NOT CRASHING?'],
+    ['WARRANTY','VOID'],
+    ['ORBIT STATUS:','DECAYED'],
+    ['NOT THE','RIGHT STUFF'],
   ];
-  const dl=DEATH_LINES[Math.floor(Math.random()*DEATH_LINES.length)];
+  let dlIdx=Math.floor(Math.random()*DEATH_LINES.length);
+  if(dlIdx===window._lastDeathLine)dlIdx=(dlIdx+1)%DEATH_LINES.length; // no back-to-back repeats
+  window._lastDeathLine=dlIdx;
+  const dl=DEATH_LINES[dlIdx];
   OV.style.display='flex';OV.innerHTML=`<div style="text-align:center;padding:8px 0">
     <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px">${dl[0]}</div>
     <div style="color:#ff5500;font-size:18px;font-weight:900;letter-spacing:2px;margin-bottom:8px">${dl[1]}</div>
