@@ -35,6 +35,14 @@ const projects = [
   },
   {
     id: '005',
+    title: 'MONKEY SHUTTLE',
+    desc: 'A one-tap space arcade game. Pilot a banana-powered rocket from the Moon to the edge of the solar system, dodging satellites and escaping black holes. Coming soon to the App Store.',
+    tags: ['HTML5 Canvas', 'Arcade', 'iOS'],
+    href: '/monkey-shuttle/',
+    live: true,
+  },
+  {
+    id: '006',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],
