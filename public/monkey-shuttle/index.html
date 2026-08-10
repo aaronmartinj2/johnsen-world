@@ -3609,8 +3609,20 @@ function showDead(finalBananas,baseBananas,dm,afterDaily,missionWon){
     c.fillStyle='#ff8800';c.font='12px Orbitron,monospace';c.fillText('MONKEY SHUTTLE',200,68);
     c.fillStyle='#fff';c.font='bold 66px Orbitron,monospace';c.fillText(fmtN(fs),200,148);
     c.fillStyle='#888';c.font='11px Orbitron,monospace';c.fillText('BEST: '+fmtN(hiScore)+'  |  DAY '+dailyStreak+' STREAK',200,174);
-    const img=sc2.toDataURL();
-    OV.innerHTML=`<div style="text-align:center"><img src="${img}" style="border-radius:8px;max-width:320px;width:100%;border:1px solid rgba(255,180,0,.3)"><div style="color:#aaa;font-size:10px;margin-top:8px">HOLD TO SAVE IMAGE</div><button id="sBack" style="${BSec};margin-top:10px">CLOSE</button></div>`;
+    const img=sc2.toDataURL('image/png');
+    const shareText='I scored '+fmtN(fs)+' in Monkey Shuttle! 🚀🍌';
+    if(window.nativeShare){try{window.nativeShare(shareText,img);return;}catch(e){}}
+    if(navigator.share&&navigator.canShare){
+      try{
+        fetch(img).then(r=>r.blob()).then(blob=>{
+          const file=new File([blob],'monkey-shuttle-score.png',{type:'image/png'});
+          if(navigator.canShare({files:[file]})){navigator.share({text:shareText,files:[file]}).catch(()=>{});}
+          else{navigator.share({text:shareText}).catch(()=>{});}
+        });
+        return;
+      }catch(e){}
+    }
+    OV.innerHTML=`<div style="text-align:center"><img src="${img}" style="border-radius:8px;max-width:320px;width:100%;border:1px solid rgba(255,180,0,.3)"><div style="color:#aaa;font-size:10px;margin-top:8px">TAP AND HOLD IMAGE TO SAVE</div><button id="sBack" style="${BSec};margin-top:10px">CLOSE</button></div>`;
     document.getElementById('sBack').onclick=()=>showDead(finalBananas,baseBananas,dm,afterDaily);
   };
 }
