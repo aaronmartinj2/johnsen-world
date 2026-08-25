@@ -7,20 +7,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
 <style>
 :root {
-  --turf: #1a3a1a;
-  --turf-light: #2a5a2a;
-  --turf-mid: #245224;
+  --turf: #17331a;
+  --turf-light: #27512a;
+  --turf-mid: #204624;
   --dirt: #8B6914;
-  --dirt-light: #b8922a;
   --cream: #f5f0e0;
   --cream-dim: #c8b89a;
   --crimson: #8B1A1A;
   --gold: #d4a820;
   --gold-light: #f0cc50;
   --rail: #c8a050;
-  --sky: #1a2a3a;
-  --sky-light: #2a3a4a;
-  --shadow: rgba(0,0,0,0.6);
+  --sky: #131d2a;
+  --sky-light: #212f42;
+  --silver: #c8d0d8;
+  --bronze: #c88040;
+  --steel: #8a9199;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,530 +33,203 @@ html, body {
   font-family: 'Courier Prime', monospace;
   overflow-x: hidden;
 }
-
 body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
+  content: ''; position: fixed; inset: 0;
   background:
     radial-gradient(ellipse at 50% 0%, rgba(212,168,32,0.12) 0%, transparent 60%),
     repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px);
   pointer-events: none;
 }
 
-.app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 1.5rem 3rem;
-  position: relative;
-  z-index: 1;
-}
+.app { max-width: 1140px; margin: 0 auto; padding: 1.5rem 1.5rem 3rem; position: relative; z-index: 1; }
 
-/* Header */
-.header {
-  text-align: center;
-  margin-bottom: 1.5rem;
-  position: relative;
-}
+.header { text-align: center; margin-bottom: 1.25rem; }
+.header-border { display: flex; align-items: center; gap: 1rem; justify-content: center; margin-bottom: 0.4rem; }
+.header-line { flex: 1; max-width: 200px; height: 2px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.eyebrow { font-size: 0.65rem; letter-spacing: 0.5em; text-transform: uppercase; color: var(--gold); }
+h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 5vw, 4rem); font-style: italic; font-weight: 900; color: var(--cream); text-shadow: 0 2px 20px rgba(212,168,32,0.4); }
+.subtitle { font-size: 0.8rem; color: var(--cream-dim); letter-spacing: 0.2em; margin-top: 0.2rem; }
 
-.header-border {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  justify-content: center;
-  margin-bottom: 0.5rem;
-}
-
-.header-line {
-  flex: 1;
-  max-width: 200px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-}
-
-.eyebrow {
-  font-size: 0.65rem;
-  letter-spacing: 0.5em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
-h1 {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(2.2rem, 5vw, 4rem);
-  font-style: italic;
-  font-weight: 900;
-  color: var(--cream);
-  text-shadow: 0 2px 20px rgba(212,168,32,0.4);
-  letter-spacing: 0.02em;
-}
-
-.subtitle {
-  font-size: 0.8rem;
-  color: var(--cream-dim);
-  letter-spacing: 0.2em;
-  margin-top: 0.25rem;
-}
-
-/* Set bar */
-.set-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  padding: 0.75rem 1rem;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid rgba(212,168,32,0.25);
-  border-radius: 6px;
-}
-
-.set-bar-label {
-  font-size: 0.65rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
-.set-select {
-  font-family: 'Courier Prime', monospace;
-  font-size: 0.9rem;
-  background: rgba(0,0,0,0.4);
-  color: var(--cream);
-  border: 1px solid rgba(212,168,32,0.3);
-  border-radius: 4px;
-  padding: 0.4rem 0.65rem;
-  min-width: 160px;
-  cursor: pointer;
-}
-
+.set-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: center; margin-bottom: 1.25rem; padding: 0.7rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(212,168,32,0.25); border-radius: 6px; }
+.set-bar-label { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); }
+.set-select { font-family: 'Courier Prime', monospace; font-size: 0.9rem; background: rgba(0,0,0,0.4); color: var(--cream); border: 1px solid rgba(212,168,32,0.3); border-radius: 4px; padding: 0.4rem 0.65rem; min-width: 160px; cursor: pointer; }
 .set-select:focus { outline: none; border-color: var(--gold); }
 .set-select option { background: #1a2a3a; color: var(--cream); }
-
-.sbar-btn {
-  font-family: 'Courier Prime', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid rgba(212,168,32,0.3);
-  background: transparent;
-  color: var(--cream-dim);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
+.sbar-btn { font-family: 'Courier Prime', monospace; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; padding: 0.4rem 0.75rem; border: 1px solid rgba(212,168,32,0.3); background: transparent; color: var(--cream-dim); border-radius: 4px; cursor: pointer; transition: all 0.2s; }
 .sbar-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 .sbar-btn.danger:hover:not(:disabled) { border-color: var(--crimson); color: #ff6060; }
+.sbar-btn.on { border-color: var(--gold); color: var(--gold); }
 .sbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* Layout */
-.layout {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
-  align-items: start;
-}
+.layout { display: grid; grid-template-columns: 1fr 300px; gap: 1.25rem; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-@media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; }
-}
+.track-wrap { background: var(--turf); border-radius: 12px; border: 3px solid var(--rail); overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 0 40px rgba(0,0,0,0.3); position: relative; }
+.track-header { background: linear-gradient(180deg, var(--crimson) 0%, #6a1010 100%); padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--rail); }
+.track-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--gold-light); }
+.race-clock { font-size: 0.72rem; letter-spacing: 0.15em; color: var(--cream-dim); }
 
-/* Track */
-.track-wrap {
-  background: var(--turf);
-  border-radius: 12px;
-  border: 3px solid var(--rail);
-  overflow: hidden;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 0 40px rgba(0,0,0,0.3);
-  position: relative;
-}
+.call-banner { background: linear-gradient(90deg, rgba(0,0,0,0.5), rgba(0,0,0,0.25), rgba(0,0,0,0.5)); border-bottom: 1px solid rgba(212,168,32,0.25); padding: 0.6rem 1rem; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.call-text { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--gold-light); text-align: center; line-height: 1.3; }
+.call-text.callpop { animation: callFlash 0.4s ease; }
+@keyframes callFlash { 0% { transform: scale(0.94); opacity: 0.4; } 60% { transform: scale(1.03); } 100% { transform: scale(1); opacity: 1; } }
 
-.track-header {
-  background: linear-gradient(180deg, var(--crimson) 0%, #6a1010 100%);
-  padding: 0.5rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 3px solid var(--rail);
-}
+/* Stage holds lanes + particle canvas + overlays */
+.stage { position: relative; }
+.lanes-area { padding: 0.9rem 1rem 1rem; position: relative; z-index: 1; }
+#fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 
-.track-title {
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-size: 1rem;
-  color: var(--gold-light);
-  letter-spacing: 0.05em;
-}
+/* ---- Grandstand / track depth ---- */
+.grandstand { position: relative; height: 76px; overflow: hidden; background: linear-gradient(180deg, #1d2b3d 0%, #24354a 55%, #1b2a1c 100%); border-bottom: 2px solid rgba(200,160,80,0.35); }
+.grandstand svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.crowd-layer { will-change: transform; }
+.rail-fence { position: absolute; left: 0; right: 0; bottom: 0; height: 12px; pointer-events: none; }
+.rail-fence::before { content: ''; position: absolute; left: 0; right: 0; top: 3px; height: 2px; background: linear-gradient(90deg, rgba(230,225,210,0.55), rgba(200,195,180,0.35)); }
+.rail-fence::after { content: ''; position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: linear-gradient(90deg, rgba(230,225,210,0.4), rgba(200,195,180,0.25)); }
+.rail-posts { position: absolute; inset: 0; background-image: repeating-linear-gradient(90deg, rgba(235,230,215,0.5) 0 2px, transparent 2px 46px); }
 
-.race-status {
-  font-size: 0.7rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--cream-dim);
-  font-style: italic;
-}
+/* ---- Furlong markers ---- */
+.furlongs { position: absolute; top: 0; bottom: 0; left: calc(1rem + 34px); right: calc(1rem + 118px); pointer-events: none; z-index: 2; }
+@media (max-width: 900px) { .furlongs { display: none; } }
+.fmark { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgba(240,235,215,0.13); }
+.fmark span { position: absolute; top: 2px; left: 4px; font-size: 0.55rem; letter-spacing: 0.12em; color: rgba(240,235,215,0.3); }
 
-.oval-container {
-  padding: 1.25rem;
-  position: relative;
-  min-height: 340px;
-}
+/* ---- Tote board ---- */
+.tote { position: absolute; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center; background: rgba(6,10,16,0.86); backdrop-filter: blur(3px); padding: 0.6rem; }
+.tote.show { display: flex; animation: toteIn 0.45s cubic-bezier(.2,1.1,.3,1); }
+@keyframes toteIn { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+.tote-inner { width: 100%; max-width: 480px; background: #07100a; border: 2px solid #2f4a33; border-radius: 6px; padding: 0.5rem 0.6rem; box-shadow: 0 0 40px rgba(80,255,120,0.06), inset 0 0 30px rgba(0,0,0,0.7); max-height: 100%; overflow: hidden; }
+.tote-head { display: flex; justify-content: space-between; font-size: 0.55rem; letter-spacing: 0.3em; color: #63d67f; text-transform: uppercase; border-bottom: 1px solid #2f4a33; padding-bottom: 0.3rem; margin-bottom: 0.3rem; }
+.tote-row { display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 0.5rem; padding: 0.11rem 0; font-size: 0.78rem; color: #8ff0a6; text-shadow: 0 0 6px rgba(100,240,140,0.45); }
+.tote-row .pp { text-align: center; color: #d8f8e2; background: rgba(120,240,150,0.1); border-radius: 2px; font-size: 0.65rem; }
+.tote-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tote-row .od { font-weight: 700; color: #f0cc50; text-shadow: 0 0 8px rgba(240,200,80,0.5); }
+.tote-row.fav .nm { color: #fff6d0; }
 
-/* Oval track SVG-based */
-.oval-svg {
-  width: 100%;
-  display: block;
-}
+/* ---- Replay ---- */
+.replay-badge { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 8; display: none; font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; color: #ff6b6b; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,107,107,0.5); padding: 0.22rem 0.7rem; border-radius: 3px; }
+.replay-badge.show { display: block; animation: pulseRec 1.1s infinite; }
+@keyframes pulseRec { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+.replay-btn { margin-top: 0.55rem; font-family: 'Courier Prime', monospace; font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.42rem 1rem; border: 1px solid rgba(212,168,32,0.45); background: rgba(0,0,0,0.3); color: var(--gold); border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+.replay-btn:hover:not(:disabled) { background: rgba(212,168,32,0.15); }
+.replay-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* Lanes inside oval */
-.lanes-area {
-  padding: 0 1.25rem 1.25rem;
-}
+.lane { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; position: relative; height: 54px; }
 
-.lane {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  position: relative;
-  height: 54px;
-}
+.pos-badge { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 0.72rem; font-weight: 700; background: rgba(0,0,0,0.35); color: var(--cream-dim); border: 1px solid rgba(255,255,255,0.12); transition: background 0.3s, color 0.3s, border-color 0.3s, transform 0.2s; }
+.pos-badge.p1 { background: var(--gold); color: #1a1200; border-color: var(--gold-light); transform: scale(1.12); }
+.pos-badge.p2 { background: var(--silver); color: #10161c; border-color: #e0e8f0; }
+.pos-badge.p3 { background: var(--bronze); color: #1a0c00; border-color: #e0a060; }
 
-.lane-number {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--cream-dim);
-  width: 18px;
-  text-align: center;
-  flex-shrink: 0;
-}
+.lane-track { flex: 1; height: 50px; background: linear-gradient(180deg, var(--turf-light) 0%, var(--turf-mid) 50%, var(--turf-light) 100%); border-radius: 25px; border: 1px solid rgba(255,255,255,0.1); position: relative; overflow: hidden; }
+.lane-track::before { content: ''; position: absolute; inset: 3px; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 46px); border-radius: 22px; }
+.finish-line { position: absolute; right: 0; top: 0; bottom: 0; width: 16px; background: repeating-linear-gradient(0deg, #fff 0px, #fff 4px, #222 4px, #222 8px); opacity: 0.55; border-radius: 0 25px 25px 0; }
+.horse { position: absolute; top: 50%; left: 4px; transform: translate3d(0,-50%,0); line-height: 1; z-index: 2; filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.55)); will-change: transform; }
+.lane-label { font-size: 0.8rem; color: var(--cream); width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; font-style: italic; }
 
-.lane-track {
-  flex: 1;
-  height: 50px;
-  background: linear-gradient(180deg, var(--turf-light) 0%, var(--turf-mid) 50%, var(--turf-light) 100%);
-  border-radius: 25px;
-  border: 1px solid rgba(255,255,255,0.1);
-  position: relative;
-  overflow: hidden;
+/* Starting gate */
+.gate { position: absolute; left: 0; top: 0; bottom: 0; width: 104px; z-index: 4; pointer-events: none; perspective: 300px; }
+.gate-frame { position: absolute; inset: 0; border-right: 3px solid var(--steel); background: linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.1)); }
+.gate-frame::before, .gate-frame::after { content: ''; position: absolute; top: 0; bottom: 0; width: 3px; background: linear-gradient(180deg, #b8c0c8, var(--steel), #5a6068); }
+.gate-frame::before { left: 0; }
+.gate-frame::after { right: 0; }
+.gate-door {
+  position: absolute; right: 0; top: 2px; bottom: 2px; width: 46px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(184,192,200,0.9) 7px 10px),
+    linear-gradient(90deg, rgba(60,66,72,0.75), rgba(40,44,50,0.6));
+  border: 2px solid #9aa2aa; border-radius: 2px;
+  transform-origin: right center;
+  transition: transform 0.55s cubic-bezier(.2,.9,.3,1), opacity 0.5s 0.35s;
 }
+.gate.open .gate-door { transform: rotateY(-118deg); opacity: 0; }
+.gate.open .gate-frame { opacity: 0; transition: opacity 0.6s 0.3s; }
+.gate-num { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; font-weight: 700; color: var(--cream-dim); background: rgba(0,0,0,0.5); padding: 1px 5px; border-radius: 3px; }
+.gate.open .gate-num { opacity: 0; transition: opacity 0.3s; }
 
-.lane-track::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  background: repeating-linear-gradient(90deg,
-    rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px,
-    transparent 1px, transparent 40px);
-  border-radius: 22px;
-}
+/* Countdown overlay */
+.countdown { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; z-index: 6; background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0.25)); pointer-events: none; }
+.countdown.show { display: flex; }
+.count-num { font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic; font-size: 5rem; color: var(--gold-light); text-shadow: 0 0 40px rgba(212,168,32,0.7), 0 4px 12px rgba(0,0,0,0.8); }
+.count-num.pop { animation: countPop 0.65s ease-out; }
+@keyframes countPop { 0% { transform: scale(2.2); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: scale(0.85); opacity: 0; } }
+.count-word { font-family: 'Playfair Display', serif; font-weight: 900; font-style: italic; font-size: 2.6rem; color: var(--gold-light); text-shadow: 0 0 40px rgba(212,168,32,0.7); letter-spacing: 0.05em; }
+.count-word.pop { animation: countPop 1s ease-out; }
 
-.finish-line {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 18px;
-  background: repeating-linear-gradient(
-    0deg,
-    #fff 0px, #fff 4px,
-    #222 4px, #222 8px
-  );
-  opacity: 0.6;
-  border-radius: 0 25px 25px 0;
-}
+/* Camera flash */
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 7; }
+.flash.fire { animation: flashFire 0.6s ease-out; }
+@keyframes flashFire { 0% { opacity: 0; } 8% { opacity: 0.92; } 22% { opacity: 0.15; } 30% { opacity: 0.7; } 100% { opacity: 0; } }
 
-.horse {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  left: 4px;
-  line-height: 1;
-  z-index: 2;
-  filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
-  will-change: left;
-  display: flex;
-  align-items: center;
-}
+/* Photo finish stamp */
+.photo-stamp { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-8deg); z-index: 8; display: none; }
+.photo-stamp.show { display: block; animation: stampIn 0.5s cubic-bezier(.2,1.5,.4,1); }
+.photo-stamp span { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 2rem; letter-spacing: 0.15em; color: #fff; border: 5px solid #fff; padding: 0.35rem 1.2rem; border-radius: 6px; background: rgba(139,26,26,0.85); text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+@keyframes stampIn { 0% { transform: translate(-50%,-50%) rotate(-8deg) scale(2.6); opacity: 0; } 100% { transform: translate(-50%,-50%) rotate(-8deg) scale(1); opacity: 1; } }
 
-.lane-label {
-  font-size: 0.8rem;
-  color: var(--cream);
-  width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 0;
-  font-style: italic;
-}
+/* Slow-mo vignette */
+.slowmo { position: absolute; inset: 0; pointer-events: none; z-index: 5; opacity: 0; transition: opacity 0.4s; box-shadow: inset 0 0 90px 20px rgba(0,0,0,0.6); }
+.slowmo.on { opacity: 1; }
 
-/* Winner banner */
-.winner-banner {
-  display: none;
-  text-align: center;
-  padding: 0.75rem;
-  background: linear-gradient(90deg, transparent, rgba(212,168,32,0.2), transparent);
-  border-top: 2px solid var(--gold);
-}
-
-.winner-banner.show { display: block; }
+.winner-banner { display: none; padding: 0.85rem; background: linear-gradient(90deg, transparent, rgba(212,168,32,0.22), transparent); border-top: 2px solid var(--gold); text-align: center; }
+.winner-banner.show { display: block; animation: callFlash 0.5s ease; }
+.winner-row { display: flex; align-items: center; justify-content: center; gap: 0.9rem; }
+.winner-silk { width: 46px; height: 46px; flex-shrink: 0; border-radius: 6px; border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 3px 10px rgba(0,0,0,0.5); }
 .winner-banner .label { font-size: 0.65rem; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; }
-.winner-banner .name { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.6rem; color: var(--cream); margin-top: 0.1rem; }
+.winner-banner .name { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.7rem; color: var(--cream); }
+.winner-banner .margin { font-size: 0.72rem; color: var(--cream-dim); margin-top: 0.15rem; letter-spacing: 0.1em; }
 
-/* Sidebar */
-.sidebar {}
-
-.panel {
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(212,168,32,0.2);
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-}
-
-.panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid rgba(212,168,32,0.15);
-}
-
-.panel-title {
-  font-size: 0.65rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
-.panel-sub {
-  font-size: 0.7rem;
-  color: var(--cream-dim);
-}
-
-.tabs {
-  display: flex;
-  gap: 0.2rem;
-  background: rgba(0,0,0,0.3);
-  padding: 0.2rem;
-  border-radius: 6px;
-  margin-bottom: 0.85rem;
-}
-
-.tab {
-  flex: 1;
-  font-family: 'Courier Prime', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  background: transparent;
-  border: none;
-  color: var(--cream-dim);
-  padding: 0.45rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
+.panel { background: rgba(0,0,0,0.35); border: 1px solid rgba(212,168,32,0.2); border-radius: 8px; padding: 1.15rem; margin-bottom: 1rem; }
+.panel-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.8rem; padding-bottom: 0.55rem; border-bottom: 1px solid rgba(212,168,32,0.15); }
+.panel-title { font-size: 0.65rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); }
+.panel-sub { font-size: 0.7rem; color: var(--cream-dim); }
+.tabs { display: flex; gap: 0.2rem; background: rgba(0,0,0,0.3); padding: 0.2rem; border-radius: 6px; margin-bottom: 0.8rem; }
+.tab { flex: 1; font-family: 'Courier Prime', monospace; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; background: transparent; border: none; color: var(--cream-dim); padding: 0.45rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
 .tab.active { background: rgba(212,168,32,0.15); color: var(--gold); }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
-
-.labels-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 0.25rem;
-}
-
-.labels-list::-webkit-scrollbar { width: 4px; }
-.labels-list::-webkit-scrollbar-thumb { background: var(--dirt); border-radius: 2px; }
-
-.label-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.color-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.label-input {
-  flex: 1;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid rgba(212,168,32,0.15);
-  color: var(--cream);
-  padding: 0.45rem 0.6rem;
-  font-family: 'Courier Prime', monospace;
-  font-size: 0.85rem;
-  border-radius: 4px;
-  transition: border-color 0.2s;
-  min-width: 0;
-}
-
+.labels-list, .wins-list { display: flex; flex-direction: column; gap: 0.35rem; max-height: 300px; overflow-y: auto; padding-right: 0.25rem; }
+.labels-list::-webkit-scrollbar, .wins-list::-webkit-scrollbar { width: 4px; }
+.labels-list::-webkit-scrollbar-thumb, .wins-list::-webkit-scrollbar-thumb { background: var(--dirt); border-radius: 2px; }
+.label-row { display: flex; align-items: center; gap: 0.4rem; }
+.color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.label-input { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(212,168,32,0.15); color: var(--cream); padding: 0.45rem 0.6rem; font-family: 'Courier Prime', monospace; font-size: 0.85rem; border-radius: 4px; min-width: 0; }
 .label-input:focus { outline: none; border-color: var(--gold); }
 .label-input::placeholder { color: rgba(200,184,154,0.4); font-style: italic; }
-
-.rm-btn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: var(--cream-dim);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  font-size: 1rem;
-  flex-shrink: 0;
-  transition: all 0.2s;
-}
-
+.rm-btn { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--cream-dim); width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; font-size: 1rem; flex-shrink: 0; transition: all 0.2s; }
 .rm-btn:hover { background: var(--crimson); border-color: var(--crimson); color: white; }
-
-.btn-row {
-  display: flex;
-  gap: 0.4rem;
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid rgba(212,168,32,0.12);
-  flex-wrap: wrap;
-}
-
-.btn {
-  font-family: 'Courier Prime', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  padding: 0.55rem 0.75rem;
-  border: 1px solid rgba(212,168,32,0.25);
-  background: transparent;
-  color: var(--cream-dim);
-  border-radius: 4px;
-  cursor: pointer;
-  flex: 1;
-  transition: all 0.2s;
-  min-width: 70px;
-}
-
+.btn-row { display: flex; gap: 0.4rem; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(212,168,32,0.12); flex-wrap: wrap; }
+.btn { font-family: 'Courier Prime', monospace; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; padding: 0.55rem 0.7rem; border: 1px solid rgba(212,168,32,0.25); background: transparent; color: var(--cream-dim); border-radius: 4px; cursor: pointer; flex: 1; transition: all 0.2s; min-width: 70px; }
 .btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 .btn.danger:hover:not(:disabled) { border-color: var(--crimson); color: #ff6060; }
 .btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* Win rows */
-.wins-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.wins-list::-webkit-scrollbar { width: 4px; }
-.wins-list::-webkit-scrollbar-thumb { background: var(--dirt); border-radius: 2px; }
-
-.win-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.5rem;
-  background: rgba(0,0,0,0.2);
-  border-radius: 4px;
-  font-size: 0.85rem;
-}
-
+.btn-gold { background: linear-gradient(180deg, var(--gold-light), var(--gold)); color: var(--sky); border-color: var(--gold); font-weight: 700; }
+.btn-gold:hover:not(:disabled) { color: var(--sky) !important; filter: brightness(1.1); }
+.win-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 0.85rem; }
 .win-row.leader { background: rgba(212,168,32,0.08); border: 1px solid rgba(212,168,32,0.2); }
 .win-name { font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.win-bar { width: 50px; height: 5px; background: rgba(0,0,0,0.3); border-radius: 3px; overflow: hidden; }
+.win-bar { width: 46px; height: 5px; background: rgba(0,0,0,0.3); border-radius: 3px; overflow: hidden; }
 .win-bar-fill { height: 100%; background: linear-gradient(90deg, var(--dirt), var(--gold)); transition: width 0.5s; }
 .win-count { font-size: 0.75rem; font-weight: 700; color: var(--gold); text-align: right; white-space: nowrap; }
-.win-odds { display: none; }
 .empty-state { text-align: center; padding: 1.5rem; color: var(--cream-dim); font-style: italic; font-size: 0.85rem; }
-
-/* Race button */
-.race-btn {
-  width: 100%;
-  font-family: 'Playfair Display', serif;
-  font-style: italic;
-  font-weight: 700;
-  font-size: 1.3rem;
-  padding: 0.9rem;
-  color: var(--sky);
-  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 50%, #a07a10 100%);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(212,168,32,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
-  transition: transform 0.15s, filter 0.15s;
-}
-
+.race-btn { width: 100%; font-family: 'Playfair Display', serif; font-style: italic; font-weight: 700; font-size: 1.3rem; padding: 0.9rem; color: var(--sky); background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 50%, #a07a10 100%); border: none; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 16px rgba(212,168,32,0.4), inset 0 1px 0 rgba(255,255,255,0.3); transition: transform 0.15s, filter 0.15s; }
 .race-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
-.race-btn:active:not(:disabled) { transform: translateY(1px); }
 .race-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* Modal */
-.modal-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.75);
-  backdrop-filter: blur(6px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 1rem;
-}
-
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
 .modal-backdrop.show { display: flex; }
-
-.modal {
-  background: var(--sky-light);
-  border: 1px solid rgba(212,168,32,0.35);
-  border-radius: 10px;
-  padding: 1.75rem;
-  max-width: 400px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-}
-
+.modal { background: var(--sky-light); border: 1px solid rgba(212,168,32,0.35); border-radius: 10px; padding: 1.75rem; max-width: 400px; width: 100%; }
 .modal-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.4rem; margin-bottom: 0.5rem; }
 .modal-body { color: var(--cream-dim); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5; }
-.modal-input {
-  width: 100%;
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(212,168,32,0.2);
-  color: var(--cream);
-  padding: 0.65rem 0.8rem;
-  font-family: 'Courier Prime', monospace;
-  font-size: 0.95rem;
-  border-radius: 5px;
-  margin-bottom: 1rem;
-}
+.modal-input { width: 100%; background: rgba(0,0,0,0.35); border: 1px solid rgba(212,168,32,0.2); color: var(--cream); padding: 0.65rem 0.8rem; font-family: 'Courier Prime', monospace; font-size: 0.95rem; border-radius: 5px; margin-bottom: 1rem; }
 .modal-input:focus { outline: none; border-color: var(--gold); }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 .modal-actions .btn { flex: 0 0 auto; min-width: 90px; }
-.btn-gold { background: linear-gradient(180deg, var(--gold-light), var(--gold)); color: var(--sky); border-color: var(--gold); font-weight: 700; }
-.btn-gold:hover:not(:disabled) { color: var(--sky) !important; filter: brightness(1.1); }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="header">
-    <div class="header-border">
-      <div class="header-line"></div>
-      <div class="eyebrow">Post Time</div>
-      <div class="header-line"></div>
-    </div>
+    <div class="header-border"><div class="header-line"></div><div class="eyebrow">Post Time</div><div class="header-line"></div></div>
     <h1>The Decision Derby</h1>
     <div class="subtitle">They're at the gate &mdash; place your attention</div>
   </header>
@@ -567,19 +241,42 @@ h1 {
     <button id="save-as-btn" class="sbar-btn">Save As</button>
     <button id="rename-btn" class="sbar-btn" disabled>Rename</button>
     <button id="delete-set-btn" class="sbar-btn danger" disabled>Delete</button>
+    <button id="sound-btn" class="sbar-btn on" title="Toggle sound">&#128266; Sound</button>
   </div>
 
   <div class="layout">
     <div>
       <div class="track-wrap">
         <div class="track-header">
-          <div class="track-title">Churchill Decisions — Race #1</div>
-          <div id="race-status" class="race-status">Awaiting Start</div>
+          <div class="track-title">Churchill Decisions &mdash; Race #1</div>
+          <div id="race-clock" class="race-clock">AWAITING START</div>
         </div>
-        <div class="lanes-area" id="lanes-area"></div>
+        <div class="call-banner"><div id="call-text" class="call-text">The field is loaded and ready at the gate.</div></div>
+        <div class="grandstand" id="grandstand"></div>
+        <div class="stage" id="stage">
+          <div class="lanes-area" id="lanes-area"></div>
+          <div class="furlongs" id="furlongs"></div>
+          <canvas id="fx"></canvas>
+          <div class="slowmo" id="slowmo"></div>
+          <div class="countdown" id="countdown"><div id="count-inner"></div></div>
+          <div class="flash" id="flash"></div>
+          <div class="replay-badge" id="replay-badge">&#9210; Replay</div>
+          <div class="tote" id="tote"><div class="tote-inner">
+            <div class="tote-head"><span>Tote Board</span><span>Final Odds</span></div>
+            <div id="tote-rows"></div>
+          </div></div>
+          <div class="photo-stamp" id="photo-stamp"><span>PHOTO FINISH</span></div>
+        </div>
         <div id="winner-banner" class="winner-banner">
-          <div class="label">🏆 And the winner is</div>
-          <div id="winner-name" class="name">—</div>
+          <div class="winner-row">
+            <div class="winner-silk" id="winner-silk"></div>
+            <div>
+              <div class="label">&#127942; And the winner is</div>
+              <div id="winner-name" class="name">&mdash;</div>
+              <div id="winner-margin" class="margin"></div>
+              <button id="replay-btn" class="replay-btn">&#9654; Replay the Finish</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -590,12 +287,8 @@ h1 {
           <button class="tab active" data-tab="labels">Horses</button>
           <button class="tab" data-tab="wins">Record</button>
         </div>
-
         <div id="tab-labels" class="tab-panel active">
-          <div class="panel-header">
-            <span class="panel-title">Entries</span>
-            <span class="panel-sub"><span id="count">0</span>/20</span>
-          </div>
+          <div class="panel-header"><span class="panel-title">Entries</span><span class="panel-sub"><span id="count">0</span>/20</span></div>
           <div id="labels-list" class="labels-list"></div>
           <div class="btn-row">
             <button id="add-btn" class="btn">+ Add</button>
@@ -603,20 +296,13 @@ h1 {
             <button id="reset-btn" class="btn">Defaults</button>
           </div>
         </div>
-
         <div id="tab-wins" class="tab-panel">
-          <div class="panel-header">
-            <span class="panel-title">Win Record</span>
-            <span class="panel-sub"><span id="total-wins">0</span> races</span>
-          </div>
+          <div class="panel-header"><span class="panel-title">Win Record</span><span class="panel-sub"><span id="total-wins">0</span> races</span></div>
           <div id="wins-list" class="wins-list"></div>
-          <div class="btn-row">
-            <button id="clear-wins-btn" class="btn danger">Clear Record</button>
-          </div>
+          <div class="btn-row"><button id="clear-wins-btn" class="btn danger">Clear Record</button></div>
         </div>
       </div>
-
-      <button id="race-btn" class="race-btn">🏇 Start the Race</button>
+      <button id="race-btn" class="race-btn">&#127943; Start the Race</button>
     </div>
   </div>
 </div>
@@ -636,9 +322,10 @@ h1 {
 <script>
 const MAX = 20;
 const STORAGE_KEY = 'decision-wheel-v1';
+const TAU = Math.PI * 2;
 const DEFAULTS = ['Lightning','Thunderbolt','Iron Will','Silver Streak','Dark Horse','Golden Gate','Wild Card','Storm Chaser'];
 const COLORS = ['#c9303b','#e8b84a','#2a9d8f','#4a5ea8','#d66a3e','#8b5a9f','#5b8c5a','#b03a5c','#3f7cac','#d4a845','#6a4c93','#e07856','#2f6b8e','#a84a3e','#7ba05b','#c96b87','#5c7fb8','#d49545','#4e8f7e','#9c5a6c'];
-const HORSE_COATS = ['#c8a060','#8B4513','#d4b483','#5a3010','#e0c898','#4a3020','#c09050','#703010','#b89060','#3a2010','#d0a870','#6a4020','#bc9458','#502810','#cca870','#7a4a28','#d4b48a','#402010','#b08848','#5a3818'];
+const COATS  = ['#c8a060','#8B4513','#d4b483','#5a3010','#e0c898','#4a3020','#c09050','#703010','#b89060','#3a2010','#d0a870','#6a4020','#bc9458','#502810','#cca870','#7a4a28','#d4b48a','#402010','#b08848','#5a3818'];
 
 function shadeColor(hex, amt) {
   let r = Math.max(0, Math.min(255, parseInt(hex.slice(1,3),16) + amt));
@@ -647,510 +334,833 @@ function shadeColor(hex, amt) {
   return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
 }
 
-function makeHorseSVG(silkColor, coatColor) {
-  const mane = shadeColor(coatColor, -50);
-  const dark = shadeColor(coatColor, -25);
-  const hi   = shadeColor(coatColor,  18);
-  const sc   = shadeColor(silkColor, -40);
+/* ================= AUDIO ================= */
+let soundOn = true, actx = null;
+function AC() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} } return actx; }
+function noiseBuf(ctx, dur) {
+  const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+function bugle() {
+  if (!soundOn) return; const ctx = AC(); if (!ctx) return;
+  const t0 = ctx.currentTime + 0.02;
+  // Original ascending fanfare motif
+  const notes = [[392,0,0.22],[523.25,0.20,0.22],[659.25,0.40,0.24],[783.99,0.62,0.55]];
+  notes.forEach(([f, off, dur]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.value = f;
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(1200, t0+off); lp.frequency.linearRampToValueAtTime(3200, t0+off+0.06);
+    g.gain.setValueAtTime(0, t0+off);
+    g.gain.linearRampToValueAtTime(0.16, t0+off+0.03);
+    g.gain.setValueAtTime(0.16, t0+off+dur*0.6);
+    g.gain.exponentialRampToValueAtTime(0.001, t0+off+dur);
+    o.connect(lp); lp.connect(g); g.connect(ctx.destination);
+    o.start(t0+off); o.stop(t0+off+dur+0.05);
+  });
+}
+function gateClang() {
+  if (!soundOn) return; const ctx = AC(); if (!ctx) return;
+  const t0 = ctx.currentTime;
+  const src = ctx.createBufferSource(); src.buffer = noiseBuf(ctx, 0.3);
+  const bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2600; bp.Q.value=1.4;
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.32, t0); g.gain.exponentialRampToValueAtTime(0.001, t0+0.28);
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start(t0);
+  [1180, 1620, 2270].forEach((f, i) => {
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.type='square'; o.frequency.value=f;
+    og.gain.setValueAtTime(0.07/(i+1), t0); og.gain.exponentialRampToValueAtTime(0.001, t0+0.22);
+    o.connect(og); og.connect(ctx.destination); o.start(t0); o.stop(t0+0.25);
+  });
+}
+function beep(freq, dur) {
+  if (!soundOn) return; const ctx = AC(); if (!ctx) return;
+  const t0 = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+  o.type='triangle'; o.frequency.value=freq;
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.13, t0+0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0+dur+0.03);
+}
+function hoofThud(vol) {
+  if (!soundOn) return; const ctx = AC(); if (!ctx) return;
+  const v = Number.isFinite(vol) ? Math.max(0.001, Math.min(1, vol)) : 0.05;
+  const t0 = ctx.currentTime;
+  const src = ctx.createBufferSource(); src.buffer = noiseBuf(ctx, 0.09);
+  const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=340;
+  const g = ctx.createGain(); g.gain.setValueAtTime(v, t0); g.gain.exponentialRampToValueAtTime(0.001, t0+0.085);
+  src.connect(lp); lp.connect(g); g.connect(ctx.destination); src.start(t0);
+}
+let crowdNode = null, crowdGain = null;
+function crowdStart() {
+  if (!soundOn) return; const ctx = AC(); if (!ctx) return;
+  crowdStop();
+  const src = ctx.createBufferSource(); src.buffer = noiseBuf(ctx, 2); src.loop = true;
+  const bp = ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=760; bp.Q.value=0.6;
+  const g = ctx.createGain(); g.gain.value = 0.012;
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination); src.start();
+  crowdNode = src; crowdGain = g;
+}
+function crowdSwell(level) {
+  if (!crowdGain || !actx) return;
+  const v = 0.012 + (Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0) * 0.075;
+  if (!Number.isFinite(v)) return;
+  crowdGain.gain.setTargetAtTime(v, actx.currentTime, 0.25);
+}
+function crowdStop() {
+  if (crowdNode) { try { crowdNode.stop(); } catch(e) {} crowdNode = null; crowdGain = null; }
+}
 
-  // Viewbox 96x50. Body is a slim polygon ~12px tall. Legs 18px below.
-  // Horse faces RIGHT. Neck is short and angled ~45deg. Head near-horizontal.
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 50" width="96" height="50">
-  <g>
-    <!-- LEGS behind body -->
-    <!-- Hind near (sweeps back-down) -->
-    <line x1="22" y1="29" x2="15" y2="39" stroke="${coatColor}" stroke-width="3.2" stroke-linecap="round"/>
-    <line x1="15" y1="39" x2="11" y2="48" stroke="${coatColor}" stroke-width="2.8" stroke-linecap="round"/>
-    <!-- Hind far (reaches forward, darker) -->
-    <line x1="26" y1="29" x2="31" y2="38" stroke="${dark}" stroke-width="2.8" stroke-linecap="round"/>
-    <line x1="31" y1="38" x2="33" y2="48" stroke="${dark}" stroke-width="2.4" stroke-linecap="round"/>
-    <!-- Front near (reaches forward) -->
-    <line x1="54" y1="29" x2="60" y2="38" stroke="${coatColor}" stroke-width="3.2" stroke-linecap="round"/>
-    <line x1="60" y1="38" x2="64" y2="48" stroke="${coatColor}" stroke-width="2.8" stroke-linecap="round"/>
-    <!-- Front far (tucked, darker) -->
-    <line x1="50" y1="29" x2="48" y2="37" stroke="${dark}" stroke-width="2.8" stroke-linecap="round"/>
-    <line x1="48" y1="37" x2="50" y2="48" stroke="${dark}" stroke-width="2.4" stroke-linecap="round"/>
-    <!-- Hooves -->
-    <rect x="8"  y="46" width="6"   height="3" rx="1" fill="#120900"/>
-    <rect x="30" y="46" width="5.5" height="3" rx="1" fill="#0a0600"/>
-    <rect x="61" y="46" width="6"   height="3" rx="1" fill="#120900"/>
-    <rect x="47" y="46" width="5.5" height="3" rx="1" fill="#0a0600"/>
-
-    <!-- TAIL -->
-    <path d="M11 23 Q4 20 2 26 Q4 32 9 29" fill="none" stroke="${mane}" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M11 24 Q5 26 4 32 Q7 37 12 34" fill="none" stroke="${mane}" stroke-width="1.8" stroke-linecap="round"/>
-
-    <!-- BODY: slim polygon. Topline y~18-20, bottomline y~29-30. Height ~11px, width ~50px -->
-    <path d="
-      M 13 26
-      Q 17 19 24 19
-      L 52 18
-      Q 57 18 60 20
-      L 60 29
-      Q 56 31 48 31
-      L 20 31
-      Q 13 30 11 27
-      Z
-    " fill="${coatColor}"/>
-    <!-- Topline shine -->
-    <path d="M 24 19 L 52 18 Q 57 18 60 20" fill="none" stroke="${hi}" stroke-width="0.8" opacity="0.55"/>
-    <!-- Belly shadow strip -->
-    <path d="M 20 31 Q 36 32.5 48 31 Q 56 31 60 29 Q 57 33 48 33 L 20 33 Q 13 32 11 29 Z" fill="${dark}" opacity="0.25"/>
-
-    <!-- NECK: short, thick, ~45deg forward. Base at shoulder (x~57,y~21), top at poll (x~66,y~12) -->
-    <path d="M 56 20 Q 60 15 64 11 Q 67 9 68 11 Q 66 14 63 18 Q 61 21 58 23 Z" fill="${coatColor}"/>
-    <!-- Neck underside shade -->
-    <path d="M 58 22 Q 61 18 64 15 Q 66 13 67 14 Q 65 17 63 20 Z" fill="${dark}" opacity="0.3"/>
-
-    <!-- HEAD: long, nearly horizontal. Poll at ~(66,10), nose at ~(90,16) -->
-    <!-- Skull/forehead -->
-    <path d="M 64 10 Q 67 7 71 8 Q 76 9 80 12 Q 82 14 81 16 Q 79 17 75 16 Q 70 14 66 12 Z" fill="${coatColor}"/>
-    <!-- Muzzle (forward, very slightly down) -->
-    <path d="M 77 12 Q 83 12 87 14 Q 89 16 88 18 Q 86 19 83 18 Q 79 16 76 14 Z" fill="${coatColor}"/>
-    <!-- Muzzle end -->
-    <ellipse cx="88" cy="17" rx="2.5" ry="2" fill="${dark}"/>
-    <!-- Nostril -->
-    <ellipse cx="88.5" cy="17.5" rx="1" ry="0.75" fill="#1a0800" opacity="0.85"/>
-    <!-- Eye -->
-    <circle cx="71" cy="9" r="1.4" fill="#080300"/>
-    <circle cx="71.4" cy="8.6" r="0.48" fill="rgba(255,255,255,0.85)"/>
-    <!-- Ear (small upright triangle) -->
-    <path d="M 66 9 L 68 6 L 70 9 Z" fill="${coatColor}"/>
-    <path d="M 67 9 L 68 7 L 69.5 9 Z" fill="${dark}" opacity="0.35"/>
-
-    <!-- MANE (short, along neck crest) -->
-    <path d="M 68 8 Q 66 11 64 15 Q 62 18 60 21" fill="none" stroke="${mane}" stroke-width="2.2" stroke-linecap="round"/>
-    <path d="M 70 8 Q 68 11 66 15 Q 64 18 62 21" fill="none" stroke="${mane}" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/>
-
-    <!-- SADDLE PAD -->
-    <path d="M 40 18 Q 48 16 55 18 Q 55 23 48 24 Q 40 23 39 20 Z" fill="${silkColor}" opacity="0.88"/>
-    <!-- Saddle -->
-    <path d="M 42 18 Q 48 16 54 18 Q 53 21 47 22 Q 41 21 41 19 Z" fill="${sc}"/>
-
-    <!-- RIDER breeches -->
-    <path d="M 40 21 Q 47 20 53 21 Q 52 25 47 25 Q 41 24 40 21 Z" fill="#ddd5b8"/>
-    <!-- RIDER torso — leaning well forward -->
-    <path d="M 46 10 Q 50 9 53 11 Q 54 16 51 19 Q 47 20 44 18 Q 43 13 46 10 Z" fill="${silkColor}"/>
-    <!-- Silk stripe -->
-    <path d="M 46 13 Q 50 12 53 13" fill="none" stroke="rgba(255,255,255,0.38)" stroke-width="1.4"/>
-    <!-- Forward arm with reins -->
-    <path d="M 52 12 Q 57 11 62 11" stroke="${silkColor}" stroke-width="2.6" stroke-linecap="round" fill="none"/>
-    <circle cx="62.5" cy="11" r="1.7" fill="#c08860"/>
-    <!-- Rein to bit -->
-    <path d="M 62.5 11 Q 69 12 74 13" fill="none" stroke="#b07830" stroke-width="0.75" opacity="0.6"/>
-    <!-- Back arm -->
-    <path d="M 44 15 Q 42 17 41 20" stroke="${silkColor}" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-    <!-- Neck -->
-    <rect x="48" y="7" width="4" height="4" rx="2" fill="#c08860"/>
-    <!-- Head -->
-    <circle cx="50" cy="5.5" r="3.8" fill="#c08860"/>
-    <!-- Helmet -->
-    <path d="M 46.4 5.5 Q 46.2 1.5 50 1 Q 53.8 1.5 53.6 5.5 Z" fill="${silkColor}"/>
-    <rect x="45.8" y="5" width="8.5" height="1.6" rx="0.8" fill="${silkColor}"/>
-    <!-- Peak -->
-    <rect x="45" y="6.4" width="10.5" height="1.1" rx="0.55" fill="#111"/>
-    <!-- Goggles -->
-    <rect x="47.5" y="4.5" width="6" height="2.8" rx="1.4" fill="rgba(180,220,255,0.2)" stroke="rgba(0,0,0,0.45)" stroke-width="0.55"/>
-    <!-- Number cloth -->
-    <rect x="41" y="20" width="7" height="5" rx="1" fill="white" opacity="0.8"/>
+/* ================= HORSE SVG ================= */
+function legMarkup(hipX, hipY, kneeX, kneeY, hoofX, hoofY, col, w) {
+  return `<g class="upper" transform="rotate(0 ${hipX} ${hipY})">
+      <line x1="${hipX}" y1="${hipY}" x2="${kneeX}" y2="${kneeY}" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>
+      <g class="lower" transform="rotate(0 ${kneeX} ${kneeY})">
+        <line x1="${kneeX}" y1="${kneeY}" x2="${hoofX}" y2="${hoofY}" stroke="${col}" stroke-width="${w-0.5}" stroke-linecap="round"/>
+        <rect x="${hoofX-3}" y="${hoofY-1}" width="6" height="3" rx="1.2" fill="#140a00"/>
+      </g>
+    </g>`;
+}
+function makeHorseSVG(silk, coat) {
+  const mane = shadeColor(coat,-50), dark = shadeColor(coat,-28), hi = shadeColor(coat,18), sc = shadeColor(silk,-42);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 52" width="96" height="52">
+  <g class="rig">
+    <g class="leg leg-hf">${legMarkup(26,28, 31,37, 33,47, dark, 2.9)}</g>
+    <g class="leg leg-ff">${legMarkup(51,28, 49,37, 50,47, dark, 2.9)}</g>
+    <g class="bodyGrp">
+      <g class="tail">
+        <path d="M11 23 Q4 20 2 26 Q4 32 9 29" fill="none" stroke="${mane}" stroke-width="2.8" stroke-linecap="round"/>
+        <path d="M11 24 Q5 26 4 32 Q7 37 12 34" fill="none" stroke="${mane}" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+      <path d="M 13 26 Q 17 19 24 19 L 52 18 Q 57 18 60 20 L 60 29 Q 56 31 48 31 L 20 31 Q 13 30 11 27 Z" fill="${coat}"/>
+      <path d="M 24 19 L 52 18 Q 57 18 60 20" fill="none" stroke="${hi}" stroke-width="0.8" opacity="0.5"/>
+      <path d="M 20 31 Q 36 32.5 48 31 Q 56 31 60 29 Q 57 33 48 33 L 20 33 Q 13 32 11 29 Z" fill="${dark}" opacity="0.25"/>
+      <path d="M 56 20 Q 60 15 64 11 Q 67 9 68 11 Q 66 14 63 18 Q 61 21 58 23 Z" fill="${coat}"/>
+      <path d="M 58 22 Q 61 18 64 15 Q 66 13 67 14 Q 65 17 63 20 Z" fill="${dark}" opacity="0.3"/>
+      <path d="M 64 10 Q 67 7 71 8 Q 76 9 80 12 Q 82 14 81 16 Q 79 17 75 16 Q 70 14 66 12 Z" fill="${coat}"/>
+      <path d="M 77 12 Q 83 12 87 14 Q 89 16 88 18 Q 86 19 83 18 Q 79 16 76 14 Z" fill="${coat}"/>
+      <ellipse cx="88" cy="17" rx="2.5" ry="2" fill="${dark}"/>
+      <ellipse cx="88.5" cy="17.5" rx="1" ry="0.75" fill="#1a0800" opacity="0.85"/>
+      <circle cx="71" cy="9" r="1.4" fill="#080300"/>
+      <circle cx="71.4" cy="8.6" r="0.48" fill="rgba(255,255,255,0.85)"/>
+      <path d="M 66 9 L 68 6 L 70 9 Z" fill="${coat}"/>
+      <g class="mane">
+        <path d="M 68 8 Q 66 11 64 15 Q 62 18 60 21" fill="none" stroke="${mane}" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M 70 8 Q 68 11 66 15 Q 64 18 62 21" fill="none" stroke="${mane}" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/>
+      </g>
+      <path d="M 40 18 Q 48 16 55 18 Q 55 23 48 24 Q 40 23 39 20 Z" fill="${silk}" opacity="0.88"/>
+      <path d="M 42 18 Q 48 16 54 18 Q 53 21 47 22 Q 41 21 41 19 Z" fill="${sc}"/>
+      <g class="rider">
+        <path d="M 40 21 Q 47 20 53 21 Q 52 25 47 25 Q 41 24 40 21 Z" fill="#ddd5b8"/>
+        <path d="M 46 10 Q 50 9 53 11 Q 54 16 51 19 Q 47 20 44 18 Q 43 13 46 10 Z" fill="${silk}"/>
+        <path d="M 46 13 Q 50 12 53 13" fill="none" stroke="rgba(255,255,255,0.38)" stroke-width="1.4"/>
+        <path d="M 52 12 Q 57 11 62 11" stroke="${silk}" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+        <circle cx="62.5" cy="11" r="1.7" fill="#c08860"/>
+        <path d="M 62.5 11 Q 69 12 74 13" fill="none" stroke="#b07830" stroke-width="0.75" opacity="0.6"/>
+        <path d="M 44 15 Q 42 17 41 20" stroke="${silk}" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+        <rect x="48" y="7" width="4" height="4" rx="2" fill="#c08860"/>
+        <circle cx="50" cy="5.5" r="3.8" fill="#c08860"/>
+        <path d="M 46.4 5.5 Q 46.2 1.5 50 1 Q 53.8 1.5 53.6 5.5 Z" fill="${silk}"/>
+        <rect x="45.8" y="5" width="8.5" height="1.6" rx="0.8" fill="${silk}"/>
+        <rect x="45" y="6.4" width="10.5" height="1.1" rx="0.55" fill="#111"/>
+        <rect x="47.5" y="4.5" width="6" height="2.8" rx="1.4" fill="rgba(180,220,255,0.2)" stroke="rgba(0,0,0,0.45)" stroke-width="0.55"/>
+        <rect x="41" y="20" width="7" height="5" rx="1" fill="white" opacity="0.8"/>
+      </g>
+    </g>
+    <g class="leg leg-hn">${legMarkup(24,28, 22,37, 21,47, coat, 3.2)}</g>
+    <g class="leg leg-fn">${legMarkup(54,28, 56,37, 57,47, coat, 3.2)}</g>
   </g>
 </svg>`;
 }
+function legAngles(p) {
+  const a = Math.sin(p * TAU);
+  return [36 * a, 46 * Math.max(0, Math.sin(p * TAU - 0.95))];
+}
+const PHASE_OFF = { hn: 0.00, hf: 0.13, fn: 0.46, ff: 0.58 };
+function driveHorse(parts, phase) {
+  if (!parts) return;
+  for (const k of ['hn','hf','fn','ff']) {
+    const g = parts[k]; if (!g) continue;
+    const [u, kn] = legAngles((phase + PHASE_OFF[k]) % 1);
+    g.upper.setAttribute('transform', g.upperBase.replace('rotate(0', `rotate(${u.toFixed(1)}`));
+    g.lower.setAttribute('transform', g.lowerBase.replace('rotate(0', `rotate(${kn.toFixed(1)}`));
+  }
+  const lift  = -3.2 * Math.max(0, Math.sin(phase * TAU));
+  const pitch = 2.6 * Math.sin(phase * TAU + 0.6);
+  if (parts.body) parts.body.setAttribute('transform', `translate(0 ${lift.toFixed(2)}) rotate(${pitch.toFixed(2)} 40 25)`);
+  const sway = 5 * Math.sin(phase * TAU - 0.7);
+  if (parts.mane) parts.mane.setAttribute('transform', `rotate(${(sway*0.5).toFixed(2)} 66 12)`);
+  if (parts.tail) parts.tail.setAttribute('transform', `rotate(${(-sway).toFixed(2)} 12 24)`);
+}
 
+/* ================= PARTICLES ================= */
+const fx = document.getElementById('fx');
+const fxc = fx.getContext('2d');
+let particles = [];
+function sizeFX() {
+  const st = document.getElementById('stage');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  fx.width = st.clientWidth * dpr;
+  fx.height = st.clientHeight * dpr;
+  fx.style.width = st.clientWidth + 'px';
+  fx.style.height = st.clientHeight + 'px';
+  fxc.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function spawnDust(x, y, power) {
+  const n = 1 + Math.floor(power * 2);
+  for (let i = 0; i < n; i++) {
+    particles.push({
+      t: 'd', x: x + (Math.random()-0.5)*6, y: y + (Math.random()-0.5)*4,
+      vx: -(0.5 + Math.random()*1.6) - power*0.8, vy: -(Math.random()*0.7) - 0.1,
+      life: 0, max: 380 + Math.random()*420,
+      r: 1.6 + Math.random()*3.4,
+      a: 0.32 + Math.random()*0.28
+    });
+  }
+}
+function spawnConfetti(x, y, n) {
+  const pal = ['#d4a820','#f0cc50','#c9303b','#f5f0e0','#2a9d8f','#4a5ea8','#e07856'];
+  for (let i = 0; i < n; i++) {
+    const ang = -Math.PI/2 + (Math.random()-0.5) * 2.0;
+    const sp = 2.2 + Math.random()*5.2;
+    particles.push({
+      t: 'c', x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp,
+      life: 0, max: 1500 + Math.random()*1300,
+      w: 3 + Math.random()*5, h: 5 + Math.random()*7,
+      rot: Math.random()*TAU, vr: (Math.random()-0.5)*0.35,
+      c: pal[Math.floor(Math.random()*pal.length)]
+    });
+  }
+}
+function stepParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life += dt;
+    if (p.life >= p.max) { particles.splice(i,1); continue; }
+    if (p.t === 'd') {
+      p.x += p.vx * (dt/16); p.y += p.vy * (dt/16);
+      p.vy += 0.006 * (dt/16); p.vx *= 0.988; p.r += 0.045 * (dt/16);
+    } else {
+      p.x += p.vx * (dt/16); p.y += p.vy * (dt/16);
+      p.vy += 0.13 * (dt/16); p.vx *= 0.992; p.rot += p.vr * (dt/16);
+    }
+  }
+}
+function drawParticles() {
+  fxc.clearRect(0, 0, fx.width, fx.height);
+  for (const p of particles) {
+    const k = 1 - p.life / p.max;
+    if (p.t === 'd') {
+      fxc.globalAlpha = p.a * k * k;
+      fxc.fillStyle = '#c8ab74';
+      fxc.beginPath(); fxc.arc(p.x, p.y, p.r, 0, TAU); fxc.fill();
+    } else {
+      fxc.globalAlpha = Math.min(1, k * 2.2);
+      fxc.save(); fxc.translate(p.x, p.y); fxc.rotate(p.rot);
+      fxc.fillStyle = p.c; fxc.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      fxc.restore();
+    }
+  }
+  fxc.globalAlpha = 1;
+}
+
+/* ================= STATE ================= */
 let state = loadState();
 let racing = false;
-let animFrames = [];
-
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (p && p.sets !== undefined) return { sets: p.sets || {}, activeSet: p.activeSet || null, working: p.working || { labels: [...DEFAULTS], wins: {} } };
-    }
+    if (raw) { const p = JSON.parse(raw);
+      if (p && p.sets !== undefined) return { sets:p.sets||{}, activeSet:p.activeSet||null, working:p.working||{labels:[...DEFAULTS],wins:{}} }; }
   } catch(e) {}
-  return { sets: {}, activeSet: null, working: { labels: [...DEFAULTS], wins: {} } };
+  return { sets:{}, activeSet:null, working:{labels:[...DEFAULTS],wins:{}} };
 }
-
-function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
-}
-
-function getActive() {
-  if (state.activeSet && state.sets[state.activeSet]) return state.sets[state.activeSet];
-  return state.working;
-}
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} }
+function getActive() { return (state.activeSet && state.sets[state.activeSet]) ? state.sets[state.activeSet] : state.working; }
 function getLabels() { return getActive().labels; }
 function getWins() { return getActive().wins; }
 
-// DOM refs
-const lanesArea = document.getElementById('lanes-area');
-const raceBtn = document.getElementById('race-btn');
-const raceStatus = document.getElementById('race-status');
-const winnerBanner = document.getElementById('winner-banner');
-const winnerName = document.getElementById('winner-name');
-const setSelect = document.getElementById('set-select');
-const saveBtn = document.getElementById('save-btn');
-const saveAsBtn = document.getElementById('save-as-btn');
-const renameBtn = document.getElementById('rename-btn');
-const deleteSetBtn = document.getElementById('delete-set-btn');
-const listEl = document.getElementById('labels-list');
-const countEl = document.getElementById('count');
-const addBtn = document.getElementById('add-btn');
-const clearBtn = document.getElementById('clear-btn');
-const resetBtn = document.getElementById('reset-btn');
-const winsListEl = document.getElementById('wins-list');
-const totalWinsEl = document.getElementById('total-wins');
-const clearWinsBtn = document.getElementById('clear-wins-btn');
-const tabs = document.querySelectorAll('.tab');
-const tabPanels = document.querySelectorAll('.tab-panel');
-const modal = document.getElementById('modal');
-const modalTitle = document.getElementById('modal-title');
-const modalBody = document.getElementById('modal-body');
-const modalInput = document.getElementById('modal-input');
-const modalCancel = document.getElementById('modal-cancel');
-const modalConfirm = document.getElementById('modal-confirm');
+const lanesArea=document.getElementById('lanes-area'), raceBtn=document.getElementById('race-btn'),
+raceClock=document.getElementById('race-clock'), callText=document.getElementById('call-text'),
+winnerBanner=document.getElementById('winner-banner'), winnerName=document.getElementById('winner-name'),
+winnerMargin=document.getElementById('winner-margin'), winnerSilk=document.getElementById('winner-silk'),
+setSelect=document.getElementById('set-select'), saveBtn=document.getElementById('save-btn'),
+saveAsBtn=document.getElementById('save-as-btn'), renameBtn=document.getElementById('rename-btn'),
+deleteSetBtn=document.getElementById('delete-set-btn'), listEl=document.getElementById('labels-list'),
+countEl=document.getElementById('count'), addBtn=document.getElementById('add-btn'),
+clearBtn=document.getElementById('clear-btn'), resetBtn=document.getElementById('reset-btn'),
+winsListEl=document.getElementById('wins-list'), totalWinsEl=document.getElementById('total-wins'),
+clearWinsBtn=document.getElementById('clear-wins-btn'), tabs=document.querySelectorAll('.tab'),
+tabPanels=document.querySelectorAll('.tab-panel'), modal=document.getElementById('modal'),
+modalTitle=document.getElementById('modal-title'), modalBody=document.getElementById('modal-body'),
+modalInput=document.getElementById('modal-input'), modalCancel=document.getElementById('modal-cancel'),
+modalConfirm=document.getElementById('modal-confirm'), countdownEl=document.getElementById('countdown'),
+countInner=document.getElementById('count-inner'), flashEl=document.getElementById('flash'),
+photoStamp=document.getElementById('photo-stamp'), slowmoEl=document.getElementById('slowmo'),
+soundBtn=document.getElementById('sound-btn'), toteEl=document.getElementById('tote'),
+replayBtn=document.getElementById('replay-btn'), replayBadge=document.getElementById('replay-badge');
+
+let horseParts = [];
+let raceLog = [];
+let lastRaceGeo = { horseEls: null, targets: null };
+let replaying = false;
+let crowdLayer = null;
 
 function renderLanes() {
-  lanesArea.innerHTML = '';
+  lanesArea.innerHTML = ''; horseParts = [];
+  if (!racing && !replaying) { raceLog = []; lastRaceGeo = { horseEls: null, targets: null }; if (typeof replayBtn !== 'undefined' && replayBtn) replayBtn.disabled = true; }
   const labels = getLabels();
-  if (labels.length === 0) {
+  if (!labels.length) {
     lanesArea.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--cream-dim);font-style:italic;">Add entries to race</div>';
-    return;
+    requestAnimationFrame(sizeFX); return;
   }
   labels.forEach((label, i) => {
-    const silkColor = COLORS[i % COLORS.length];
-    const coatColor = HORSE_COATS[i % HORSE_COATS.length];
+    const silk = COLORS[i % COLORS.length], coat = COATS[i % COATS.length];
     const lane = document.createElement('div');
     lane.className = 'lane';
     lane.innerHTML = `
-      <span class="lane-number">${i+1}</span>
+      <div class="pos-badge" id="pos-${i}">${i+1}</div>
       <div class="lane-track" id="track-${i}">
         <div class="finish-line"></div>
-        <div class="horse" id="horse-${i}">${makeHorseSVG(silkColor, coatColor)}</div>
+        <div class="horse" id="horse-${i}">${makeHorseSVG(silk, coat)}</div>
+        <div class="gate" id="gate-${i}"><div class="gate-frame"></div><div class="gate-door"></div><div class="gate-num">${i+1}</div></div>
       </div>
-      <span class="lane-label">${label || `Entry ${i+1}`}</span>
-    `;
+      <span class="lane-label">${label || `Entry ${i+1}`}</span>`;
     lanesArea.appendChild(lane);
+    const root = lane.querySelector('.rig');
+    const parts = { body: root.querySelector('.bodyGrp'), mane: root.querySelector('.mane'), tail: root.querySelector('.tail') };
+    for (const k of ['hn','hf','fn','ff']) {
+      const legG = root.querySelector(`.leg-${k}`); if (!legG) continue;
+      const upper = legG.querySelector('.upper'), lower = legG.querySelector('.lower');
+      parts[k] = { upper, lower, upperBase: upper.getAttribute('transform'), lowerBase: lower.getAttribute('transform') };
+    }
+    horseParts.push(parts);
+    driveHorse(parts, 0);
   });
+  requestAnimationFrame(sizeFX);
 }
 
-function renderList() {
-  const labels = getLabels();
-  listEl.innerHTML = '';
-  labels.forEach((label, i) => {
-    const row = document.createElement('div');
-    row.className = 'label-row';
-    const dot = document.createElement('div');
-    dot.className = 'color-dot';
-    dot.style.background = COLORS[i % COLORS.length];
-    const input = document.createElement('input');
-    input.className = 'label-input';
-    input.type = 'text';
-    input.value = label;
-    input.placeholder = `Horse ${i+1}`;
-    input.maxLength = 40;
-    input.addEventListener('input', e => { getLabels()[i] = e.target.value; renderLanes(); saveState(); });
-    const rm = document.createElement('button');
-    rm.className = 'rm-btn';
-    rm.textContent = '×';
-    rm.addEventListener('click', () => { getLabels().splice(i, 1); renderAll(); saveState(); });
-    row.appendChild(dot); row.appendChild(input); row.appendChild(rm);
-    listEl.appendChild(row);
-  });
+/* ================= RACE ================= */
+/* ================= TRACK DEPTH ================= */
+function buildGrandstand() {
+  const el = document.getElementById('grandstand');
+  if (!el) return;
+  const W = 1200, H = 76;
+  const skin = ['#0d1620','#111d29','#0a1219','#14202c'];
+  let crowd = '';
+  // Tiered crowd silhouette — denser and smaller toward the back
+  for (let tier = 0; tier < 5; tier++) {
+    const y = 30 + tier * 7.5;
+    const r = 3.6 - tier * 0.42;
+    const step = 9.5 - tier * 0.7;
+    const shade = skin[tier % skin.length];
+    for (let x = -20; x < W + 40; x += step) {
+      const jx = x + (Math.random() - 0.5) * 3.4;
+      const jy = y + (Math.random() - 0.5) * 2.2;
+      crowd += `<circle cx="${jx.toFixed(1)}" cy="${jy.toFixed(1)}" r="${r.toFixed(2)}" fill="${shade}"/>`;
+      // occasional warm highlight so it reads as people, not noise
+      if (Math.random() < 0.055) crowd += `<circle cx="${jx.toFixed(1)}" cy="${(jy-r*0.9).toFixed(1)}" r="${(r*0.55).toFixed(2)}" fill="rgba(212,168,32,0.16)"/>`;
+    }
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="gsRoof" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#3a2a10"/><stop offset="100%" stop-color="#1d1508"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="${W}" height="${H}" fill="none"/>
+    <path d="M0 22 L${W} 14 L${W} 26 L0 34 Z" fill="url(#gsRoof)"/>
+    <g class="crowd-layer" id="crowd-layer">${crowd}</g>
+    <rect x="0" y="62" width="${W}" height="14" fill="#16261a"/>
+  </svg>
+  <div class="rail-fence"><div class="rail-posts"></div></div>`;
 }
 
-function renderWins() {
-  const labels = getLabels();
-  const wins = getWins();
-  const handicaps = getActive().handicaps || {};
-  winsListEl.innerHTML = '';
-  let total = 0;
-  Object.values(wins).forEach(v => total += (v||0));
-  totalWinsEl.textContent = total;
-  if (!labels.length) { winsListEl.innerHTML = '<div class="empty-state">No races yet.</div>'; return; }
-
-  const weights = labels.map(l => Math.max(0.02, handicaps[l] !== undefined ? handicaps[l] : 1.0));
-  const totalW = weights.reduce((a, b) => a + b, 0);
-  const odds = weights.map(w => ((w / totalW) * 100).toFixed(1));
-
-  const counts = labels.map(l => wins[l] || 0);
-  const maxC = Math.max(1, ...counts);
-  labels.forEach((label, i) => {
-    const c = counts[i];
-    const row = document.createElement('div');
-    row.className = 'win-row' + (c > 0 && c === maxC ? ' leader' : '');
-    row.innerHTML = `
-      <div class="color-dot" style="background:${COLORS[i%COLORS.length]}"></div>
-      <div class="win-name">${label||`Entry ${i+1}`}</div>
-      <div class="win-bar"><div class="win-bar-fill" style="width:${(c/maxC)*100}%"></div></div>
-      <div class="win-count">${c}w &nbsp;<span style="color:var(--cream-dim);font-weight:400;">${odds[i]}%</span></div>
-    `;
-    winsListEl.appendChild(row);
-  });
+function buildFurlongs() {
+  const el = document.getElementById('furlongs');
+  if (!el) return;
+  const marks = [[0.22,'6F'],[0.44,'4F'],[0.66,'2F'],[0.86,'1F']];
+  el.innerHTML = marks.map(([pct,lab]) =>
+    `<div class="fmark" style="left:${(pct*100).toFixed(1)}%"><span>${lab}</span></div>`).join('');
 }
 
-function updateCount() {
-  const labels = getLabels();
-  countEl.textContent = labels.length;
-  addBtn.disabled = labels.length >= MAX;
-  raceBtn.disabled = labels.length < 2 || racing;
+/* ================= ODDS ================= */
+const FRACS = [[1,5],[2,5],[1,2],[3,5],[4,5],[1,1],[6,5],[7,5],[3,2],[8,5],[9,5],[2,1],[5,2],[3,1],[7,2],[4,1],[9,2],[5,1],[6,1],[8,1],[10,1],[12,1],[15,1],[20,1],[30,1],[50,1],[99,1]];
+function toOdds(prob) {
+  if (!Number.isFinite(prob) || prob <= 0) return '99-1';
+  const target = (1 - prob) / prob;
+  let best = FRACS[0], bd = Infinity;
+  for (const f of FRACS) {
+    const d = Math.abs(f[0] / f[1] - target);
+    if (d < bd) { bd = d; best = f; }
+  }
+  if (best[0] === 1 && best[1] === 1) return 'EVEN';
+  return best[1] === 1 ? `${best[0]}-1` : `${best[0]}-${best[1]}`;
+}
+function currentProbs() {
+  const labels = getLabels(), H = getActive().handicaps || {};
+  const w = labels.map(l => Math.max(0.02, H[l] !== undefined ? H[l] : 1.0));
+  const tw = w.reduce((a,b)=>a+b,0) || 1;
+  return w.map(x => x / tw);
+}
+function renderTote() {
+  const labels = getLabels(), probs = currentProbs();
+  const rows = document.getElementById('tote-rows');
+  if (!rows) return;
+  let favIdx = 0;
+  probs.forEach((p,i)=>{ if (p > probs[favIdx]) favIdx = i; });
+  rows.innerHTML = labels.map((l,i) =>
+    `<div class="tote-row${i===favIdx?' fav':''}">
+       <span class="pp">${i+1}</span>
+       <span class="nm">${l || 'Entry '+(i+1)}</span>
+       <span class="od">${toOdds(probs[i])}</span>
+     </div>`).join('');
 }
 
-function renderSetSelect() {
-  setSelect.innerHTML = '<option value="__working__">Working Set (unsaved)</option>';
-  Object.keys(state.sets).sort().forEach(n => {
-    const o = document.createElement('option');
-    o.value = n; o.textContent = n;
-    setSelect.appendChild(o);
-  });
-  setSelect.value = state.activeSet || '__working__';
-  const isSaved = !!state.activeSet;
-  renameBtn.disabled = !isSaved;
-  deleteSetBtn.disabled = !isSaved;
+const STYLES = ['front','front','stalk','stalk','stalk','close','close'];
+function styleEase(s, t) {
+  const x = Number.isFinite(t) ? Math.max(0, Math.min(1, t)) : 0;
+  if (s === 'front') return Math.pow(x, 0.62);
+  if (s === 'close') return Math.pow(x, 1.75);
+  return Math.pow(x, 1.05);
 }
+// Time warp: the last quarter of real time covers only the final 12% of the race
+function warp(x) { return x < 0.75 ? (x / 0.75) * 0.88 : 0.88 + ((x - 0.75) / 0.25) * 0.12; }
 
-function renderAll() {
-  renderSetSelect();
-  renderList();
-  renderLanes();
-  renderWins();
-  updateCount();
-}
-
-// Racing logic
 function startRace() {
   const labels = getLabels();
   if (racing || labels.length < 2) return;
-  racing = true;
-  raceBtn.disabled = true;
+  racing = true; raceBtn.disabled = true;
   winnerBanner.classList.remove('show');
-  raceStatus.textContent = "They're off!";
+  photoStamp.classList.remove('show');
+  slowmoEl.classList.remove('on');
+  particles = [];
+  sizeFX();
 
-  const n = labels.length;
-  const wins = getWins();
-  const active = getActive();
-
-  // Handicap weights stored separately so they can recover independently of win counts.
-  // Initial weight for any horse = 1.0. After a win, drops to 0.05. Floors at 0.02.
-  // After each race they don't win, nudges up by 0.06, capped at 1.0.
+  const n = labels.length, active = getActive();
   if (!active.handicaps) active.handicaps = {};
   const H = active.handicaps;
-
-  // Ensure every current label has a handicap entry
   labels.forEach(l => { if (H[l] === undefined) H[l] = 1.0; });
 
-  // Pick winner using handicap weights
   const weights = labels.map(l => Math.max(0.02, H[l] || 1.0));
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
-  let rand = Math.random() * totalWeight;
-  let winnerIdx = 0;
-  for (let i = 0; i < n; i++) {
-    rand -= weights[i];
-    if (rand <= 0) { winnerIdx = i; break; }
-  }
-  const RACE_DURATION = 11000;
-  const MIN_DURATION = 10000;
-  const startTime = performance.now();
+  const totalW = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random()*totalW, winnerIdx = 0;
+  for (let i=0;i<n;i++){ r -= weights[i]; if (r<=0) { winnerIdx = i; break; } }
 
-  const profiles = labels.map((_, i) => {
+  const trackEls = labels.map((_,i)=>document.getElementById(`track-${i}`));
+  const horseEls = labels.map((_,i)=>document.getElementById(`horse-${i}`));
+  const badgeEls = labels.map((_,i)=>document.getElementById(`pos-${i}`));
+  const gateEls  = labels.map((_,i)=>document.getElementById(`gate-${i}`));
+
+  const trackW = trackEls[0] ? trackEls[0].clientWidth : 400;
+  const finishLine = trackW - 100;
+  const STRIDE = 46;
+
+  // Decide upfront whether this is a photo finish, so the rate is consistent
+  // regardless of how many horses are in the field.
+  const isPhoto = Math.random() < 0.28;
+
+  const others = labels.map((_,i)=>i).filter(i => i !== winnerIdx);
+  const runnerUpIdx = others[Math.floor(Math.random()*others.length)];
+
+  const runners = labels.map((label,i) => {
     const isWinner = i === winnerIdx;
-    const baseSpeed = 0.55 + Math.random() * 0.35;
-    const burst = isWinner ? 0.35 + Math.random() * 0.2 : Math.random() * 0.12;
-    return { baseSpeed, burst, isWinner, pos: 0, crossed: false };
+    let style = isWinner ? (Math.random()<0.62 ? 'close' : 'stalk') : STYLES[Math.floor(Math.random()*STYLES.length)];
+    let margin;
+    if (isWinner)            margin = 0;
+    else if (i === runnerUpIdx) margin = isPhoto ? (1.5 + Math.random()*9) : (16 + Math.random()*26);
+    else                     margin = 26 + Math.random()*70;
+    return { i, label, isWinner, style, margin, target: finishLine - margin, pos: 0, phase: Math.random(), seed: Math.random()*100 };
+  });
+  if (!runners.some(x=>x.style==='front')) { const c = runners.find(x=>!x.isWinner); if (c) c.style='front'; }
+
+  const win = runners[winnerIdx];
+  const runnerUp = runners[runnerUpIdx];
+  const marginLen = runnerUp ? runnerUp.margin/8 : 0;
+
+  let lastCall = '', finished = false, lastT = 0, hoofAcc = 0;
+  raceLog = []; lastRaceGeo = { laneGeo: null, targets: null };
+  function say(k, txt) {
+    if (k === lastCall) return; lastCall = k;
+    callText.textContent = txt;
+    callText.classList.remove('callpop'); void callText.offsetWidth; callText.classList.add('callpop');
+  }
+  const nameOf = rr => rr.label || `Entry ${rr.i+1}`;
+
+  // Lane geometry for particle placement
+  const stageRect = document.getElementById('stage').getBoundingClientRect();
+  const laneGeo = trackEls.map(el => {
+    const rr = el.getBoundingClientRect();
+    return { left: rr.left - stageRect.left, bottom: rr.top - stageRect.top + rr.height - 8 };
   });
 
-  const trackEls = labels.map((_, i) => document.getElementById(`track-${i}`));
-  const horseEls = labels.map((_, i) => document.getElementById(`horse-${i}`));
+  /* ---- Gate sequence, then the race ---- */
+  function beginGateSequence() {
+    // Flash the tote board with final odds before anything else
+    renderTote();
+    toteEl.classList.add('show');
+    bugle();
+    say('gate', 'Final odds are up on the board\u2026');
 
-  // finishLine = where the nose of the winner should reach (right edge of track minus finish stripe)
-  // loserStop  = where non-winners stop (just before finish line, horse body doesn't cross)
-  function getFinishLine(trackEl) {
-    const trackW = trackEl ? trackEl.clientWidth : 300;
-    return trackW - 22;
-  }
-  function getLoserStop(trackEl) {
-    const trackW = trackEl ? trackEl.clientWidth : 300;
-    return trackW - 22 - 96 - 8;
-  }
+    setTimeout(() => {
+      toteEl.classList.remove('show');
+      countdownEl.classList.add('show');
+      countInner.innerHTML = '<div class="count-word pop">RIDERS UP</div>';
+      say('riders', 'The field is in the gate\u2026');
+      setTimeout(runCountdown, 1000);
+    }, 2100);
 
-  let winnerCrossed = false;
-
-  function animate(now) {
-    const elapsed = now - startTime;
-    const t = Math.min(elapsed / RACE_DURATION, 1);
-
-    labels.forEach((_, i) => {
-      const p = profiles[i];
-      if (p.crossed) return;
-
-      const finishLine = getFinishLine(trackEls[i]);
-      const stopPos = p.isWinner ? finishLine : getLoserStop(trackEls[i]);
-
-      const wobble = Math.sin(now * 0.003 + i * 1.3) * 0.04;
-      let speed = p.baseSpeed + wobble;
-
-      // Winner gets a late burst to ensure it crosses
-      if (p.isWinner) {
-        if (t > 0.65) speed += p.burst * Math.min(1, (t - 0.65) / 0.35);
-        // After race time ends, keep moving winner until it crosses — but only after min duration
-        const elapsed2 = now - startTime;
-        if (t >= 1 && !winnerCrossed && elapsed2 >= MIN_DURATION) speed = 1.5;
-        // Hold winner just short of finish until min duration reached
-        if (elapsed2 < MIN_DURATION) {
-          const holdBack = finishLine - 100;
-          if (p.pos > holdBack) p.pos = holdBack;
-        }
+    let step = 0;
+    const seq = ['3','2','1'];
+    function runCountdown() { setTimeout(function tick() {
+      if (step < seq.length) {
+        countInner.innerHTML = `<div class="count-num pop">${seq[step]}</div>`;
+        beep(step === 2 ? 780 : 560, 0.16);
+        step++;
+        setTimeout(tick, 680);
       } else {
-        if (t > 0.85) speed *= 0.82;
+        countdownEl.classList.remove('show');
+        countInner.innerHTML = '';
+        gateClang();
+        crowdStart();
+        gateEls.forEach(g => g && g.classList.add('open'));
+        say('off', "And they're off!");
+        startT = performance.now();
+        requestAnimationFrame(frame);
       }
+    }, 20); }
+  }
 
-      const targetPos = stopPos * Math.min(1, t * speed * 1.2);
-      p.pos = Math.min(stopPos, Math.max(p.pos, targetPos));
+  let startT = 0;
+  const RACE_MS = 12500;
 
-      if (horseEls[i]) {
-        horseEls[i].style.left = (4 + p.pos) + 'px';
-        const bounce = Math.sin(now * 0.018 + i * 0.7) * 2.5;
-        horseEls[i].style.transform = `translateY(calc(-50% + ${bounce}px))`;
-      }
+  function frame(now) {
+    const el = Math.max(0, now - startT);
+    const raw = Math.max(0, Math.min(el / RACE_MS, 1));
+    const t = Math.max(0, Math.min(1, warp(raw)));
+    const dt = Math.min(48, (now - (frame._last || now)) || 16);
+    frame._last = now;
 
-      if (p.isWinner && p.pos >= finishLine && (now - startTime) >= MIN_DURATION) {
-        p.crossed = true;
-        winnerCrossed = true;
+    const inStretch = raw >= 0.75;
+    if (inStretch) slowmoEl.classList.add('on');
+
+    runners.forEach(rr => {
+      const wob = Math.sin(el*0.0016 + rr.seed) * 0.008;
+      const eased = Math.min(1, Math.max(0, styleEase(rr.style, t) + wob));
+      const np = rr.target * eased;
+      const delta = Math.max(0, np - rr.pos);
+      rr.pos = np;
+      rr.phase = (rr.phase + delta/STRIDE) % 1;
+      const hEl = horseEls[rr.i];
+      if (hEl) hEl.style.transform = `translate3d(${rr.pos.toFixed(2)}px,-50%,0)`;
+      driveHorse(horseParts[rr.i], rr.phase);
+      // Dust off the back hooves
+      if (delta > 0.05) {
+        const g = laneGeo[rr.i];
+        spawnDust(g.left + rr.pos + 20, g.bottom, Math.min(1.4, delta * 0.32));
       }
     });
 
-    if (!winnerCrossed) {
-      requestAnimationFrame(animate);
-    } else {
-      // All losers snap to their stop position cleanly
-      labels.forEach((_, i) => {
-        const p = profiles[i];
-        if (!p.isWinner && horseEls[i]) {
-          const stopPos = getLoserStop(trackEls[i]);
-          horseEls[i].style.left = (4 + stopPos) + 'px';
-          horseEls[i].style.transform = 'translateY(-50%)';
-        }
-        if (p.isWinner && horseEls[i]) {
-          horseEls[i].style.transform = 'translateY(-50%)';
-        }
-      });
+    // Record for replay
+    raceLog.push({ raw, pos: runners.map(r => r.pos) });
 
-      racing = false;
-      raceStatus.textContent = 'Photo Finish!';
-      const wLabel = labels[winnerIdx] || `Entry ${winnerIdx+1}`;
-      winnerName.textContent = wLabel;
-      winnerBanner.classList.add('show');
-      updateCount();
+    // Crowd parallax — the far side drifts as the field moves down the track
+    if (crowdLayer) crowdLayer.setAttribute('transform', `translate(${(-26 * t).toFixed(1)} 0)`);
 
-      const wins = getWins();
-      const key = labels[winnerIdx] || `__e_${winnerIdx}`;
-      wins[key] = (wins[key] || 0) + 1;
+    stepParticles(dt);
+    drawParticles();
 
-      // Update handicaps
-      const active2 = getActive();
-      if (!active2.handicaps) active2.handicaps = {};
-      labels.forEach((l, i) => {
-        if (!l) return;
-        if (i === winnerIdx) {
-          // Winner: crash weight down to 0.05, floor at 0.02
-          active2.handicaps[l] = Math.max(0.02, (active2.handicaps[l] || 1.0) * 0.05);
-        } else {
-          // Losers: recover +0.06 per race, cap at 1.0
-          active2.handicaps[l] = Math.min(1.0, (active2.handicaps[l] || 1.0) + 0.06);
-        }
-      });
+    const order = [...runners].sort((a,b)=>b.pos-a.pos);
+    order.forEach((rr, rank) => {
+      const b = badgeEls[rr.i]; if (!b) return;
+      b.textContent = rank+1;
+      b.className = 'pos-badge' + (rank===0?' p1':rank===1?' p2':rank===2?' p3':'');
+    });
 
-      saveState();
-      renderWins();
+    const lead = order[0], second = order[1];
+    const lengths = Math.max(0.5, (second ? lead.pos - second.pos : 0)/8);
+    const winRank = order.indexOf(win);
+
+    raceClock.textContent = (el/1000).toFixed(1) + 's' + (inStretch ? '  \u25B8 SLOW-MO' : '');
+    crowdSwell(Math.pow(t, 1.7));
+
+    // Hoofbeat rhythm, accelerating with the field
+    hoofAcc += dt * (0.55 + t*0.75);
+    if (hoofAcc > 105) { hoofAcc = 0; hoofThud(inStretch ? 0.05 : 0.085); }
+
+    if (t < 0.04) say('off', "And they're off!");
+    else if (t < 0.16) say('break', `${nameOf(lead)} breaks alertly and takes the early lead.`);
+    else if (t < 0.34) say('back', `Down the backstretch \u2014 ${nameOf(lead)} by ${lengths.toFixed(1)} over ${nameOf(second)}.`);
+    else if (t < 0.52) say('mid', `${nameOf(lead)} still in command, ${nameOf(second)} tracking in second.`);
+    else if (t < 0.68) { if (winRank > 2) say('move', `Around the far turn \u2014 here comes ${nameOf(win)} from off the pace!`); else say('move2', `Into the far turn, ${nameOf(lead)} clinging to the lead.`); }
+    else if (t < 0.84) say('stretch', `Turning for home! ${nameOf(lead)} and ${nameOf(second)} head to head!`);
+    else if (t < 0.95) { if (winRank===0) say('takes', `${nameOf(win)} takes over inside the sixteenth pole!`); else say('drive', `They're in the drive \u2014 ${nameOf(win)} is flying on the outside!`); }
+    else if (t < 1) say('wire', 'To the wire they come\u2026');
+
+    if (raw < 1) { requestAnimationFrame(frame); return; }
+    if (finished) return;
+    finished = true;
+
+    runners.forEach(rr => {
+      const hEl = horseEls[rr.i];
+      if (hEl) hEl.style.transform = `translate3d(${rr.target.toFixed(2)}px,-50%,0)`;
+      driveHorse(horseParts[rr.i], 0);
+    });
+
+    slowmoEl.classList.remove('on');
+    racing = false;
+    raceClock.textContent = 'OFFICIAL';
+    lastRaceGeo = { horseEls, targets: runners.map(r => r.target) };
+    replayBtn.disabled = false;
+
+    let marginTxt;
+    if (marginLen < 0.35) marginTxt = 'by a nose';
+    else if (marginLen < 0.7) marginTxt = 'by a head';
+    else if (marginLen < 1.1) marginTxt = 'by a neck';
+    else marginTxt = `by ${marginLen.toFixed(1)} lengths`;
+
+    if (isPhoto) {
+      flashEl.classList.remove('fire'); void flashEl.offsetWidth; flashEl.classList.add('fire');
+      photoStamp.classList.add('show');
+      beep(1400, 0.07);
+      setTimeout(() => photoStamp.classList.remove('show'), 1900);
     }
+
+    setTimeout(() => {
+      say('final', `${nameOf(win)} wins it ${marginTxt}!`);
+      crowdSwell(1);
+      winnerSilk.style.background = COLORS[winnerIdx % COLORS.length];
+      winnerName.textContent = nameOf(win);
+      winnerMargin.textContent = `${marginTxt.toUpperCase()}${runnerUp ? '  \u00B7  ' + nameOf(runnerUp) + ' second' : ''}`;
+      winnerBanner.classList.add('show');
+      // Confetti from the winner's lane
+      const g = laneGeo[winnerIdx];
+      spawnConfetti(g.left + win.target + 45, g.bottom - 20, 90);
+      spawnConfetti(g.left + win.target + 45, g.bottom - 20, 50);
+      celebrate();
+      setTimeout(() => { crowdSwell(0); setTimeout(crowdStop, 1400); }, 1600);
+      updateCount();
+    }, isPhoto ? 950 : 220);
+
+    const wins = getWins();
+    const key = win.label || `__e_${winnerIdx}`;
+    wins[key] = (wins[key]||0)+1;
+    labels.forEach((l,i) => {
+      if (!l) return;
+      if (i === winnerIdx) H[l] = Math.max(0.02, (H[l]||1.0)*0.05);
+      else H[l] = Math.min(1.0, (H[l]||1.0)+0.06);
+    });
+    saveState(); renderWins();
   }
 
-  requestAnimationFrame(animate);
+  function celebrate() {
+    let last = performance.now();
+    (function loop(now) {
+      const dt = Math.min(48, now - last); last = now;
+      stepParticles(dt); drawParticles();
+      if (particles.length) requestAnimationFrame(loop);
+      else fxc.clearRect(0,0,fx.width,fx.height);
+    })(performance.now());
+  }
+
+  beginGateSequence();
 }
 
-// Set management
+/* ================= PANELS ================= */
+function renderList() {
+  const labels = getLabels(); listEl.innerHTML = '';
+  labels.forEach((label,i) => {
+    const row = document.createElement('div'); row.className='label-row';
+    const dot = document.createElement('div'); dot.className='color-dot'; dot.style.background=COLORS[i%COLORS.length];
+    const input = document.createElement('input'); input.className='label-input'; input.type='text';
+    input.value=label; input.placeholder=`Horse ${i+1}`; input.maxLength=40;
+    input.addEventListener('input', e => { getLabels()[i]=e.target.value; renderLanes(); saveState(); });
+    const rm = document.createElement('button'); rm.className='rm-btn'; rm.textContent='\u00D7';
+    rm.addEventListener('click', () => { getLabels().splice(i,1); renderAll(); saveState(); });
+    row.append(dot,input,rm); listEl.appendChild(row);
+  });
+}
+function renderWins() {
+  const labels=getLabels(), wins=getWins(), H=getActive().handicaps||{};
+  winsListEl.innerHTML=''; let total=0;
+  Object.values(wins).forEach(v=>total+=(v||0));
+  totalWinsEl.textContent=total;
+  if (!labels.length) { winsListEl.innerHTML='<div class="empty-state">No races yet.</div>'; return; }
+  const weights=labels.map(l=>Math.max(0.02, H[l]!==undefined?H[l]:1.0));
+  const tw=weights.reduce((a,b)=>a+b,0);
+  const odds=weights.map(w=>((w/tw)*100).toFixed(1));
+  const counts=labels.map(l=>wins[l]||0), maxC=Math.max(1,...counts);
+  labels.forEach((label,i) => {
+    const c=counts[i];
+    const row=document.createElement('div');
+    row.className='win-row'+(c>0&&c===maxC?' leader':'');
+    row.innerHTML=`<div class="color-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+      <div class="win-name">${label||`Entry ${i+1}`}</div>
+      <div class="win-bar"><div class="win-bar-fill" style="width:${(c/maxC)*100}%"></div></div>
+      <div class="win-count">${c}w &nbsp;<span style="color:var(--cream-dim);font-weight:400;">${odds[i]}%</span></div>`;
+    winsListEl.appendChild(row);
+  });
+}
+function updateCount() {
+  const labels=getLabels();
+  countEl.textContent=labels.length;
+  addBtn.disabled=labels.length>=MAX;
+  raceBtn.disabled=labels.length<2||racing;
+}
+function renderSetSelect() {
+  setSelect.innerHTML='<option value="__working__">Working Set (unsaved)</option>';
+  Object.keys(state.sets).sort().forEach(n=>{ const o=document.createElement('option'); o.value=n;o.textContent=n; setSelect.appendChild(o); });
+  setSelect.value=state.activeSet||'__working__';
+  const isSaved=!!state.activeSet;
+  renameBtn.disabled=!isSaved; deleteSetBtn.disabled=!isSaved;
+}
+function renderAll(){ renderSetSelect(); renderList(); renderLanes(); renderWins(); updateCount(); }
 function switchToSet(name) {
-  state.activeSet = name === '__working__' ? null : (state.sets[name] ? name : null);
+  state.activeSet = name==='__working__'?null:(state.sets[name]?name:null);
   saveState(); renderAll(); winnerBanner.classList.remove('show');
+  callText.textContent='The field is loaded and ready at the gate.';
+  raceClock.textContent='AWAITING START';
+  raceLog = []; lastRaceGeo = { horseEls: null, targets: null }; replayBtn.disabled = true;
 }
-
-let modalCb = null;
-function openModal({title, body, placeholder, initial, onConfirm}) {
-  modalTitle.textContent = title; modalBody.textContent = body;
-  modalInput.placeholder = placeholder||''; modalInput.value = initial||'';
-  modalCb = onConfirm; modal.classList.add('show');
-  setTimeout(() => { modalInput.focus(); modalInput.select(); }, 50);
+let modalCb=null;
+function openModal({title,body,placeholder,initial,onConfirm}) {
+  modalTitle.textContent=title; modalBody.textContent=body;
+  modalInput.placeholder=placeholder||''; modalInput.value=initial||'';
+  modalCb=onConfirm; modal.classList.add('show');
+  setTimeout(()=>{modalInput.focus();modalInput.select();},50);
 }
-function closeModal() { modal.classList.remove('show'); modalCb = null; }
-
+function closeModal(){ modal.classList.remove('show'); modalCb=null; }
 function saveSetAs() {
   openModal({ title:'Save As New Set', body:'Name this set of entries.', placeholder:'e.g., Team Names', initial:'',
     onConfirm: name => {
-      name = (name||'').trim();
-      if (!name) return false;
-      if (name === '__working__') return false;
-      if (state.sets[name] && !confirm(`"${name}" exists. Overwrite?`)) return false;
-      state.sets[name] = { labels: [...getLabels()], wins: {} };
-      state.activeSet = name; saveState(); renderAll(); return true;
-    }
-  });
+      name=(name||'').trim();
+      if (!name||name==='__working__') return false;
+      state.sets[name]={labels:[...getLabels()],wins:{},handicaps:{}};
+      state.activeSet=name; saveState(); renderAll(); return true;
+    }});
 }
-
 function saveCurrent() {
   if (!state.activeSet) { saveSetAs(); return; }
-  saveState();
-  saveBtn.textContent = 'Saved ✓';
-  setTimeout(() => saveBtn.textContent = 'Save', 1200);
+  saveState(); saveBtn.textContent='Saved \u2713';
+  setTimeout(()=>saveBtn.textContent='Save',1200);
 }
 
-// Wire
+/* ================= REPLAY ================= */
+function playReplay() {
+  if (replaying || racing || !raceLog.length || !lastRaceGeo.horseEls) return;
+  const { horseEls, targets } = lastRaceGeo;
+
+  // Replay only the business end of the race
+  let startIdx = raceLog.findIndex(f => f.raw >= 0.78);
+  if (startIdx < 0) startIdx = Math.max(0, Math.floor(raceLog.length * 0.75));
+  const seg = raceLog.slice(startIdx);
+  if (seg.length < 2) return;
+
+  replaying = true;
+  replayBtn.disabled = true;
+  replayBadge.classList.add('show');
+  winnerBanner.classList.remove('show');
+  slowmoEl.classList.add('on');
+  particles = [];
+  fxc.clearRect(0, 0, fx.width, fx.height);
+
+  const SPEED = 0.4;                 // 2.5x slower than the original frames
+  const FRAME_MS = 16.7 / SPEED;
+  const phases = seg[0].pos.map(() => Math.random());
+  let prev = seg[0].pos.slice();
+  let i = 0, acc = 0, last = performance.now();
+
+  function step(now) {
+    const dt = Math.min(64, now - last); last = now;
+    acc += dt;
+    while (acc >= FRAME_MS && i < seg.length - 1) { acc -= FRAME_MS; i++; }
+
+    const cur = seg[i].pos;
+    cur.forEach((pos, k) => {
+      const d = Math.max(0, pos - prev[k]);
+      phases[k] = (phases[k] + d / 46) % 1;
+      const hEl = horseEls[k];
+      if (hEl) hEl.style.transform = `translate3d(${pos.toFixed(2)}px,-50%,0)`;
+      driveHorse(horseParts[k], phases[k]);
+    });
+    prev = cur.slice();
+
+    stepParticles(dt);
+    drawParticles();
+
+    if (i < seg.length - 1) {
+      requestAnimationFrame(step);
+    } else {
+      // Settle back to the official result
+      targets.forEach((tg, k) => {
+        const hEl = horseEls[k];
+        if (hEl) hEl.style.transform = `translate3d(${tg.toFixed(2)}px,-50%,0)`;
+        driveHorse(horseParts[k], 0);
+      });
+      slowmoEl.classList.remove('on');
+      replayBadge.classList.remove('show');
+      replaying = false;
+      replayBtn.disabled = false;
+      winnerBanner.classList.add('show');
+      fxc.clearRect(0, 0, fx.width, fx.height);
+    }
+  }
+  requestAnimationFrame(step);
+}
+replayBtn.addEventListener('click', playReplay);
+replayBtn.disabled = true;
+
 raceBtn.addEventListener('click', startRace);
 addBtn.addEventListener('click', () => {
-  if (getLabels().length >= MAX) return;
+  if (getLabels().length>=MAX) return;
   getLabels().push(''); renderAll(); saveState();
-  const inputs = listEl.querySelectorAll('.label-input');
+  const inputs=listEl.querySelectorAll('.label-input');
   if (inputs.length) inputs[inputs.length-1].focus();
 });
-clearBtn.addEventListener('click', () => { getActive().labels=[]; saveState(); renderAll(); winnerBanner.classList.remove('show'); });
-resetBtn.addEventListener('click', () => { getActive().labels=[...DEFAULTS]; saveState(); renderAll(); winnerBanner.classList.remove('show'); });
-setSelect.addEventListener('change', e => switchToSet(e.target.value));
+clearBtn.addEventListener('click', ()=>{ getActive().labels=[]; saveState(); renderAll(); winnerBanner.classList.remove('show'); });
+resetBtn.addEventListener('click', ()=>{ getActive().labels=[...DEFAULTS]; saveState(); renderAll(); winnerBanner.classList.remove('show'); });
+setSelect.addEventListener('change', e=>switchToSet(e.target.value));
 saveBtn.addEventListener('click', saveCurrent);
 saveAsBtn.addEventListener('click', saveSetAs);
 renameBtn.addEventListener('click', () => {
   if (!state.activeSet) return;
-  const old = state.activeSet;
+  const old=state.activeSet;
   openModal({ title:'Rename Set', body:`Rename "${old}" to:`, placeholder:'New name', initial:old,
     onConfirm: name => {
-      name = (name||'').trim();
-      if (!name || name===old) return !!name;
-      if (state.sets[name]) { alert(`"${name}" already exists.`); return false; }
-      state.sets[name] = state.sets[old]; delete state.sets[old];
-      state.activeSet = name; saveState(); renderAll(); return true;
-    }
-  });
+      name=(name||'').trim();
+      if (!name||name===old) return !!name;
+      if (state.sets[name]) return false;
+      state.sets[name]=state.sets[old]; delete state.sets[old];
+      state.activeSet=name; saveState(); renderAll(); return true;
+    }});
 });
 deleteSetBtn.addEventListener('click', () => {
   if (!state.activeSet) return;
-  delete state.sets[state.activeSet]; state.activeSet = null; saveState(); renderAll(); winnerBanner.classList.remove('show');
+  delete state.sets[state.activeSet]; state.activeSet=null;
+  saveState(); renderAll(); winnerBanner.classList.remove('show');
 });
-clearWinsBtn.addEventListener('click', () => {
-  const active = getActive();
-  active.wins = {};
-  active.handicaps = {};
-  saveState(); renderWins();
+clearWinsBtn.addEventListener('click', () => { const a=getActive(); a.wins={}; a.handicaps={}; saveState(); renderWins(); });
+soundBtn.addEventListener('click', () => {
+  soundOn=!soundOn;
+  soundBtn.classList.toggle('on', soundOn);
+  soundBtn.innerHTML = soundOn ? '\uD83D\uDD0A Sound' : '\uD83D\uDD07 Muted';
+  if (!soundOn) crowdStop();
 });
-tabs.forEach(t => t.addEventListener('click', () => {
-  const target = t.dataset.tab;
-  tabs.forEach(x => x.classList.toggle('active', x===t));
-  tabPanels.forEach(p => p.classList.toggle('active', p.id===`tab-${target}`));
+tabs.forEach(t=>t.addEventListener('click', () => {
+  const target=t.dataset.tab;
+  tabs.forEach(x=>x.classList.toggle('active',x===t));
+  tabPanels.forEach(p=>p.classList.toggle('active',p.id===`tab-${target}`));
   if (target==='wins') renderWins();
 }));
 modalCancel.addEventListener('click', closeModal);
-modalConfirm.addEventListener('click', () => { if (modalCb) { const r = modalCb(modalInput.value); if (r!==false) closeModal(); } else closeModal(); });
-modalInput.addEventListener('keydown', e => { if (e.key==='Enter'){e.preventDefault();modalConfirm.click();} if(e.key==='Escape')closeModal(); });
-modal.addEventListener('click', e => { if (e.target===modal) closeModal(); });
+modalConfirm.addEventListener('click', ()=>{ if(modalCb){const r=modalCb(modalInput.value); if(r!==false)closeModal();} else closeModal(); });
+modalInput.addEventListener('keydown', e=>{ if(e.key==='Enter'){e.preventDefault();modalConfirm.click();} if(e.key==='Escape')closeModal(); });
+modal.addEventListener('click', e=>{ if(e.target===modal)closeModal(); });
+window.addEventListener('resize', ()=>{ if(!racing){ renderLanes(); } sizeFX(); });
 
+buildGrandstand();
+buildFurlongs();
+crowdLayer = document.getElementById('crowd-layer');
 renderAll();
 </script>
 </body>
