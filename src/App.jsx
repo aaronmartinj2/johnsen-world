@@ -1,5 +1,4 @@
 import './index.css'
-
 const projects = [
   {
     id: '001',
@@ -43,6 +42,14 @@ const projects = [
   },
   {
     id: '006',
+    title: 'DECISION WHEEL',
+    desc: 'Two ways to stop overthinking. Spin the wheel or race the horses — either way, something decides for you. Tracks wins and handicaps past winners.',
+    tags: ['Game', 'Randomizer', 'Horse Race'],
+    href: '/decision-wheel/',
+    live: true,
+  },
+  {
+    id: '007',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],
@@ -51,7 +58,6 @@ const projects = [
     soon: true,
   },
 ]
-
 function ProjectCard({ project }) {
   const isSoon = !project.live
   const inner = (
@@ -82,7 +88,6 @@ function ProjectCard({ project }) {
     </a>
   )
 }
-
 export default function App() {
   const year = new Date().getFullYear()
   return (
