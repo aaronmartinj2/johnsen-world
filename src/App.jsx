@@ -1,5 +1,4 @@
 import './index.css'
-
 const projects = [
   {
     id: '001',
@@ -19,6 +18,30 @@ const projects = [
   },
   {
     id: '003',
+    title: 'LINEUP CARD',
+    desc: 'Youth baseball roster manager. Drag-and-drop fielding assignments, randomized batting orders, and printable lineup cards for game day.',
+    tags: ['Baseball', 'PWA', 'Drag & Drop'],
+    href: '/lineup/',
+    live: true,
+  },
+  {
+    id: '004',
+    title: 'MONKEY SHUTTLE',
+    desc: 'A one-tap space arcade game. Pilot a banana-powered rocket from the Moon to the edge of the solar system, dodging satellites and escaping black holes. Coming soon to the App Store.',
+    tags: ['HTML5 Canvas', 'Arcade', 'iOS'],
+    href: '/monkey-shuttle/',
+    live: true,
+  },
+  {
+    id: '005',
+    title: 'DECISION WHEEL',
+    desc: 'Two ways to stop overthinking. Spin the wheel or race the horses — either way, something decides for you. Tracks wins and handicaps past winners.',
+    tags: ['Game', 'Randomizer', 'Horse Race'],
+    href: '/decision-wheel/',
+    live: true,
+  },
+  {
+    id: '006',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],
