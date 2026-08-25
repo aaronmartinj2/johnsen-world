@@ -1,4 +1,5 @@
 import './index.css'
+
 const projects = [
   {
     id: '001',
@@ -10,14 +11,6 @@ const projects = [
   },
   {
     id: '002',
-    title: 'SENSEI',
-    desc: 'Daily stock screening powered by AI and free public market data. Two momentum screens every day. Educational and entertainment purposes only.',
-    tags: ['AI', 'Finance', 'Yahoo Finance'],
-    href: '/sensei.html',
-    live: true,
-  },
-  {
-    id: '003',
     title: 'NEWPLAN',
     desc: 'A HOP-focused EHS platform for event learning and safety intelligence. Currently in development.',
     tags: ['SaaS', 'EHS', 'HOP'],
@@ -25,31 +18,7 @@ const projects = [
     live: true,
   },
   {
-    id: '004',
-    title: 'LINEUP CARD',
-    desc: 'Youth baseball roster manager. Drag-and-drop fielding assignments, randomized batting orders, and printable lineup cards for game day.',
-    tags: ['Baseball', 'PWA', 'Drag & Drop'],
-    href: '/lineup/',
-    live: true,
-  },
-  {
-    id: '005',
-    title: 'MONKEY SHUTTLE',
-    desc: 'A one-tap space arcade game. Pilot a banana-powered rocket from the Moon to the edge of the solar system, dodging satellites and escaping black holes. Coming soon to the App Store.',
-    tags: ['HTML5 Canvas', 'Arcade', 'iOS'],
-    href: '/monkey-shuttle/',
-    live: true,
-  },
-  {
-    id: '006',
-    title: 'DECISION WHEEL',
-    desc: 'Two ways to stop overthinking. Spin the wheel or race the horses — either way, something decides for you. Tracks wins and handicaps past winners.',
-    tags: ['Game', 'Randomizer', 'Horse Race'],
-    href: '/decision-wheel/',
-    live: true,
-  },
-  {
-    id: '007',
+    id: '003',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],
@@ -58,6 +27,7 @@ const projects = [
     soon: true,
   },
 ]
+
 function ProjectCard({ project }) {
   const isSoon = !project.live
   const inner = (
@@ -88,6 +58,7 @@ function ProjectCard({ project }) {
     </a>
   )
 }
+
 export default function App() {
   const year = new Date().getFullYear()
   return (
