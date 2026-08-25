@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Decision Derby</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --turf: #1a3a1a;
+  --turf-light: #2a5a2a;
+  --turf-mid: #245224;
+  --dirt: #8B6914;
+  --dirt-light: #b8922a;
+  --cream: #f5f0e0;
+  --cream-dim: #c8b89a;
+  --crimson: #8B1A1A;
+  --gold: #d4a820;
+  --gold-light: #f0cc50;
+  --rail: #c8a050;
+  --sky: #1a2a3a;
+  --sky-light: #2a3a4a;
+  --shadow: rgba(0,0,0,0.6);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100vh;
+  background: var(--sky);
+  color: var(--cream);
+  font-family: 'Courier Prime', monospace;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(212,168,32,0.12) 0%, transparent 60%),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.01) 2px, rgba(255,255,255,0.01) 4px);
+  pointer-events: none;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 3rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.header-border {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.header-line {
+  flex: 1;
+  max-width: 200px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+.eyebrow {
+  font-size: 0.65rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-style: italic;
+  font-weight: 900;
+  color: var(--cream);
+  text-shadow: 0 2px 20px rgba(212,168,32,0.4);
+  letter-spacing: 0.02em;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: var(--cream-dim);
+  letter-spacing: 0.2em;
+  margin-top: 0.25rem;
+}
+
+/* Set bar */
+.set-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(212,168,32,0.25);
+  border-radius: 6px;
+}
+
+.set-bar-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.set-select {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.9rem;
+  background: rgba(0,0,0,0.4);
+  color: var(--cream);
+  border: 1px solid rgba(212,168,32,0.3);
+  border-radius: 4px;
+  padding: 0.4rem 0.65rem;
+  min-width: 160px;
+  cursor: pointer;
+}
+
+.set-select:focus { outline: none; border-color: var(--gold); }
+.set-select option { background: #1a2a3a; color: var(--cream); }
+
+.sbar-btn {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(212,168,32,0.3);
+  background: transparent;
+  color: var(--cream-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sbar-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.sbar-btn.danger:hover:not(:disabled) { border-color: var(--crimson); color: #ff6060; }
+.sbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Layout */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+/* Track */
+.track-wrap {
+  background: var(--turf);
+  border-radius: 12px;
+  border: 3px solid var(--rail);
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 0 40px rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.track-header {
+  background: linear-gradient(180deg, var(--crimson) 0%, #6a1010 100%);
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid var(--rail);
+}
+
+.track-title {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--gold-light);
+  letter-spacing: 0.05em;
+}
+
+.race-status {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cream-dim);
+  font-style: italic;
+}
+
+.oval-container {
+  padding: 1.25rem;
+  position: relative;
+  min-height: 340px;
+}
+
+/* Oval track SVG-based */
+.oval-svg {
+  width: 100%;
+  display: block;
+}
+
+/* Lanes inside oval */
+.lanes-area {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.lane {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+  height: 54px;
+}
+
+.lane-number {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--cream-dim);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.lane-track {
+  flex: 1;
+  height: 50px;
+  background: linear-gradient(180deg, var(--turf-light) 0%, var(--turf-mid) 50%, var(--turf-light) 100%);
+  border-radius: 25px;
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.lane-track::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  background: repeating-linear-gradient(90deg,
+    rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px,
+    transparent 1px, transparent 40px);
+  border-radius: 22px;
+}
+
+.finish-line {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 18px;
+  background: repeating-linear-gradient(
+    0deg,
+    #fff 0px, #fff 4px,
+    #222 4px, #222 8px
+  );
+  opacity: 0.6;
+  border-radius: 0 25px 25px 0;
+}
+
+.horse {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 4px;
+  line-height: 1;
+  z-index: 2;
+  filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+  will-change: left;
+  display: flex;
+  align-items: center;
+}
+
+.lane-label {
+  font-size: 0.8rem;
+  color: var(--cream);
+  width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-style: italic;
+}
+
+/* Winner banner */
+.winner-banner {
+  display: none;
+  text-align: center;
+  padding: 0.75rem;
+  background: linear-gradient(90deg, transparent, rgba(212,168,32,0.2), transparent);
+  border-top: 2px solid var(--gold);
+}
+
+.winner-banner.show { display: block; }
+.winner-banner .label { font-size: 0.65rem; letter-spacing: 0.3em; color: var(--gold); text-transform: uppercase; }
+.winner-banner .name { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.6rem; color: var(--cream); margin-top: 0.1rem; }
+
+/* Sidebar */
+.sidebar {}
+
+.panel {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(212,168,32,0.2);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(212,168,32,0.15);
+}
+
+.panel-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.panel-sub {
+  font-size: 0.7rem;
+  color: var(--cream-dim);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.2rem;
+  background: rgba(0,0,0,0.3);
+  padding: 0.2rem;
+  border-radius: 6px;
+  margin-bottom: 0.85rem;
+}
+
+.tab {
+  flex: 1;
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: transparent;
+  border: none;
+  color: var(--cream-dim);
+  padding: 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab.active { background: rgba(212,168,32,0.15); color: var(--gold); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.labels-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.labels-list::-webkit-scrollbar { width: 4px; }
+.labels-list::-webkit-scrollbar-thumb { background: var(--dirt); border-radius: 2px; }
+
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.label-input {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(212,168,32,0.15);
+  color: var(--cream);
+  padding: 0.45rem 0.6rem;
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+
+.label-input:focus { outline: none; border-color: var(--gold); }
+.label-input::placeholder { color: rgba(200,184,154,0.4); font-style: italic; }
+
+.rm-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--cream-dim);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.rm-btn:hover { background: var(--crimson); border-color: var(--crimson); color: white; }
+
+.btn-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(212,168,32,0.12);
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(212,168,32,0.25);
+  background: transparent;
+  color: var(--cream-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.2s;
+  min-width: 70px;
+}
+
+.btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.btn.danger:hover:not(:disabled) { border-color: var(--crimson); color: #ff6060; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Win rows */
+.wins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.wins-list::-webkit-scrollbar { width: 4px; }
+.wins-list::-webkit-scrollbar-thumb { background: var(--dirt); border-radius: 2px; }
+
+.win-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.win-row.leader { background: rgba(212,168,32,0.08); border: 1px solid rgba(212,168,32,0.2); }
+.win-name { font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.win-bar { width: 50px; height: 5px; background: rgba(0,0,0,0.3); border-radius: 3px; overflow: hidden; }
+.win-bar-fill { height: 100%; background: linear-gradient(90deg, var(--dirt), var(--gold)); transition: width 0.5s; }
+.win-count { font-size: 0.75rem; font-weight: 700; color: var(--gold); text-align: right; white-space: nowrap; }
+.win-odds { display: none; }
+.empty-state { text-align: center; padding: 1.5rem; color: var(--cream-dim); font-style: italic; font-size: 0.85rem; }
+
+/* Race button */
+.race-btn {
+  width: 100%;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1.3rem;
+  padding: 0.9rem;
+  color: var(--sky);
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 50%, #a07a10 100%);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(212,168,32,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.race-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
+.race-btn:active:not(:disabled) { transform: translateY(1px); }
+.race-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal-backdrop.show { display: flex; }
+
+.modal {
+  background: var(--sky-light);
+  border: 1px solid rgba(212,168,32,0.35);
+  border-radius: 10px;
+  padding: 1.75rem;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+
+.modal-title { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.4rem; margin-bottom: 0.5rem; }
+.modal-body { color: var(--cream-dim); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5; }
+.modal-input {
+  width: 100%;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(212,168,32,0.2);
+  color: var(--cream);
+  padding: 0.65rem 0.8rem;
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.95rem;
+  border-radius: 5px;
+  margin-bottom: 1rem;
+}
+.modal-input:focus { outline: none; border-color: var(--gold); }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.modal-actions .btn { flex: 0 0 auto; min-width: 90px; }
+.btn-gold { background: linear-gradient(180deg, var(--gold-light), var(--gold)); color: var(--sky); border-color: var(--gold); font-weight: 700; }
+.btn-gold:hover:not(:disabled) { color: var(--sky) !important; filter: brightness(1.1); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="header-border">
+      <div class="header-line"></div>
+      <div class="eyebrow">Post Time</div>
+      <div class="header-line"></div>
+    </div>
+    <h1>The Decision Derby</h1>
+    <div class="subtitle">They're at the gate &mdash; place your attention</div>
+  </header>
+
+  <div id="set-bar" class="set-bar">
+    <span class="set-bar-label">Set</span>
+    <select id="set-select" class="set-select"><option value="__working__">Working Set (unsaved)</option></select>
+    <button id="save-btn" class="sbar-btn">Save</button>
+    <button id="save-as-btn" class="sbar-btn">Save As</button>
+    <button id="rename-btn" class="sbar-btn" disabled>Rename</button>
+    <button id="delete-set-btn" class="sbar-btn danger" disabled>Delete</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="track-wrap">
+        <div class="track-header">
+          <div class="track-title">Churchill Decisions — Race #1</div>
+          <div id="race-status" class="race-status">Awaiting Start</div>
+        </div>
+        <div class="lanes-area" id="lanes-area"></div>
+        <div id="winner-banner" class="winner-banner">
+          <div class="label">🏆 And the winner is</div>
+          <div id="winner-name" class="name">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel">
+        <div class="tabs">
+          <button class="tab active" data-tab="labels">Horses</button>
+          <button class="tab" data-tab="wins">Record</button>
+        </div>
+
+        <div id="tab-labels" class="tab-panel active">
+          <div class="panel-header">
+            <span class="panel-title">Entries</span>
+            <span class="panel-sub"><span id="count">0</span>/20</span>
+          </div>
+          <div id="labels-list" class="labels-list"></div>
+          <div class="btn-row">
+            <button id="add-btn" class="btn">+ Add</button>
+            <button id="clear-btn" class="btn">Clear</button>
+            <button id="reset-btn" class="btn">Defaults</button>
+          </div>
+        </div>
+
+        <div id="tab-wins" class="tab-panel">
+          <div class="panel-header">
+            <span class="panel-title">Win Record</span>
+            <span class="panel-sub"><span id="total-wins">0</span> races</span>
+          </div>
+          <div id="wins-list" class="wins-list"></div>
+          <div class="btn-row">
+            <button id="clear-wins-btn" class="btn danger">Clear Record</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="race-btn" class="race-btn">🏇 Start the Race</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal-backdrop">
+  <div class="modal">
+    <div id="modal-title" class="modal-title">Save Set</div>
+    <div id="modal-body" class="modal-body">Name this set.</div>
+    <input id="modal-input" class="modal-input" type="text" maxlength="40" />
+    <div class="modal-actions">
+      <button id="modal-cancel" class="btn">Cancel</button>
+      <button id="modal-confirm" class="btn btn-gold">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MAX = 20;
+const STORAGE_KEY = 'decision-wheel-v1';
+const DEFAULTS = ['Lightning','Thunderbolt','Iron Will','Silver Streak','Dark Horse','Golden Gate','Wild Card','Storm Chaser'];
+const COLORS = ['#c9303b','#e8b84a','#2a9d8f','#4a5ea8','#d66a3e','#8b5a9f','#5b8c5a','#b03a5c','#3f7cac','#d4a845','#6a4c93','#e07856','#2f6b8e','#a84a3e','#7ba05b','#c96b87','#5c7fb8','#d49545','#4e8f7e','#9c5a6c'];
+const HORSE_COATS = ['#c8a060','#8B4513','#d4b483','#5a3010','#e0c898','#4a3020','#c09050','#703010','#b89060','#3a2010','#d0a870','#6a4020','#bc9458','#502810','#cca870','#7a4a28','#d4b48a','#402010','#b08848','#5a3818'];
+
+function shadeColor(hex, amt) {
+  let r = Math.max(0, Math.min(255, parseInt(hex.slice(1,3),16) + amt));
+  let g = Math.max(0, Math.min(255, parseInt(hex.slice(3,5),16) + amt));
+  let b = Math.max(0, Math.min(255, parseInt(hex.slice(5,7),16) + amt));
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
+function makeHorseSVG(silkColor, coatColor) {
+  const mane = shadeColor(coatColor, -50);
+  const dark = shadeColor(coatColor, -25);
+  const hi   = shadeColor(coatColor,  18);
+  const sc   = shadeColor(silkColor, -40);
+
+  // Viewbox 96x50. Body is a slim polygon ~12px tall. Legs 18px below.
+  // Horse faces RIGHT. Neck is short and angled ~45deg. Head near-horizontal.
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 50" width="96" height="50">
+  <g>
+    <!-- LEGS behind body -->
+    <!-- Hind near (sweeps back-down) -->
+    <line x1="22" y1="29" x2="15" y2="39" stroke="${coatColor}" stroke-width="3.2" stroke-linecap="round"/>
+    <line x1="15" y1="39" x2="11" y2="48" stroke="${coatColor}" stroke-width="2.8" stroke-linecap="round"/>
+    <!-- Hind far (reaches forward, darker) -->
+    <line x1="26" y1="29" x2="31" y2="38" stroke="${dark}" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="31" y1="38" x2="33" y2="48" stroke="${dark}" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- Front near (reaches forward) -->
+    <line x1="54" y1="29" x2="60" y2="38" stroke="${coatColor}" stroke-width="3.2" stroke-linecap="round"/>
+    <line x1="60" y1="38" x2="64" y2="48" stroke="${coatColor}" stroke-width="2.8" stroke-linecap="round"/>
+    <!-- Front far (tucked, darker) -->
+    <line x1="50" y1="29" x2="48" y2="37" stroke="${dark}" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="48" y1="37" x2="50" y2="48" stroke="${dark}" stroke-width="2.4" stroke-linecap="round"/>
+    <!-- Hooves -->
+    <rect x="8"  y="46" width="6"   height="3" rx="1" fill="#120900"/>
+    <rect x="30" y="46" width="5.5" height="3" rx="1" fill="#0a0600"/>
+    <rect x="61" y="46" width="6"   height="3" rx="1" fill="#120900"/>
+    <rect x="47" y="46" width="5.5" height="3" rx="1" fill="#0a0600"/>
+
+    <!-- TAIL -->
+    <path d="M11 23 Q4 20 2 26 Q4 32 9 29" fill="none" stroke="${mane}" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M11 24 Q5 26 4 32 Q7 37 12 34" fill="none" stroke="${mane}" stroke-width="1.8" stroke-linecap="round"/>
+
+    <!-- BODY: slim polygon. Topline y~18-20, bottomline y~29-30. Height ~11px, width ~50px -->
+    <path d="
+      M 13 26
+      Q 17 19 24 19
+      L 52 18
+      Q 57 18 60 20
+      L 60 29
+      Q 56 31 48 31
+      L 20 31
+      Q 13 30 11 27
+      Z
+    " fill="${coatColor}"/>
+    <!-- Topline shine -->
+    <path d="M 24 19 L 52 18 Q 57 18 60 20" fill="none" stroke="${hi}" stroke-width="0.8" opacity="0.55"/>
+    <!-- Belly shadow strip -->
+    <path d="M 20 31 Q 36 32.5 48 31 Q 56 31 60 29 Q 57 33 48 33 L 20 33 Q 13 32 11 29 Z" fill="${dark}" opacity="0.25"/>
+
+    <!-- NECK: short, thick, ~45deg forward. Base at shoulder (x~57,y~21), top at poll (x~66,y~12) -->
+    <path d="M 56 20 Q 60 15 64 11 Q 67 9 68 11 Q 66 14 63 18 Q 61 21 58 23 Z" fill="${coatColor}"/>
+    <!-- Neck underside shade -->
+    <path d="M 58 22 Q 61 18 64 15 Q 66 13 67 14 Q 65 17 63 20 Z" fill="${dark}" opacity="0.3"/>
+
+    <!-- HEAD: long, nearly horizontal. Poll at ~(66,10), nose at ~(90,16) -->
+    <!-- Skull/forehead -->
+    <path d="M 64 10 Q 67 7 71 8 Q 76 9 80 12 Q 82 14 81 16 Q 79 17 75 16 Q 70 14 66 12 Z" fill="${coatColor}"/>
+    <!-- Muzzle (forward, very slightly down) -->
+    <path d="M 77 12 Q 83 12 87 14 Q 89 16 88 18 Q 86 19 83 18 Q 79 16 76 14 Z" fill="${coatColor}"/>
+    <!-- Muzzle end -->
+    <ellipse cx="88" cy="17" rx="2.5" ry="2" fill="${dark}"/>
+    <!-- Nostril -->
+    <ellipse cx="88.5" cy="17.5" rx="1" ry="0.75" fill="#1a0800" opacity="0.85"/>
+    <!-- Eye -->
+    <circle cx="71" cy="9" r="1.4" fill="#080300"/>
+    <circle cx="71.4" cy="8.6" r="0.48" fill="rgba(255,255,255,0.85)"/>
+    <!-- Ear (small upright triangle) -->
+    <path d="M 66 9 L 68 6 L 70 9 Z" fill="${coatColor}"/>
+    <path d="M 67 9 L 68 7 L 69.5 9 Z" fill="${dark}" opacity="0.35"/>
+
+    <!-- MANE (short, along neck crest) -->
+    <path d="M 68 8 Q 66 11 64 15 Q 62 18 60 21" fill="none" stroke="${mane}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M 70 8 Q 68 11 66 15 Q 64 18 62 21" fill="none" stroke="${mane}" stroke-width="1.4" stroke-linecap="round" opacity="0.55"/>
+
+    <!-- SADDLE PAD -->
+    <path d="M 40 18 Q 48 16 55 18 Q 55 23 48 24 Q 40 23 39 20 Z" fill="${silkColor}" opacity="0.88"/>
+    <!-- Saddle -->
+    <path d="M 42 18 Q 48 16 54 18 Q 53 21 47 22 Q 41 21 41 19 Z" fill="${sc}"/>
+
+    <!-- RIDER breeches -->
+    <path d="M 40 21 Q 47 20 53 21 Q 52 25 47 25 Q 41 24 40 21 Z" fill="#ddd5b8"/>
+    <!-- RIDER torso — leaning well forward -->
+    <path d="M 46 10 Q 50 9 53 11 Q 54 16 51 19 Q 47 20 44 18 Q 43 13 46 10 Z" fill="${silkColor}"/>
+    <!-- Silk stripe -->
+    <path d="M 46 13 Q 50 12 53 13" fill="none" stroke="rgba(255,255,255,0.38)" stroke-width="1.4"/>
+    <!-- Forward arm with reins -->
+    <path d="M 52 12 Q 57 11 62 11" stroke="${silkColor}" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    <circle cx="62.5" cy="11" r="1.7" fill="#c08860"/>
+    <!-- Rein to bit -->
+    <path d="M 62.5 11 Q 69 12 74 13" fill="none" stroke="#b07830" stroke-width="0.75" opacity="0.6"/>
+    <!-- Back arm -->
+    <path d="M 44 15 Q 42 17 41 20" stroke="${silkColor}" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+    <!-- Neck -->
+    <rect x="48" y="7" width="4" height="4" rx="2" fill="#c08860"/>
+    <!-- Head -->
+    <circle cx="50" cy="5.5" r="3.8" fill="#c08860"/>
+    <!-- Helmet -->
+    <path d="M 46.4 5.5 Q 46.2 1.5 50 1 Q 53.8 1.5 53.6 5.5 Z" fill="${silkColor}"/>
+    <rect x="45.8" y="5" width="8.5" height="1.6" rx="0.8" fill="${silkColor}"/>
+    <!-- Peak -->
+    <rect x="45" y="6.4" width="10.5" height="1.1" rx="0.55" fill="#111"/>
+    <!-- Goggles -->
+    <rect x="47.5" y="4.5" width="6" height="2.8" rx="1.4" fill="rgba(180,220,255,0.2)" stroke="rgba(0,0,0,0.45)" stroke-width="0.55"/>
+    <!-- Number cloth -->
+    <rect x="41" y="20" width="7" height="5" rx="1" fill="white" opacity="0.8"/>
+  </g>
+</svg>`;
+}
+
+let state = loadState();
+let racing = false;
+let animFrames = [];
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && p.sets !== undefined) return { sets: p.sets || {}, activeSet: p.activeSet || null, working: p.working || { labels: [...DEFAULTS], wins: {} } };
+    }
+  } catch(e) {}
+  return { sets: {}, activeSet: null, working: { labels: [...DEFAULTS], wins: {} } };
+}
+
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function getActive() {
+  if (state.activeSet && state.sets[state.activeSet]) return state.sets[state.activeSet];
+  return state.working;
+}
+function getLabels() { return getActive().labels; }
+function getWins() { return getActive().wins; }
+
+// DOM refs
+const lanesArea = document.getElementById('lanes-area');
+const raceBtn = document.getElementById('race-btn');
+const raceStatus = document.getElementById('race-status');
+const winnerBanner = document.getElementById('winner-banner');
+const winnerName = document.getElementById('winner-name');
+const setSelect = document.getElementById('set-select');
+const saveBtn = document.getElementById('save-btn');
+const saveAsBtn = document.getElementById('save-as-btn');
+const renameBtn = document.getElementById('rename-btn');
+const deleteSetBtn = document.getElementById('delete-set-btn');
+const listEl = document.getElementById('labels-list');
+const countEl = document.getElementById('count');
+const addBtn = document.getElementById('add-btn');
+const clearBtn = document.getElementById('clear-btn');
+const resetBtn = document.getElementById('reset-btn');
+const winsListEl = document.getElementById('wins-list');
+const totalWinsEl = document.getElementById('total-wins');
+const clearWinsBtn = document.getElementById('clear-wins-btn');
+const tabs = document.querySelectorAll('.tab');
+const tabPanels = document.querySelectorAll('.tab-panel');
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modal-title');
+const modalBody = document.getElementById('modal-body');
+const modalInput = document.getElementById('modal-input');
+const modalCancel = document.getElementById('modal-cancel');
+const modalConfirm = document.getElementById('modal-confirm');
+
+function renderLanes() {
+  lanesArea.innerHTML = '';
+  const labels = getLabels();
+  if (labels.length === 0) {
+    lanesArea.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--cream-dim);font-style:italic;">Add entries to race</div>';
+    return;
+  }
+  labels.forEach((label, i) => {
+    const silkColor = COLORS[i % COLORS.length];
+    const coatColor = HORSE_COATS[i % HORSE_COATS.length];
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    lane.innerHTML = `
+      <span class="lane-number">${i+1}</span>
+      <div class="lane-track" id="track-${i}">
+        <div class="finish-line"></div>
+        <div class="horse" id="horse-${i}">${makeHorseSVG(silkColor, coatColor)}</div>
+      </div>
+      <span class="lane-label">${label || `Entry ${i+1}`}</span>
+    `;
+    lanesArea.appendChild(lane);
+  });
+}
+
+function renderList() {
+  const labels = getLabels();
+  listEl.innerHTML = '';
+  labels.forEach((label, i) => {
+    const row = document.createElement('div');
+    row.className = 'label-row';
+    const dot = document.createElement('div');
+    dot.className = 'color-dot';
+    dot.style.background = COLORS[i % COLORS.length];
+    const input = document.createElement('input');
+    input.className = 'label-input';
+    input.type = 'text';
+    input.value = label;
+    input.placeholder = `Horse ${i+1}`;
+    input.maxLength = 40;
+    input.addEventListener('input', e => { getLabels()[i] = e.target.value; renderLanes(); saveState(); });
+    const rm = document.createElement('button');
+    rm.className = 'rm-btn';
+    rm.textContent = '×';
+    rm.addEventListener('click', () => { getLabels().splice(i, 1); renderAll(); saveState(); });
+    row.appendChild(dot); row.appendChild(input); row.appendChild(rm);
+    listEl.appendChild(row);
+  });
+}
+
+function renderWins() {
+  const labels = getLabels();
+  const wins = getWins();
+  const handicaps = getActive().handicaps || {};
+  winsListEl.innerHTML = '';
+  let total = 0;
+  Object.values(wins).forEach(v => total += (v||0));
+  totalWinsEl.textContent = total;
+  if (!labels.length) { winsListEl.innerHTML = '<div class="empty-state">No races yet.</div>'; return; }
+
+  const weights = labels.map(l => Math.max(0.02, handicaps[l] !== undefined ? handicaps[l] : 1.0));
+  const totalW = weights.reduce((a, b) => a + b, 0);
+  const odds = weights.map(w => ((w / totalW) * 100).toFixed(1));
+
+  const counts = labels.map(l => wins[l] || 0);
+  const maxC = Math.max(1, ...counts);
+  labels.forEach((label, i) => {
+    const c = counts[i];
+    const row = document.createElement('div');
+    row.className = 'win-row' + (c > 0 && c === maxC ? ' leader' : '');
+    row.innerHTML = `
+      <div class="color-dot" style="background:${COLORS[i%COLORS.length]}"></div>
+      <div class="win-name">${label||`Entry ${i+1}`}</div>
+      <div class="win-bar"><div class="win-bar-fill" style="width:${(c/maxC)*100}%"></div></div>
+      <div class="win-count">${c}w &nbsp;<span style="color:var(--cream-dim);font-weight:400;">${odds[i]}%</span></div>
+    `;
+    winsListEl.appendChild(row);
+  });
+}
+
+function updateCount() {
+  const labels = getLabels();
+  countEl.textContent = labels.length;
+  addBtn.disabled = labels.length >= MAX;
+  raceBtn.disabled = labels.length < 2 || racing;
+}
+
+function renderSetSelect() {
+  setSelect.innerHTML = '<option value="__working__">Working Set (unsaved)</option>';
+  Object.keys(state.sets).sort().forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    setSelect.appendChild(o);
+  });
+  setSelect.value = state.activeSet || '__working__';
+  const isSaved = !!state.activeSet;
+  renameBtn.disabled = !isSaved;
+  deleteSetBtn.disabled = !isSaved;
+}
+
+function renderAll() {
+  renderSetSelect();
+  renderList();
+  renderLanes();
+  renderWins();
+  updateCount();
+}
+
+// Racing logic
+function startRace() {
+  const labels = getLabels();
+  if (racing || labels.length < 2) return;
+  racing = true;
+  raceBtn.disabled = true;
+  winnerBanner.classList.remove('show');
+  raceStatus.textContent = "They're off!";
+
+  const n = labels.length;
+  const wins = getWins();
+  const active = getActive();
+
+  // Handicap weights stored separately so they can recover independently of win counts.
+  // Initial weight for any horse = 1.0. After a win, drops to 0.05. Floors at 0.02.
+  // After each race they don't win, nudges up by 0.06, capped at 1.0.
+  if (!active.handicaps) active.handicaps = {};
+  const H = active.handicaps;
+
+  // Ensure every current label has a handicap entry
+  labels.forEach(l => { if (H[l] === undefined) H[l] = 1.0; });
+
+  // Pick winner using handicap weights
+  const weights = labels.map(l => Math.max(0.02, H[l] || 1.0));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let rand = Math.random() * totalWeight;
+  let winnerIdx = 0;
+  for (let i = 0; i < n; i++) {
+    rand -= weights[i];
+    if (rand <= 0) { winnerIdx = i; break; }
+  }
+  const RACE_DURATION = 11000;
+  const MIN_DURATION = 10000;
+  const startTime = performance.now();
+
+  const profiles = labels.map((_, i) => {
+    const isWinner = i === winnerIdx;
+    const baseSpeed = 0.55 + Math.random() * 0.35;
+    const burst = isWinner ? 0.35 + Math.random() * 0.2 : Math.random() * 0.12;
+    return { baseSpeed, burst, isWinner, pos: 0, crossed: false };
+  });
+
+  const trackEls = labels.map((_, i) => document.getElementById(`track-${i}`));
+  const horseEls = labels.map((_, i) => document.getElementById(`horse-${i}`));
+
+  // finishLine = where the nose of the winner should reach (right edge of track minus finish stripe)
+  // loserStop  = where non-winners stop (just before finish line, horse body doesn't cross)
+  function getFinishLine(trackEl) {
+    const trackW = trackEl ? trackEl.clientWidth : 300;
+    return trackW - 22;
+  }
+  function getLoserStop(trackEl) {
+    const trackW = trackEl ? trackEl.clientWidth : 300;
+    return trackW - 22 - 96 - 8;
+  }
+
+  let winnerCrossed = false;
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / RACE_DURATION, 1);
+
+    labels.forEach((_, i) => {
+      const p = profiles[i];
+      if (p.crossed) return;
+
+      const finishLine = getFinishLine(trackEls[i]);
+      const stopPos = p.isWinner ? finishLine : getLoserStop(trackEls[i]);
+
+      const wobble = Math.sin(now * 0.003 + i * 1.3) * 0.04;
+      let speed = p.baseSpeed + wobble;
+
+      // Winner gets a late burst to ensure it crosses
+      if (p.isWinner) {
+        if (t > 0.65) speed += p.burst * Math.min(1, (t - 0.65) / 0.35);
+        // After race time ends, keep moving winner until it crosses — but only after min duration
+        const elapsed2 = now - startTime;
+        if (t >= 1 && !winnerCrossed && elapsed2 >= MIN_DURATION) speed = 1.5;
+        // Hold winner just short of finish until min duration reached
+        if (elapsed2 < MIN_DURATION) {
+          const holdBack = finishLine - 100;
+          if (p.pos > holdBack) p.pos = holdBack;
+        }
+      } else {
+        if (t > 0.85) speed *= 0.82;
+      }
+
+      const targetPos = stopPos * Math.min(1, t * speed * 1.2);
+      p.pos = Math.min(stopPos, Math.max(p.pos, targetPos));
+
+      if (horseEls[i]) {
+        horseEls[i].style.left = (4 + p.pos) + 'px';
+        const bounce = Math.sin(now * 0.018 + i * 0.7) * 2.5;
+        horseEls[i].style.transform = `translateY(calc(-50% + ${bounce}px))`;
+      }
+
+      if (p.isWinner && p.pos >= finishLine && (now - startTime) >= MIN_DURATION) {
+        p.crossed = true;
+        winnerCrossed = true;
+      }
+    });
+
+    if (!winnerCrossed) {
+      requestAnimationFrame(animate);
+    } else {
+      // All losers snap to their stop position cleanly
+      labels.forEach((_, i) => {
+        const p = profiles[i];
+        if (!p.isWinner && horseEls[i]) {
+          const stopPos = getLoserStop(trackEls[i]);
+          horseEls[i].style.left = (4 + stopPos) + 'px';
+          horseEls[i].style.transform = 'translateY(-50%)';
+        }
+        if (p.isWinner && horseEls[i]) {
+          horseEls[i].style.transform = 'translateY(-50%)';
+        }
+      });
+
+      racing = false;
+      raceStatus.textContent = 'Photo Finish!';
+      const wLabel = labels[winnerIdx] || `Entry ${winnerIdx+1}`;
+      winnerName.textContent = wLabel;
+      winnerBanner.classList.add('show');
+      updateCount();
+
+      const wins = getWins();
+      const key = labels[winnerIdx] || `__e_${winnerIdx}`;
+      wins[key] = (wins[key] || 0) + 1;
+
+      // Update handicaps
+      const active2 = getActive();
+      if (!active2.handicaps) active2.handicaps = {};
+      labels.forEach((l, i) => {
+        if (!l) return;
+        if (i === winnerIdx) {
+          // Winner: crash weight down to 0.05, floor at 0.02
+          active2.handicaps[l] = Math.max(0.02, (active2.handicaps[l] || 1.0) * 0.05);
+        } else {
+          // Losers: recover +0.06 per race, cap at 1.0
+          active2.handicaps[l] = Math.min(1.0, (active2.handicaps[l] || 1.0) + 0.06);
+        }
+      });
+
+      saveState();
+      renderWins();
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// Set management
+function switchToSet(name) {
+  state.activeSet = name === '__working__' ? null : (state.sets[name] ? name : null);
+  saveState(); renderAll(); winnerBanner.classList.remove('show');
+}
+
+let modalCb = null;
+function openModal({title, body, placeholder, initial, onConfirm}) {
+  modalTitle.textContent = title; modalBody.textContent = body;
+  modalInput.placeholder = placeholder||''; modalInput.value = initial||'';
+  modalCb = onConfirm; modal.classList.add('show');
+  setTimeout(() => { modalInput.focus(); modalInput.select(); }, 50);
+}
+function closeModal() { modal.classList.remove('show'); modalCb = null; }
+
+function saveSetAs() {
+  openModal({ title:'Save As New Set', body:'Name this set of entries.', placeholder:'e.g., Team Names', initial:'',
+    onConfirm: name => {
+      name = (name||'').trim();
+      if (!name) return false;
+      if (name === '__working__') return false;
+      if (state.sets[name] && !confirm(`"${name}" exists. Overwrite?`)) return false;
+      state.sets[name] = { labels: [...getLabels()], wins: {} };
+      state.activeSet = name; saveState(); renderAll(); return true;
+    }
+  });
+}
+
+function saveCurrent() {
+  if (!state.activeSet) { saveSetAs(); return; }
+  saveState();
+  saveBtn.textContent = 'Saved ✓';
+  setTimeout(() => saveBtn.textContent = 'Save', 1200);
+}
+
+// Wire
+raceBtn.addEventListener('click', startRace);
+addBtn.addEventListener('click', () => {
+  if (getLabels().length >= MAX) return;
+  getLabels().push(''); renderAll(); saveState();
+  const inputs = listEl.querySelectorAll('.label-input');
+  if (inputs.length) inputs[inputs.length-1].focus();
+});
+clearBtn.addEventListener('click', () => { getActive().labels=[]; saveState(); renderAll(); winnerBanner.classList.remove('show'); });
+resetBtn.addEventListener('click', () => { getActive().labels=[...DEFAULTS]; saveState(); renderAll(); winnerBanner.classList.remove('show'); });
+setSelect.addEventListener('change', e => switchToSet(e.target.value));
+saveBtn.addEventListener('click', saveCurrent);
+saveAsBtn.addEventListener('click', saveSetAs);
+renameBtn.addEventListener('click', () => {
+  if (!state.activeSet) return;
+  const old = state.activeSet;
+  openModal({ title:'Rename Set', body:`Rename "${old}" to:`, placeholder:'New name', initial:old,
+    onConfirm: name => {
+      name = (name||'').trim();
+      if (!name || name===old) return !!name;
+      if (state.sets[name]) { alert(`"${name}" already exists.`); return false; }
+      state.sets[name] = state.sets[old]; delete state.sets[old];
+      state.activeSet = name; saveState(); renderAll(); return true;
+    }
+  });
+});
+deleteSetBtn.addEventListener('click', () => {
+  if (!state.activeSet) return;
+  delete state.sets[state.activeSet]; state.activeSet = null; saveState(); renderAll(); winnerBanner.classList.remove('show');
+});
+clearWinsBtn.addEventListener('click', () => {
+  const active = getActive();
+  active.wins = {};
+  active.handicaps = {};
+  saveState(); renderWins();
+});
+tabs.forEach(t => t.addEventListener('click', () => {
+  const target = t.dataset.tab;
+  tabs.forEach(x => x.classList.toggle('active', x===t));
+  tabPanels.forEach(p => p.classList.toggle('active', p.id===`tab-${target}`));
+  if (target==='wins') renderWins();
+}));
+modalCancel.addEventListener('click', closeModal);
+modalConfirm.addEventListener('click', () => { if (modalCb) { const r = modalCb(modalInput.value); if (r!==false) closeModal(); } else closeModal(); });
+modalInput.addEventListener('keydown', e => { if (e.key==='Enter'){e.preventDefault();modalConfirm.click();} if(e.key==='Escape')closeModal(); });
+modal.addEventListener('click', e => { if (e.target===modal) closeModal(); });
+
+renderAll();
+</script>
+</body>
+</html>

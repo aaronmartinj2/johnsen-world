@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Decision Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,700;1,9..144,900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg: #0f0d1a;
+  --bg-2: #1a1530;
+  --ink: #f5ecd7;
+  --ink-dim: #a89d82;
+  --gold: #e8b84a;
+  --gold-deep: #b8892a;
+  --crimson: #c9303b;
+  --turf: #1a3a1a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, #2a1f4a 0%, var(--bg) 55%), var(--bg);
+  color: var(--ink);
+  font-family: 'Fraunces', serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 25%, rgba(232,184,74,0.07) 0, transparent 40%),
+    radial-gradient(circle at 85% 75%, rgba(201,48,59,0.07) 0, transparent 40%);
+  pointer-events: none;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem 4rem;
+}
+
+/* Header */
+header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.75rem;
+}
+
+h1 {
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  line-height: 0.92;
+  background: linear-gradient(170deg, var(--ink) 20%, var(--gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+.tagline {
+  font-size: 1.05rem;
+  color: var(--ink-dim);
+  font-style: italic;
+  max-width: 420px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(232,184,74,0.4), transparent);
+}
+
+.divider-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+/* Cards */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 760px;
+}
+
+@media (max-width: 580px) {
+  .cards { grid-template-columns: 1fr; }
+}
+
+.card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(160deg, rgba(245,236,215,0.05), rgba(245,236,215,0.01));
+  border: 1px solid rgba(245,236,215,0.12);
+  border-radius: 16px;
+  padding: 2rem 1.75rem 1.75rem;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.card-wheel::before {
+  background: radial-gradient(ellipse at top left, rgba(232,184,74,0.12), transparent 60%);
+}
+
+.card-derby::before {
+  background: radial-gradient(ellipse at top left, rgba(42,90,42,0.2), transparent 60%);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+}
+
+.card:hover::before { opacity: 1; }
+
+.card-wheel:hover { border-color: rgba(232,184,74,0.4); }
+.card-derby:hover { border-color: rgba(100,180,100,0.35); }
+
+.card-icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 1.25rem;
+  display: block;
+}
+
+.card-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.card-wheel .card-label { color: var(--gold); }
+.card-derby .card-label { color: #7aba7a; }
+
+.card-name {
+  font-size: 1.75rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+
+.card-desc {
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+  line-height: 1.55;
+  font-style: italic;
+}
+
+.card-arrow {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.card-wheel .card-arrow { color: var(--gold); }
+.card-derby .card-arrow { color: #7aba7a; }
+.card:hover .card-arrow { opacity: 1; transform: translateX(0); }
+
+/* Footer note */
+.footer-note {
+  margin-top: 3rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: rgba(168,157,130,0.45);
+  text-align: center;
+}
+
+/* Decorative background wheel sketch */
+.bg-sketch {
+  position: fixed;
+  right: -120px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  border: 1px solid rgba(232,184,74,0.06);
+  pointer-events: none;
+}
+.bg-sketch::before {
+  content: '';
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(232,184,74,0.04);
+}
+.bg-sketch::after {
+  content: '';
+  position: absolute;
+  inset: 60px;
+  border-radius: 50%;
+  border: 1px solid rgba(232,184,74,0.03);
+}
+</style>
+</head>
+<body>
+<div class="bg-sketch"></div>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Let something else decide</div>
+    <h1>The Decision<br>Engine</h1>
+    <p class="tagline">Two ways to stop overthinking. Same saved sets. Same win records. Choose your arena.</p>
+  </header>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-text">Pick your game</div>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="cards">
+    <a href="wheel.html" class="card card-wheel">
+      <span class="card-icon">🎡</span>
+      <div class="card-label">Classic</div>
+      <div class="card-name">The Decision Wheel</div>
+      <p class="card-desc">Spin the wheel. Watch it slow. Wait for the pointer to settle.</p>
+      <div class="card-arrow">Open →</div>
+    </a>
+
+    <a href="derby.html" class="card card-derby">
+      <span class="card-icon">🏇</span>
+      <div class="card-label">Race</div>
+      <div class="card-name">The Decision Derby</div>
+      <p class="card-desc">They're at the gate. Watch them race to the finish line.</p>
+      <div class="card-arrow">Open →</div>
+    </a>
+  </div>
+
+  <p class="footer-note">Sets &amp; win records are shared across both modes — saved in your browser.</p>
+</div>
+</body>
+</html>
