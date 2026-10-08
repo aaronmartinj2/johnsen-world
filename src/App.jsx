@@ -42,6 +42,14 @@ const projects = [
   },
   {
     id: '006',
+    title: 'POWDER PANIC',
+    desc: 'A SkiFree-style ski game dressed as Windows 3.1. Freestyle, slalom, terrain park, halfpipe and the Olympics, then spend your winnings at the Bar: bets with the regulars, darts, pool and a saloon piano.',
+    tags: ['HTML5 Canvas', 'Ski Game', 'Retro'],
+    href: '/powder-panic/',
+    live: true,
+  },
+  {
+    id: '007',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],

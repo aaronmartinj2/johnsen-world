@@ -91,6 +91,8 @@ function resize(){
   wrap.style.transform=`scale(${scale})`;
   wrap.style.transformOrigin='center center';
   wrap.style.marginTop='0';
+  // TEMP DIAGNOSTIC (remove for production): show viewport/scale/audio state
+  window.__diag={vw,vh,scale:scale.toFixed(2),shortEdge,maxScale};
 }
 window.addEventListener('resize',resize,{passive:true});resize();
 
@@ -3171,6 +3173,26 @@ function draw(ts){
     }
   }
   if(flash>.01){ctx.save();ctx.globalAlpha=flash;ctx.fillStyle=flashCol;ctx.fillRect(0,0,W,H);ctx.restore();}
+  // TEMP DIAGNOSTIC: shows viewport/scale/audio state as an overlay for debugging on real devices
+  if(window.__diag){
+    ctx.save();
+    ctx.fillStyle='rgba(255,0,255,.9)';
+    ctx.font='bold 9px monospace';
+    ctx.textAlign='left';
+    const d=window.__diag;
+    const acState=window.AC?window.AC.state:'null';
+    const lines=[
+      'vw='+d.vw+' vh='+d.vh,
+      'shortEdge='+d.shortEdge+' maxScale='+d.maxScale,
+      'scale='+d.scale,
+      'AC='+(typeof AC!=='undefined'&&AC?AC.state:'null'),
+      'bridge nS='+(typeof window.nativeShare)+' nH='+(typeof window.nativeHaptic),
+    ];
+    // Draw at top-right of canvas (fills space) so it's not hidden by score
+    let y=14;
+    for(const line of lines){ctx.fillText(line,W-190,y);y+=11;}
+    ctx.restore();
+  }
   drawScanline();
   if(shake>.5)ctx.restore();
 }
@@ -3619,35 +3641,30 @@ function showDead(finalBananas,baseBananas,dm,afterDaily,missionWon){
   document.getElementById('dRetry').onclick=()=>startGame();
   document.getElementById('dMenu').onclick=()=>showMenu();
   document.getElementById('dShare').onclick=()=>{
-    const sc2=document.createElement('canvas');sc2.width=400;sc2.height=200;const c=sc2.getContext('2d');
-    const bg=c.createLinearGradient(0,0,400,200);bg.addColorStop(0,'#01060f');bg.addColorStop(1,'#020b1e');c.fillStyle=bg;c.fillRect(0,0,400,200);
-    c.fillStyle='#ffcc00';c.font='bold 24px Orbitron,monospace';c.textAlign='center';c.fillText('MONKEY SHUTTLE',200,44);
-    c.fillStyle='#ff8800';c.font='12px Orbitron,monospace';c.fillText('MONKEY SHUTTLE',200,68);
-    c.fillStyle='#fff';c.font='bold 66px Orbitron,monospace';c.fillText(fmtN(fs),200,148);
-    c.fillStyle='#888';c.font='11px Orbitron,monospace';c.fillText('BEST: '+fmtN(hiScore)+'  |  DAY '+dailyStreak+' STREAK',200,174);
-    const img=sc2.toDataURL('image/png');
-    const shareText='I scored '+fmtN(fs)+' in Monkey Shuttle! 🚀🍌';
-    // Native iOS share sheet (via the App.js bridge — expo-sharing)
-    if(window.nativeShare){
-      try{window.nativeShare(shareText,img);return;}catch(e){}
+    try{
+      const shareText='I scored '+fmtN(fs)+' in Monkey Shuttle! 🚀🍌  Fly a banana-powered rocket to the edge of the solar system.';
+      // 1) Native iOS share sheet via App.js bridge — text-only for reliability
+      //    (large base64 image payloads via postMessage are unreliable across WebView size limits).
+      if(window.nativeShare){
+        try{window.nativeShare(shareText,'');return;}catch(e){}
+      }
+      // 2) Web Share API (some mobile browsers)
+      if(navigator.share){
+        try{navigator.share({text:shareText,title:'Monkey Shuttle'}).catch(()=>{});return;}catch(e){}
+      }
+      // 3) Fallback: score-card image for browsers with no share support
+      const sc2=document.createElement('canvas');sc2.width=400;sc2.height=200;const c=sc2.getContext('2d');
+      const bg=c.createLinearGradient(0,0,400,200);bg.addColorStop(0,'#01060f');bg.addColorStop(1,'#020b1e');c.fillStyle=bg;c.fillRect(0,0,400,200);
+      c.fillStyle='#ffcc00';c.font='bold 24px Orbitron,monospace';c.textAlign='center';c.fillText('MONKEY SHUTTLE',200,44);
+      c.fillStyle='#ff8800';c.font='12px Orbitron,monospace';c.fillText('MONKEY SHUTTLE',200,68);
+      c.fillStyle='#fff';c.font='bold 66px Orbitron,monospace';c.fillText(fmtN(fs),200,148);
+      c.fillStyle='#888';c.font='11px Orbitron,monospace';c.fillText('BEST: '+fmtN(hiScore)+'  |  DAY '+dailyStreak+' STREAK',200,174);
+      const img=sc2.toDataURL('image/png');
+      OV.innerHTML=`<div style="text-align:center"><img src="${img}" style="border-radius:8px;max-width:320px;width:100%;border:1px solid rgba(255,180,0,.3)"><div style="color:#aaa;font-size:10px;margin-top:8px">TAP AND HOLD IMAGE TO SAVE</div><button id="sBack" style="${BSec};margin-top:10px">CLOSE</button></div>`;
+      document.getElementById('sBack').onclick=()=>showDead(finalBananas,baseBananas,dm,afterDaily);
+    }catch(err){
+      alert('Share error: '+err.message);
     }
-    // Web Share API fallback (some mobile browsers support it)
-    if(navigator.share&&navigator.canShare){
-      try{
-        fetch(img).then(r=>r.blob()).then(blob=>{
-          const file=new File([blob],'monkey-shuttle-score.png',{type:'image/png'});
-          if(navigator.canShare({files:[file]})){
-            navigator.share({text:shareText,files:[file]}).catch(()=>{});
-          } else {
-            navigator.share({text:shareText}).catch(()=>{});
-          }
-        });
-        return;
-      }catch(e){}
-    }
-    // Final fallback: show the card with a copy button (works in any browser)
-    OV.innerHTML=`<div style="text-align:center"><img src="${img}" style="border-radius:8px;max-width:320px;width:100%;border:1px solid rgba(255,180,0,.3)"><div style="color:#aaa;font-size:10px;margin-top:8px">TAP AND HOLD IMAGE TO SAVE</div><button id="sBack" style="${BSec};margin-top:10px">CLOSE</button></div>`;
-    document.getElementById('sBack').onclick=()=>showDead(finalBananas,baseBananas,dm,afterDaily);
   };
 }
 
