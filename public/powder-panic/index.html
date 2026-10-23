@@ -633,7 +633,10 @@ const CFG = {
   // on the run (Tree Slalom: the gap in the forest, with room to pass outside each flag; the forest starts at its edge). Offsets and spacing tuned with test skiers so a
   // steady one makes every gate at a good pace but has to carve each turn (times under GOAL_TIMES).
   // courseV: the course's version. Best times, ghosts and rankings from an older course are set aside ("old course").
-  SLALOM:      { gates: 24, spacing: 200, offset: 38, corridor: 150, penalty: 5, amp: 130, wave: 520, courseV: 3 },   // (course 3: flags 38 px out, was 42: a little easier to reach)
+  SLALOM:      { gates: 24, spacing: 200, offset: 38, corridor: 150, penalty: 5, amp: 130, wave: 520, courseV: 3,   // (course 3: flags 38 px out, was 42: a little easier to reach)
+                 brush: 10, brushPen: 0.5 },   // brushing the flag: up to this many px on the wrong side of a flag still makes the gate, for brushPen s instead of the
+                                              // full miss. Forgives a late turn (test skiers: a sloppy one misses 0.1 flags a run, was 0.6; a rough one 0.4, was 3).
+                                              // Never worth aiming for (it saves well under 0.1 s a gate), so the fast lines, goals and Olympic times don't move.
   TREE_SLALOM: { gates: 28, spacing: 160, offset: 38, corridor: 105, penalty: 5, amp: 90,  wave: 380, forestTries: 3, forestChance: 0.55, courseV: 2 },
   CAM_Y_FRAC: 0.28,             // skier's vertical screen position
 
@@ -1976,7 +1979,7 @@ function pruneCells() {
 function resetWorld(mode) {
   Object.assign(G, {
     mode, seed: (mode === 'slalom' || mode === 'tree') ? CFG.COURSE_SEED[mode] : (Math.random() * 1e9) | 0, npcs: [], tracks: [], floaters: [], debris: [], burning: [], pur: null, yellow: [], yellowWarned: false,
-    score: 0, elapsed: 0, penalty: 0, trickBonus: 0, passed: 0, missed: 0, gateIdx: 0, started: false, moving: false, finished: false,
+    score: 0, elapsed: 0, penalty: 0, trickBonus: 0, passed: 0, missed: 0, brushed: 0, gateIdx: 0, started: false, moving: false, finished: false,
     npcT: 2, shake: 0, gotT: 0, gotStage: 0, lastChomp: -1, course: null,
   });
   G.cells.clear();
@@ -2385,9 +2388,11 @@ function update(dt) {
     const C = G.course;
     while (G.gateIdx < C.gates.length && s.y >= C.gates[G.gateIdx].y) {
       const g = C.gates[G.gateIdx];
-      const ok = g.side === 'L' ? s.x < g.x : s.x > g.x;   // round the outside: left of a left flag, right of a right one
-      g.state = ok ? 'passed' : 'missed';
+      const sg = g.side === 'L' ? -1 : 1, out = (s.x - g.x) * sg;   // round the outside: left of a left flag, right of a right one
+      const ok = out > 0, brushed = !ok && C.brush && out > -C.brush;   // just inside it: brushed the flag, still made it
+      g.state = ok || brushed ? 'passed' : 'missed';
       if (ok) { G.passed++; SFX.gate(); floater(g.x, g.y - 36, 'OK', '#1a7a2a'); }
+      else if (brushed) { G.passed++; G.brushed = (G.brushed || 0) + 1; G.penalty = Math.round((G.penalty + C.brushPen) * 10) / 10; g.brushT = G.time; SFX.gate(); floater(g.x, g.y - 36, `Brushed +${C.brushPen}s`, '#b06a00'); }
       else { G.missed++; G.penalty += C.penalty; SFX.miss(); floater(g.x, g.y - 36, `+${C.penalty}s`, '#b01010'); }
       G.gateIdx++;
     }
@@ -2666,7 +2671,8 @@ function render() {
     } else if (it.k === 'baland') { drawLandingZone(it.y);
     } else if (it.k === 'bamark') { text(`${it.m} m`, -RCX, it.y - RCY - 4, '#808080', 8);
     } else if (it.k === 'gate') {
-      drawS(SPR.flag[it.g.side + it.g.state], it.g.x, it.g.y);
+      const bt = it.g.brushT !== undefined ? G.time - it.g.brushT : 9;   // a brushed flag wobbles for a moment
+      drawS(SPR.flag[it.g.side + it.g.state], it.g.x + (bt < 0.7 ? Math.round(Math.sin(bt * 40) * 2.5 * (1 - bt / 0.7)) : 0), it.g.y);
     } else if (it.k === 'banner') {
       drawBanner(it.y, it.label, it.checker);
     } else if (it.k === 'npc') {
@@ -11888,7 +11894,7 @@ function hudTick(dt) {
   } else {
     $('v1').textContent = fmtTime(Math.max(0, G.elapsed + G.penalty - G.trickBonus));
     $('v2').textContent = `${G.gateIdx}/${G.course.count}`;
-    $('v3').textContent = G.missed ? `${G.missed} (+${G.penalty}s)` : '0';
+    $('v3').textContent = G.missed || G.brushed ? `${G.missed} (+${G.penalty}s)` : '0';   // brushed flags show in the penalty
     $('v4').textContent = spd;
   }
 }
@@ -12087,7 +12093,7 @@ function showGameOver() {
   } else {
     const total = Math.max(0, G.elapsed + G.penalty - G.trickBonus);
     $('overTitle').textContent = 'Finished'; $('overIcon').textContent = 'i';
-    $('overMsg').textContent = G.missed ? `You missed ${G.missed} flag${G.missed > 1 ? 's' : ''}.` : 'Every flag, clean.';
+    $('overMsg').textContent = (G.missed ? `You missed ${G.missed} flag${G.missed > 1 ? 's' : ''}.` : G.brushed ? 'Every flag made.' : 'Every flag, clean.') + (G.brushed ? ` You brushed ${G.brushed} (+${(G.brushed * G.course.brushPen).toFixed(1)}s).` : '');
     rows.push(['Run time', fmtTime(G.elapsed)], ['Penalties', `+${G.penalty}s`], ['Trick bonus', `-${G.trickBonus.toFixed(1)}s`], ['Final time', fmtTime(total)]);
     slCourseMigrate(b); const V = slCfg(G.mode).courseV;
     if (!b[G.mode] || total < b[G.mode]) {
