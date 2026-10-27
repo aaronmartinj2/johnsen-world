@@ -180,13 +180,16 @@ legend{padding:0 4px}
 #touch button{pointer-events:auto;font:700 16px "MS Sans Serif",Tahoma,sans-serif;color:#000;background:rgba(192,192,192,.88);
   border:1px solid #000;border-radius:4px;box-shadow:inset 2px 2px 0 #fff,inset -2px -2px 0 #808080;touch-action:none}
 #touch button.on,#touch button:active{background:rgba(160,160,160,.95);box-shadow:inset 2px 2px 0 #808080}
-.pad{position:absolute;left:12px;bottom:14px;display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,50px);gap:6px}
-.pad [data-k=up]{grid-column:2;grid-row:1}
-.pad [data-k=left]{grid-column:1;grid-row:2}
-.pad [data-k=down]{grid-column:2;grid-row:2}
-.pad [data-k=right]{grid-column:3;grid-row:2}
-.acts{position:absolute;right:12px;bottom:14px;display:grid;grid-template-columns:repeat(2,76px);gap:8px}
-#touch #sprayBtn{position:absolute;right:12px;bottom:138px;width:160px;height:40px;font-size:14px;background:rgba(240,140,60,.92)}
+/* phones: two big see-through buttons, bottom right, one above the other (the left thumb steers by sliding on the snow) */
+#touch button.big{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));width:84px;height:84px;border-radius:50%;
+  background:rgba(192,192,192,.35);border-color:rgba(0,0,0,.45);box-shadow:inset 2px 2px 0 rgba(255,255,255,.6),inset -2px -2px 0 rgba(128,128,128,.6);
+  font-size:17px;text-shadow:0 0 3px #fff,0 0 2px #fff}
+#touch button.big.on,#touch button.big:active{background:rgba(120,140,200,.5)}
+#touch #jumpBtn{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+#touch #tuckBtn{bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+#touch #sprayBtn{position:absolute;right:calc(14px + env(safe-area-inset-right,0px));bottom:calc(206px + env(safe-area-inset-bottom,0px));width:84px;height:40px;font-size:14px;background:rgba(240,140,60,.75)}
+#thint{position:absolute;left:50%;top:calc(104px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(330px,74%);pointer-events:none;
+  background:rgba(255,255,224,.92);border:1px solid #000;box-shadow:2px 2px 0 rgba(0,0,0,.35);padding:6px 9px;font:700 13px "MS Sans Serif",Tahoma,sans-serif;text-align:center;z-index:5}
 #touch #sprayBtn.dim{opacity:.45}
 #hud .pcr{display:inline-block;width:9px;height:9px;position:relative;margin-right:4px;vertical-align:-1px;background:#fff}
 #hud .pcr::before{content:"";position:absolute;left:3px;top:0;width:3px;height:9px;background:#c41e1e}
@@ -226,6 +229,14 @@ legend{padding:0 4px}
 #cabInfo .jbsongs div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-bottom: 1px dotted #c0c0c0; padding: 3px 0; }
 #cabInfo .jbsongs span { flex: 1 1 200px; }
 #cabInfo .jbsongs em { font-style: normal; color: #1a6a2a; font-weight: 700; padding: 0 6px; }
+#cabInfo em.lk { font-style: normal; color: #6a6a6a; font-weight: 400; font-size: 11px; }
+#cabInfo .palbum { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; margin-top: 4px; }
+#cabInfo .pcard { display: flex; flex-direction: column; align-items: center; gap: 3px; background: #f4f0e6; border: 1px solid #c0b8a8; padding: 4px; text-align: center; }
+#cabInfo .pcard em { font-style: normal; color: #1a6a2a; font-weight: 700; font-size: 11px; }
+#cabInfo .pcard .btn { width: 100%; }
+#cabInfo .pthumb { width: 96px; height: 72px; image-rendering: pixelated; border: 1px solid #808080; background: #c9d3da; }
+#cabInfo .pnew { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #fff8d8; border: 1px solid #c8b060; padding: 4px; margin-top: 4px; }
+#cabInfo .pnew span { flex: 1 1 160px; }
 #arcade { background: #241408; background-image: repeating-linear-gradient(90deg, #241408 0 22px, #3a2414 22px 23px); align-items: center; justify-content: center; }
 #arcade .cabinet { display: flex; flex-direction: column; align-items: center; gap: 8px; background: linear-gradient(180deg, #343868, #23264a 30%, #14162e); border: 3px solid #000; border-radius: 10px 10px 4px 4px; padding: 8px 10px 12px; box-shadow: 0 0 0 3px #343868 inset, 0 10px 30px rgba(0,0,0,.5); max-width: 100%; }
 #arcade canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -267,19 +278,10 @@ legend{padding:0 4px}
 
   <div id="touch" class="hidden">
     <button id="pauseBtn" aria-label="Pause">II</button>
-    <div class="pad">
-      <button data-k="up" aria-label="Brake or walk uphill">▲</button>
-      <button data-k="left" aria-label="Turn left">◀</button>
-      <button data-k="down" aria-label="Straight down">▼</button>
-      <button data-k="right" aria-label="Turn right">▶</button>
-    </div>
+    <div id="thint" class="hidden">Hold left or right to turn. Let go to straighten. Jump and Tuck: bottom right.</div>
     <button data-k="spray" id="sprayBtn" class="hidden" aria-label="Bear spray">Spray</button>
-    <div class="acts">
-      <button data-k="style">Style</button>
-      <button data-k="tuck" id="tuckBtn">Tuck</button>
-      <button data-k="grab">Grab</button>
-      <button data-k="jump">Jump</button>
-    </div>
+    <button data-k="tuck" id="tuckBtn" class="big">Tuck</button>
+    <button data-k="jump" id="jumpBtn" class="big">Jump</button>
   </div>
 
   <div id="menu" class="overlay">
@@ -528,7 +530,7 @@ legend{padding:0 4px}
         <div class="msg"><div class="icon" id="overIcon">!</div><div id="overMsg"></div></div>
         <dl class="stats" id="overStats"></dl>
         <p class="newbest hidden" id="newBest">New best!</p>
-        <div class="row2"><button class="btn hidden" id="oBarBtn">Head inside</button><button class="btn" id="againBtn">Ski again</button><button class="btn" id="oMenuBtn">Menu</button></div>
+        <div class="row2"><button class="btn hidden" id="oBarBtn">Head inside</button><button class="btn hidden" id="oSnoBtn">Ride the hill climb</button><button class="btn" id="againBtn">Ski again</button><button class="btn" id="oMenuBtn">Menu</button></div>
       </div>
     </div>
   </div>
@@ -756,6 +758,17 @@ const CFG = {
   DOG_LINES: ['Marking territory', 'Revenge!', 'Good boy?'],
 
   // ---------------------------- Touch swipes ----------------------------
+  HOLD: {                       // phones: hold a side of the screen to carve that way; let go and you straighten out
+    step2: 0.05,                // s of holding before the turn tightens from 30 to 60 degrees (almost at once: a tap is 30, a press is 60)
+    step3: 0.3,                 // s of holding before it goes across the hill (which slows you down)
+    back: 0.03,                 // let go: s per step back toward straight downhill (60 -> 30 -> down: quick, not a snap)
+                                // (test skiers in the Slalom without the assist: near-perfect 20.7 s, good 23.6, steady 26.1; keys 20.45 / 22.6 / 25.2)
+    assist: { margin: 8, s1: 0.3, s2: 0.7, keep: 60 },   // the Slalom line assist (touch): hold the side of the next flag and the skier carves
+                                // round it, aiming this many px outside it (key players' best line is about 3 px out, so it never beats 20.45 s).
+                                // s1 / s2: how steep a line (px across per px down) needs 30 / 60 degrees; keep: px above the flag where, already
+                                // wide of it, the skier holds the line rather than cutting back in
+    upStep: 1,                  // crashed: a tap on a side gets you up facing that way at this step (1 = 30 degrees)
+  },
   SWIPE_MIN_PX: 24,             // screen pixels a finger must travel in the air to count as a swipe
   LONG_PRESS_MS: 250,           // holding still this long in the air = grab
 
@@ -1100,7 +1113,8 @@ const CFG = {
       { id: 'bare', name: 'Bare Wall', price: 0, desc: 'Just a nail, waiting for something.' },
       { id: 'map', name: 'Trail Map', price: 300, desc: 'A framed trail map of your mountain.' },
       { id: 'quilt', name: 'Hanging Quilt', price: 500, desc: 'A patchwork quilt hung on a pole.' },
-      { id: 'cuckoo', name: 'Cuckoo Clock', price: 650, desc: 'A carved cuckoo clock that keeps real time. The bird pops out now and then.' } ] },
+      { id: 'cuckoo', name: 'Cuckoo Clock', price: 650, desc: 'A carved cuckoo clock that keeps real time. The bird pops out now and then.' },
+      { id: 'photo', name: 'Your Photo', price: 0, desc: 'One of your own photos from the album, framed. Pick which one below.' } ] },   // (free, once the album has a photo)
     { id: 'couch', name: 'Couch', items: [
       { id: 'old', name: 'Old Couch', price: 0, desc: 'A saggy brown couch with a patch on it. Comfier than it looks.' },
       { id: 'plaid', name: 'Plaid Couch', price: 900, desc: 'Red-and-black plaid with a knit throw.' },
@@ -1135,8 +1149,86 @@ const CFG = {
     { id: 'owner', name: 'Portrait of the Owner', price: 10000, desc: 'An oil painting of you, in whatever you are wearing. It changes when your outfit does.' },
     { id: 'podium', name: 'Podium Photo', price: null, desc: 'A framed photo of you on the top step of the Olympic podium. Win an overall Olympic gold to unlock it.' },
   ],
-  RESORT_PRICES: { backcountry: 5000, nightpark: 2000, superpipe: 3000, megakicker: 4000, car: 2000, bar: 50000,
+  RESORT_PRICES: { backcountry: 5000, nightpark: 2000, superpipe: 3000, megakicker: 4000, car: 2000, truck: 69999, bar: 50000,
     chairlift: 1000, hottub: 750, neon: 500, bonfire: 500, lodge2: 2000, patrol: 6000, summit: 20000, cabin: 20000 },
+  TRUCK: {                      // the Truck & Camper (Resort): a pickup with a big sleeper camper. Drive the mountain road to the Sno-Park, once a day
+    tradeIn: 2000,              // an old Car comes off the price (it's traded in)
+    towFee: 500,                // towed home after the third crash
+  },
+  PHOTO: {                      // photos: taken in the moment, kept in the album on the Cabin bookshelf, framed in the Cabin or over the Bar fireplace
+    max: 12,                    // the album holds this many; a new one past that waits until you take one out
+    queue: 3,                   // new photos that can wait for room (the oldest waiting goes first)
+    pay: { karl: { legendary: 1000, good: 500, blurry: 100 } },   // the first photo of each grade, per kind of photo (Missed pays nothing)
+  },
+  GARAGE: {                     // the Garage (the truck's spot in the Cabin): parts for the sled and the truck. Bought once; take them off and put them back on, free.
+    parts: [                    // fx: added to the CFG.SNOWMO (sled) or CFG.ROAD (truck) values while the part is on
+      { id: 'g_engine', kind: 'sled', name: 'Big-Bore Engine', price: 6000, fx: { acc: 12 }, desc: 'More pull on the steep: up high you hold about 28 mph straight up instead of about 18.' },
+      { id: 'g_turbo', kind: 'sled', name: 'Turbo', price: 8000, fx: { vmax: 30 }, desc: 'Top speed 45 to 54 mph: carry more speed into the steep part.' },
+      { id: 'g_track', kind: 'sled', name: 'Paddle Track', price: 3500, fx: { powder: -0.7 }, desc: 'Long paddles on the track: powder slows you half as much.' },
+      { id: 'g_skis', kind: 'sled', name: 'Mountain Skis', price: 3000, fx: { rollAdd: 0.14, turn: 0.2 }, desc: 'Narrow skis: sidehill about 8 degrees further before you roll, and turn a bit sharper.' },
+      { id: 'g_chassis', kind: 'sled', name: 'Lightweight Chassis', price: 4500, fx: { air: 0.06, popWin: 0.1 }, desc: 'Longer air off every gap, and the jump works from a little further back from the lip.' },
+      { id: 'g_riser', kind: 'sled', name: 'Riser Bars', price: 1500, fx: { turn: 0.4 }, desc: 'Tall bars to stand up and lean on: the sled turns faster.' },
+      { id: 'g_studs', kind: 'truck', name: 'Studded Snow Tires', price: 2500, fx: { slick: -0.6, ice: 0.3 }, desc: 'Twice the grip on ice without chains (chains are still better).' },
+      { id: 'g_lift', kind: 'truck', name: 'Lift Kit & Sway Bars', price: 3500, fx: { grip: 10, sway: -0.4 }, desc: 'More grip in the bends, and the camper rocks less.' },
+      { id: 'g_brakes', kind: 'truck', name: 'Big Brakes', price: 2000, fx: { brake: 30 }, desc: 'Stops about 25% shorter.' },
+      { id: 'g_tune', kind: 'truck', name: 'Tuned Engine', price: 5000, fx: { vmax: 15, acc: 8 }, desc: 'Top speed 69 to 78 mph, and quicker off the line.' },
+      { id: 'g_bullbar', kind: 'truck', name: 'Bull Bar', price: 3000, fx: { dents: 1 }, desc: 'A steel bar on the front: one more dent before the tow truck comes (4, not 3).' },
+      { id: 'g_lens', kind: 'truck', name: 'Telephoto Lens', price: 2500, fx: { lens: 1 }, desc: 'For the camera in the glovebox: the focus drifts more slowly and Big Karl is bigger in the frame. Legendary gets easier.' },
+    ],
+  },
+  ROAD: {                       // the mountain road up to the Sno-Park (top-down, about two minutes at a good pace)
+    course: [                   // the same road every day: ['s', px] straight | ['b', px, degrees] a bend (+ = to the right). Switchbacks climb
+      ['s', 260], ['b', 240, 35], ['s', 160], ['b', 300, -70], ['s', 220], ['b', 240, 35], ['s', 420],   // (checked: no two stretches pass within
+      ['b', 260, 165], ['s', 420], ['b', 260, -165], ['s', 380], ['b', 200, 40], ['s', 300], ['b', 260, -80], ['s', 260], ['b', 200, 40], ['s', 520],   //  180 px of each other)
+      ['b', 250, -165], ['s', 400], ['b', 250, 165], ['s', 360], ['b', 240, -50], ['s', 240], ['b', 240, 50], ['s', 600],
+      ['b', 260, 170], ['s', 360], ['b', 260, -170], ['s', 420], ['b', 220, -35], ['s', 300], ['b', 220, 35], ['s', 500],
+    ],
+    half: 26,                   // half-width (px): two lanes; you drive in the right-hand one (u > 0)
+    narrow: 22,                 // half-width on the logging truck's narrow stretch (it takes its lane and a bit of yours: keep right)
+    bridge: 12,                 // half-width on the one-lane bridge (one lane, down the middle)
+    bay: 58,                    // the chain-up bay: the road's right edge out to here
+    vmax: 115, acc: 40, brake: 115, drag: 0.06,   // top speed (px/s), gas and brakes (px/s^2), coasting drag (share of speed per s)
+    steer: 52,                  // px/s across the road at full lock (less at a crawl)
+    grip: 70,                   // px/s^2 the tyres hold in a bend (speed^2 x curvature): past it the camper sways and you slide wide
+    ice: 0.3,                   // grip on the icy stretch without chains (with chains: full grip)
+    chainsMax: 0.88,            // with chains on, top speed is this share of normal
+    iceLen: 700,                // the icy stretch: from 250 px past the chain-up bay, this long
+    slots: [1630, 2950, 4640, 5350, 7180, 8570, 9700],   // where the day's hazards go (shuffled each day)
+    karlChance: 0.6,            // share of days Big Karl crosses the road
+    dents: 3,                   // the third crash = towed home
+    crashT: 1.3,                // s stopped after a crash
+    mPerPx: 0.5,                // for the HUD (10,000 px = 5 km)
+    plowV: 45, loggerV: 40, carV: 48, elkV: 15, rockV: 62, karlV: 17,   // px/s
+    photo: [24, 160],           // stop (under 6 px/s) with Big Karl on the road this far ahead (px) and you get the photo
+    chainHits: 2,               // chain-up: presses in the green to get both chains on
+    slick: 1, sway: 1, lens: 0,   // how much the ice bites without chains (1 = fully), how much the camper rocks, the telephoto lens (Garage parts change these)
+  },
+  SNOWMO: {                     // the Sno-Park hill climb: highmarking, top-down, up the screen
+    top: 2500,                  // px from the lot to the top of the hill
+    mPerPx: 0.4,                // 2,500 px = 1,000 m
+    half: 250,                  // half-width of the climb (px); old-growth forest beyond
+    acc: 110,                   // engine (px/s^2 at full throttle)
+    drag: 0.3,                  // share of speed lost per s
+    vmax: 150,                  // flat out (px/s)
+    g: [20, 120],               // the hill pulling you back (px/s^2 heading straight up): at the bottom, at the top (it steepens as you climb).
+                                // Flat out straight up you bog down around 940 m; to make the top you traverse the steep part (and keep your speed for the cornice)
+    turn: 1.9, maxTurn: 1.45,   // turning rate (rad/s) and the most you can turn across the hill (rad)
+    roll: [1.3, 0.62],          // the most you can sidehill (rad across the hill) without rolling: at the bottom, at the top
+    rollT: 0.5,                 // s past that and you roll
+    stallV: 10, stallT: 0.7,    // under this speed for this long and you've stalled: that's your high mark
+    air: 0.36, pop: 0.3,        // airtime off a gap's lip (s), and the extra if you jump (Space / Jump) just before it
+    popWin: 0.3,                // how long before the lip the jump still counts (s)
+    powder: 1.4,                // powder drag (share of speed per s)
+    rollAdd: 0,                 // extra sidehill before you roll (rad; Garage parts change it)
+    gaps: [[300, 26], [750, 34], [1150, 42], [1550, 48], [1950, 52], [2300, 36]],   // [height, width] in px: speed x airtime has to clear the width (high up, only with a pop)
+    bands: [900, 1700],         // rock bands (h): through the openings in them
+    bandOpen: 4, bandOpenW: [64, 96],   // openings per band, and how wide (px, from-to)
+    clearings: [500, 1300, 2100],   // open meadows across the hill (no trees, no rocks)
+    cornice: 2380, corniceV: 45, corniceTurn: 0.55,   // the cornice near the top: hit it at this speed, nearly straight on, or it turns you back
+    bestPrize: 300,             // a new personal best high mark
+    goals: [{ id: 'm250', m: 250, text: 'Highmark 250 m', pay: 500 }, { id: 'm500', m: 500, text: 'Highmark 500 m', pay: 1000 },
+      { id: 'gap20', gap: 20, text: 'Clear a gap 20 m wide', pay: 750 }, { id: 'top', m: 1000, text: 'Reach the top (1,000 m)', pay: 5000 }],
+  },
   SUPERPIPE: {                  // Superpipe values swapped in for the Halfpipe ones while riding it
     PIPE_WALL_H: 64, PIPE_HALF: 190, PIPE_FLAT: 70, PIPE_LEN: 1200,
     PIPE_H_K: 0.27, PIPE_AIR_K: 0.0052, PIPE_AIR_MAX: 3.0, PIPE_VMAX: 560,
@@ -1983,6 +2075,7 @@ function resetWorld(mode) {
     npcT: 2, shake: 0, gotT: 0, gotStage: 0, lastChomp: -1, course: null,
   });
   G.cells.clear();
+  holdReset();
   for (const k in G.held) G.held[k] = false;
   G.sk = {
     x: 0, y: 0, dir: 3, speed: 0, vx: 0, vy: 0, avx: 0, avy: 0, air: false, z: 0, airT: 0, airDur: 0, airH: 0,
@@ -2035,7 +2128,8 @@ function floater(x, y, text, col = '#000080') {
   G.floaters.push({ x, y, text, col, t: 0 });
 }
 let toastTimer = 0;
-function toast(msg, secs = 2.4) { $('toastText').textContent = msg; $('toast').classList.remove('hidden'); toastTimer = secs; }
+const touchText = t => !isTouch ? t : t.replace(/Press ↓ to /g, 'Tap to ').replace('Hold left/right toward the middle', 'Hold the side toward the middle');
+function toast(msg, secs = 2.4) { msg = touchText(msg); $('toastText').textContent = msg; $('toast').classList.remove('hidden'); toastTimer = secs; }
 
 /* ------------------------------ skier actions ------------------------------ */
 // Freestyle chains: landed off a ramp, rock or stump a moment ago, so the next launch goes twice as high
@@ -2114,6 +2208,8 @@ function awardTrick() {
 
 function action(k, repeat) {
   if (G.state !== 'playing') return;
+  if (isVeh(G.mode)) { if (!repeat) vehAction(k); return; }
+  if (k === 'snap') return;
   if (k === 'spray') { if (!repeat) bearSpray(); return; }
   const s = G.sk, park = G.mode === 'park';
   if (k === 'tuck') { if (repeat) return; s.tuck = !s.tuck; $('tuckBtn').classList.toggle('on', s.tuck); return; }
@@ -2290,9 +2386,11 @@ function updateNpcs(dt) {
 }
 
 function update(dt) {
+  if (isVeh(G.mode)) { if (G.mode === 'road') roadUpdate(dt); else smUpdate(dt); return; }   // the truck on the mountain road, the Sno-Park hill climb
   const s = G.sk, park = G.mode === 'park', pipe = G.mode === 'pipe', py0 = s.y;
   if (G.mode === 'backcountry' && G.bc && G.bc.phase !== 'ride') { bcIntro(dt); return; }
   if (G.dropCam) { G.dropCam.t += dt; if (G.dropCam.t >= CFG.BC_DROPCAM_T) G.dropCam = null; else dt *= CFG.BC_SLOWMO; }   // drop cam slow motion
+  if (isTouch || Hold.active) holdTick(dt);
   // The skier waits sideways until the player turns downhill. The clock starts then
   // (or, in the slalom events, when the skier crosses the start banner).
   if (!G.moving) {
@@ -2591,6 +2689,7 @@ function flames(o) {
 }
 
 function render() {
+  if (isVeh(G.mode) && (G.mode === 'road' ? G.road : G.sm)) { (G.mode === 'road' ? roadRender : smRender)(); return; }
   const s = G.sk;
   let ox = 0, oy = 0;
   if (G.shake > 0) { ox = Math.round(Math.random() * 4 - 2); oy = Math.round(Math.random() * 4 - 2); }
@@ -2764,6 +2863,7 @@ function render() {
     }
   }
   if (G.pur && !G.pur.demo && G.state === 'playing') drawPurMarker();
+  if (Hold.active && G.state === 'playing') drawHold();   // phones: a faint arc on the side being held
 }
 
 /* ------------------------------ terrain park ------------------------------ */
@@ -4198,6 +4298,7 @@ function applyOutfit() {
 }
 // Cash for the run that just ended (null if unsponsored)
 function runPay() {
+  if (isVeh(G.mode)) return null;   // the road and the Sno-Park pay their own way (best marks, goals, the photo)
   const b = loadBest(), lv = sponsorLevel(b);
   if (!lv) return null;
   const P = CFG.PAY; let base = 0;
@@ -4601,6 +4702,82 @@ function pickAccount(i) {
 // Swipes set the same G.held flags as the keys, so the air trick system needs no changes.
 // A finger already down at takeoff never drives tricks; lift it and press again.
 const Touch = { pts: new Map() };
+// ---- phones: hold the left or right half of the screen to carve that way; let go and you swing back to straight downhill.
+// Both sides = brake (and walk uphill when stopped). In the air, new touches are tricks (swipe, hold to grab, a second finger to style).
+const Hold = { pts: new Map(), keys: {}, active: false, backT: 0, ignore: new Set(), clock: 0, assist: null };   // clock: s, advanced with the run   // pts: pointerId -> { side, t0 }
+const holdSides = () => { let l = null, r = null; for (const p of Hold.pts.values()) { if (p.side < 0 && (!l || p.t0 < l.t0)) l = p; if (p.side > 0 && (!r || p.t0 < r.t0)) r = p; } return { l, r }; };
+const holdStep = p => { const d = Hold.clock - p.t0, C = CFG.HOLD; return d < C.step2 ? 1 : d < C.step3 ? 2 : 3; };
+// The holds press the arrow keys they stand for (only the ones they set themselves), so the pipe, rails, butters and walking work as with keys
+function holdHeld(want) {
+  for (const k of ['left', 'right', 'up', 'down']) { const on = !!want[k]; if (on !== !!Hold.keys[k]) { G.held[k] = on; Hold.keys[k] = on; } }
+}
+function holdTick(dt) {
+  const s = G.sk; Hold.clock += dt;
+  if (G.state !== 'playing' || !Hold.active) { holdHeld({}); return; }
+  const { l, r } = holdSides(), both = l && r, one = both ? null : l || r;
+  if (s.crashed) {   // a tap on a side gets you up facing that way
+    holdHeld({});
+    if (one && s.crashT <= 0) { getUp(Math.sign(one.side) * CFG.HOLD.upStep); one.t0 = Hold.clock; }
+    return;
+  }
+  if (s.air) { holdHeld({}); return; }   // holding a side never turns or spins you in the air
+  holdHeld({ left: !both && !!l, right: !both && !!r, up: both && !s.buttering, down: both });
+  if (s.grind || s.wall || s.buttering || G.mode === 'pipe' || !G.moving) return;   // the needle and the pipe read the held arrows
+  if (both) { if (Math.abs(s.dir) < 3) s.dir = (Math.sign(s.dir) || s.lastSide) * 3; Hold.backT = 0; return; }   // brake: across the hill
+  Hold.assist = null;
+  if (one && G.course) {   // Slalom and Tree Slalom: holding the side of the next flag carves round it
+    const g = G.course.gates[G.gateIdx], sg = g ? (g.side === 'L' ? -1 : 1) : 0;
+    if (one.gate === undefined) one.gate = sg === one.side ? G.gateIdx : -1;   // a press for the next flag (the right side) gets the help
+    if (one.gate >= 0 && G.gateIdx > one.gate) {   // passed it, still holding: straighten out (switch sides for the next one)
+      if (s.dir) { Hold.backT += dt; if (Hold.backT >= CFG.HOLD.back) { Hold.backT = 0; s.dir -= Math.sign(s.dir); } }
+      return;
+    }
+    if (one.gate >= 0 && g) { const d = slAssistDir(s, g, sg); Hold.assist = { gate: G.gateIdx, x: g.x + sg * CFG.HOLD.assist.margin, y: g.y };
+      if (d !== s.dir) { s.dir = d; if (d) s.lastSide = Math.sign(d); } Hold.backT = 0; return; }
+  }
+  if (one) { const d = Math.sign(one.side) * holdStep(one); if (d !== s.dir) { s.dir = d; s.lastSide = Math.sign(d); } Hold.backT = 0; return; }
+  if (s.dir) { Hold.backT += dt; if (Hold.backT >= CFG.HOLD.back) { Hold.backT = 0; s.dir -= Math.sign(s.dir); } }   // let go: back toward straight down
+}
+// The line round the next flag (as a good key player skis it): head for a point just outside the flag, straight down if it's nearly
+// below, 30 degrees if that gets there, 60 if it has to; already wide of it close to the flag, hold the line
+function slAssistDir(s, g, sg) {
+  const A = CFG.HOLD.assist, dy = Math.max(8, g.y - s.y); let tx = g.x + sg * A.margin;
+  if ((s.x - tx) * sg > 0 && dy < A.keep) tx = s.x;
+  const slope = (tx - s.x) / dy, a = Math.abs(slope);
+  if (a <= A.s1 && (tx - s.x) * sg > 3) return sg;
+  return Math.sign(slope) * (a > A.s2 ? 2 : a > A.s1 ? 1 : 0);
+}
+// A touch on the snow (the canvas)
+function touchDown(e) {
+  if (isVeh(G.mode)) { Hold.active = true; Hold.pts.set(e.pointerId, { side: e.clientX < innerWidth / 2 ? -1 : 1, t0: Hold.clock }); vehAction('tap'); return; }   // the truck and the sled: hold a side to steer
+  const s = G.sk, air = s.air && !s.crashed;
+  if (!G.moving && !s.crashed) { action('down'); Hold.active = true; Hold.ignore.add(e.pointerId); return; }   // tap to start (no jump, no turn)
+  if (air) { tDown(e); return; }   // in the air: tricks
+  Hold.active = true;
+  const side = e.clientX < innerWidth / 2 ? -1 : 1, cur = Math.sign(s.dir) === side ? Math.abs(s.dir) : 0, C = CFG.HOLD;
+  // pressed again while you're still turned that way: carry on from that angle (so quick re-presses keep a carve going)
+  Hold.pts.set(e.pointerId, { side, t0: Hold.clock - (cur >= 3 ? C.step3 : cur === 2 ? C.step2 : 0) });
+}
+function holdUp(e) { Hold.ignore.delete(e.pointerId); return Hold.pts.delete(e.pointerId); }
+function holdReset() { Hold.pts.clear(); Hold.ignore.clear(); Hold.active = false; Hold.backT = 0; Hold.assist = null; holdHeld({}); }
+// A faint arc at the edge of the screen on the side being held, stronger as the turn tightens
+function drawHold() {
+  const { l, r } = holdSides(); if (!l && !r) { Hold.assist = null; return; }
+  const A = Hold.assist;
+  if (A && G.course && G.gateIdx === A.gate) {
+    const x = Math.round(A.x - RCX), y = Math.round(A.y - RCY), a = 0.55 + 0.25 * Math.sin(performance.now() / 120), k = x < Math.round(A.x - RCX + 1) ? 1 : 1;
+    ctx.save(); ctx.fillStyle = `rgba(255,200,40,${a})`; ctx.strokeStyle = 'rgba(120,80,0,0.8)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - 6, y - 14); ctx.lineTo(x + 6, y - 14); ctx.lineTo(x, y - 5); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  ctx.save();
+  for (const p of [l, r]) {
+    if (!p) continue;
+    const st = l && r ? 3 : holdStep(p), x = p.side < 0 ? 0 : W, y = H * 0.62;
+    ctx.strokeStyle = `rgba(0,0,128,${0.12 + st * 0.08})`; ctx.lineWidth = 3 + st * 2;
+    ctx.beginPath(); ctx.arc(x, y, 34 + st * 8, p.side < 0 ? -Math.PI / 2 : Math.PI / 2, p.side < 0 ? Math.PI / 2 : Math.PI * 1.5); ctx.stroke();
+  }
+  ctx.restore();
+}
 function tDown(e) {
   if (e.pointerType === 'mouse' || G.state !== 'playing') return;
   const s = G.sk, air = s.air && !s.crashed;
@@ -4634,15 +4811,15 @@ function touchAirTick() {
 
 /* ------------------------------ practice ------------------------------ */
 const PRACTICE_STEPS = [
-  { id: 'steer', key: 'Steer left and right with the ← and → keys.', touch: 'Drag your finger to the left and right of the skier to steer.' },
-  { id: 'tuck', key: 'Press F to tuck for speed.', touch: 'Tap Tuck to crouch for speed.' },
-  { id: 'jump', key: 'Press Space to jump.', touch: 'Tap Jump.' },
+  { id: 'steer', key: 'Steer left and right with the ← and → keys.', touch: 'Hold the left side of the screen to turn left, the right side to turn right. Hold longer to turn harder. Let go to straighten out.' },
+  { id: 'tuck', key: 'Press F to tuck for speed.', touch: 'Tap Tuck (bottom right) to crouch for speed. Tap it again to stand up.' },
+  { id: 'jump', key: 'Press Space to jump.', touch: 'Tap Jump (bottom right).' },
   { id: 'spin', key: 'Hit a kicker, then hold → or ← in the air. Land a 360.', touch: 'Hit a kicker, then swipe left or right in the air. Land a 360.' },
-  { id: 'backflip', key: 'Off a kicker, hold ↑ for a backflip and land upright.', touch: 'Off a kicker, swipe up for a backflip and land upright.' },
-  { id: 'grab', key: 'Off a kicker, hold Space to grab. Let go before you land.', touch: 'Off a kicker, press and hold to grab. Lift your finger before you land.' },
-  { id: 'butter', key: 'Land any trick, then hold ↓ right away to butter. Keep the needle centered with ← →.', touch: 'Land any trick, then hold ▼ right away to butter. Keep the needle centered with ◀ ▶.' },
-  { id: 'grind', key: 'Line up with a rail and ski straight onto it. Keep the needle centered with ← →.', touch: 'Steer onto a rail. Keep the needle centered with ◀ ▶.' },
-  { id: 'pump', key: 'In the pipe, hold ← or → toward the middle to build speed and get air.', touch: 'In the pipe, hold ◀ or ▶ toward the middle to build speed and get air.' },
+  { id: 'backflip', key: 'Off a kicker, hold ↑ for a backflip and land upright.', touch: 'Off a kicker, swipe up in the air for a backflip and land upright.' },
+  { id: 'grab', key: 'Off a kicker, hold Space to grab. Let go before you land.', touch: 'Off a kicker, touch and hold in the air to grab. Lift your finger before you land.' },
+  { id: 'butter', key: 'Land any trick, then hold ↓ right away to butter. Keep the needle centered with ← →.', touch: 'Land any trick, then hold both sides right away to butter. Keep the needle centered by holding left or right.' },
+  { id: 'grind', key: 'Line up with a rail and ski straight onto it. Keep the needle centered with ← →.', touch: 'Steer onto a rail. Keep the needle centered by holding left or right.' },
+  { id: 'pump', key: 'In the pipe, hold ← or → toward the middle to build speed and get air.', touch: 'In the pipe, hold the side toward the middle to build speed and get air.' },
 ];
 function practiceLayout() {
   const L = [];
@@ -4657,7 +4834,7 @@ function practiceWorld(kind) {
   G.weather = 'clear'; G.ghost = null; G.rec = null;
   G.state = 'playing';
   overlays(null); $('toast').classList.add('hidden'); $('hud').classList.add('hidden');
-  $('touch').classList.toggle('hidden', !isTouch);
+  $('touch').classList.toggle('hidden', !isTouch); $('tuckBtn').classList.remove('hidden'); $('jumpBtn').classList.remove('hidden');
   G.pointer.active = false;
   if (document.activeElement) document.activeElement.blur();
 }
@@ -4989,13 +5166,15 @@ function slRanksTidy() {
 // shows the new name and a reset removes them.
 const RANK_KEY = 'powderpanic.rankings.v1';
 const EVENT_NAMES = { freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', olympics: 'Olympics',
-  parkNight: 'Night Park', superpipe: 'Superpipe', megakicker: 'Mega Kicker', backcountry: 'Backcountry', rampage: "Big Karl's Rampage", tube: 'Tube Race', toboggan: 'Toboggan Run' };
+  parkNight: 'Night Park', superpipe: 'Superpipe', megakicker: 'Mega Kicker', backcountry: 'Backcountry', rampage: "Big Karl's Rampage", tube: 'Tube Race', toboggan: 'Toboggan Run', snowmo: 'Sno-Park Hill Climb', road: 'Mountain Road' };
 const RANK_TABS = [['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Trees'], ['park', 'Park'], ['parkNight', 'Night Park'], ['pipe', 'Halfpipe'], ['superpipe', 'Superpipe'],
-  ['bigair', 'Big Air'], ['megakicker', 'Mega Kicker'], ['backcountry', 'Backcountry'], ['olympics', 'Olympics'], ['rampage', 'Arcade'], ['tube', 'Tube Race'], ['toboggan', 'Toboggan']];
+  ['bigair', 'Big Air'], ['megakicker', 'Mega Kicker'], ['backcountry', 'Backcountry'], ['olympics', 'Olympics'], ['rampage', 'Arcade'], ['tube', 'Tube Race'], ['toboggan', 'Toboggan'], ['snowmo', 'Hill Climb']];
 const lowerIsBetter = ev => ev === 'slalom' || ev === 'tree' || ev === 'tube';
 function loadRanks() { try { return JSON.parse(Store.get(RANK_KEY)) || {}; } catch (e) { return {}; } }
 function saveRanks(r) { try { Store.set(RANK_KEY, JSON.stringify(r)); } catch (e) { /* storage unavailable */ } }
 function rankValue() {
+  if (G.mode === 'road') return null;
+  if (G.mode === 'snowmo') return G.sm && smMarkM(G.sm) > 0 ? smMarkM(G.sm) : null;
   if (G.mode === 'slalom' || G.mode === 'tree') return G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null;
   if (G.mode === 'backcountry') return G.bc && G.bc.total > 0 ? G.bc.total : null;
   const v = G.mode === 'bigair' ? (G.bigair ? G.bigair.best : 0) : G.score;
@@ -5024,7 +5203,7 @@ const rankName = e => (e.slot >= 1 && e.slot <= 3 ? ACCT.names[e.slot - 1] : e.n
 const rankFmt = (ev, v) => lowerIsBetter(ev) ? fmtTime(v) : ev === 'backcountry' ? v.toFixed(1) : Math.round(v).toLocaleString();
 function rankLinesHTML(ev, hi) {
   const list = loadRanks()[ev] || [];
-  return `<ol class="rlist">` + (list.length ? list.map((e, i) => `<li class="${i + 1 === hi ? 'me' : ''}"><span>${i + 1}.</span><span>${escHTML(rankName(e))}${e.rb ? ' <span title="PNW RootBeer run" aria-label="PNW RootBeer run">🥤</span>' : ''}<small>${e.d}${e.face ? ', ' + escHTML(e.face) : ''}</small></span><span class="v">${rankFmt(ev, e.v)}</span></li>`).join('')
+  return `<ol class="rlist">` + (list.length ? list.map((e, i) => `<li class="${i + 1 === hi ? 'me' : ''}"><span>${i + 1}.</span><span>${escHTML(rankName(e))}${e.rb ? ' <span title="PNW RootBeer run" aria-label="PNW RootBeer run">🥤</span>' : ''}${e.mod ? ' <span title="With Garage parts" aria-label="With Garage parts">🔧</span>' : ''}<small>${e.d}${e.face ? ', ' + escHTML(e.face) : ''}</small></span><span class="v">${rankFmt(ev, e.v)}</span></li>`).join('')
     : `<li class="empty">No runs yet.</li>`) + `</ol>`;
 }
 let rankTab = 'freestyle', ranksFrom = 'title';
@@ -6334,6 +6513,9 @@ const BAR_REGULARS = [
     { id: 'r_sweet', text: "I bet you can't land a cliff in the sweet spot.", modes: ['backcountry'], ok: r => !!r.flags.cliffSweet },
     { id: 'r_clean', text: "I bet you can't ski the whole backcountry without crashing.", modes: ['backcountry'], hard: true, ok: r => !!r.bc && r.crashes === 0 },
     { id: 'r_arc5', text: "I bet you can't shoot down 5 helicopters on the arcade game.", modes: ['rampage'], hard: true, ok: r => r.helis >= 5 },
+    { id: 'r_hm300', text: "I bet you can't highmark 300 m on a snowmobile at the Sno-Park.", modes: ['snowmo'], ok: r => r.mark >= 300 },
+    { id: 'r_hm600', text: "I bet you can't highmark 600 m on a snowmobile at the Sno-Park.", modes: ['snowmo'], hard: true, ok: r => r.mark >= 600 },
+    { id: 'r_gap3', text: "I bet you can't clear 3 gaps in one Sno-Park climb.", modes: ['snowmo'], ok: r => r.gaps >= 3 },
   ] },
   { id: 'grum', name: 'Big Karl', voice: 'Hrmph.', seat: 'booth', bets: [   // (id 'grum' kept for old saves)
     { id: 'g_lodge', text: "Big Karl bets you can't make it to the lodge before he sits on you.", modes: ['freestyle'], ok: r => !!r.escaped },
@@ -6450,12 +6632,19 @@ const barPodiumUnlocked = b => !!(b.medals && b.medals.c && b.medals.c.overall &
 function barPicOwned(b, id) {
   if (id === 'sunset') return true;
   if (id === 'podium') return barPodiumUnlocked(b);
+  if (String(id).startsWith('photo:')) return !!albumPhoto(b, id.slice(6));   // one of your own photos, from the album
   const P = b.bar && b.bar.pics; return !!(P && Array.isArray(P.owned) && P.owned.includes(id));
 }
 function barHanging(b) {
   if (!barOwns(b)) return 'sunset';
   const id = (b.bar && b.bar.pics && b.bar.pics.hang) || 'sunset';
-  return barPic(id) && barPicOwned(b, id) ? id : 'sunset';
+  return (barPic(id) || String(id).startsWith('photo:')) && barPicOwned(b, id) ? id : 'sunset';
+}
+// A picture's name and words (one of your photos, or one from the catalog)
+function barPicInfo(b, id) {
+  if (!String(id).startsWith('photo:')) return barPic(id) || barPic('sunset');
+  const P = albumPhoto(b, id.slice(6)); if (!P) return barPic('sunset');
+  return { id, name: `Your photo: ${(PHOTO_KINDS[P.kind] || {}).name || 'a photo'}`, desc: `${photoLabel(P)}. You took it yourself, ${(PHOTO_KINDS[P.kind] || {}).where || 'out there'}.` };
 }
 const barSafeShare = D => CFG.BAR_SAFE_SHARE + CFG.BAR_RENO_BOOST * D.reno.length;
 // The owner's name for the signs: "AARON'S", "JAMES'", "PLAYER 1'S" (asTyped: "Aaron's" for buttons and titles)
@@ -6511,7 +6700,8 @@ function barRunInfo() {
   return { mode: G.mode, score: G.score, crashes: G.pstat ? G.pstat.crashes : 0, tricks: G.runTricks || [], flags: G.runFlags || {},
     finished: !!G.finished, missed: G.missed || 0, time: Math.max(0, (G.elapsed || 0) + (G.penalty || 0) - (G.trickBonus || 0)),
     escaped: G.escaped, dist: G.finalDist || Math.floor((s ? s.y : 0) / CFG.PX_PER_M), baBest: G.bigair ? G.bigair.best : 0,
-    bc: B && B.judge ? { total: B.judge.total, followed: B.judge.followed, sections: B.judge.sections, skipped: B.skipped } : null };
+    bc: B && B.judge ? { total: B.judge.total, followed: B.judge.followed, sections: B.judge.sections, skipped: B.skipped } : null,
+    mark: G.mode === 'snowmo' && G.sm ? smMarkM(G.sm) : 0, gaps: G.mode === 'snowmo' && G.sm ? G.sm.gaps : 0 };
 }
 function barCheckRun() {
   if (G.demo || G.practice) return;
@@ -6767,7 +6957,7 @@ function renderBar() {
     else if (barSel === 'arcade') { const best = b.rampageBest || 0; info.push(`<b>Big Karl's Rampage</b> on the old cabinet. Climb, smash and throw people across the resort.<br>Your best: ${best ? best.toLocaleString() : 'none yet'}. Beat it for $${CFG.ARCADE_BEST_PRIZE}.`); acts.push(['arcade', 'Play Big Karl\'s Rampage']); }
     else if (barSel === 'dog') info.push('The dog is asleep by the fire. Let it lie.');
     else if (barSel === 'print') {
-      const hang = barPic(barHanging(b));
+      const hang = barPicInfo(b, barHanging(b));
       if (!own) info.push(`<b>${hang.name}</b>. ${hang.desc}<br><small>The owner picks the art.</small>`);
       else {
         info.push(`<b>Over the fireplace</b>: ${hang.name}. ${hang.desc}`);
@@ -6777,7 +6967,9 @@ function renderBar() {
             : pc.price === null ? '<em class="lk">Win an overall Olympic gold</em>'
             : `<button type="button" class="btn sm" data-act="picbuy:${pc.id}"${st.cash < pc.price ? ' disabled' : ''}>${armed ? 'Tap again to buy' : `Buy $${pc.price.toLocaleString()}`}</button>`;
           return `<div><span>${pc.name}</span>${btn}</div>`;
-        }).join('') + '</div>');
+        }).join('') + ((b.album && b.album.photos) || []).map(ph => {   // your own photos, from the album in the Cabin
+          const id = `photo:${ph.id}`; return `<div><span>Your photo: ${escHTML(photoLabel(ph))}</span>${hang.id === id ? '<em>Hanging</em>' : `<button type="button" class="btn sm" data-act="pichang:${id}">Hang</button>`}</div>`;
+        }).join('') + (truckOwns(b) && !((b.album && b.album.photos) || []).length ? '<div><span>Your own photos</span><em class="lk">Photograph Big Karl on the road to the Sno-Park</em></div>' : '') + '</div>');
       }
     }
   }
@@ -6803,7 +6995,7 @@ function barSpotTag(id, D, b) {
   if (id === 'safe') return own ? `$${D.safe.toLocaleString()}` : 'Locked';
   if (id === 'reno') return own ? `${D.reno.length}/${CFG.BAR_RENOS.length} built` : 'Owners only';
   if (id === 'forsale') return `$${CFG.RESORT_PRICES.bar.toLocaleString()}`;
-  if (id === 'print') return own ? barPic(barHanging(b)).name : '';
+  if (id === 'print') return own ? barPicInfo(b, barHanging(b)).name : '';
   if (['piano', 'darts', 'pool', 'shuffle', 'hockey'].includes(id) && bgCanPlay(b, id)) return bgSpotTag(id, D);
   if (id === 'gdoor') { const n = ['pool', 'darts', 'shuffle', 'hockey'].filter(k => D.reno.includes(k)).length; return n ? `${n} game${n > 1 ? 's' : ''}` : 'Empty'; }
   if (id === 'medals') { const c = (b.medals && b.medals.c) || {}; let n = 0; for (const k in c) n += c[k][0] + c[k][1] + c[k][2]; return n ? `${n} medal${n > 1 ? 's' : ''}` : ''; }
@@ -6894,7 +7086,8 @@ function barAction(act) {
     saveBest(b); barRegister(); toast(`${pc.name} is up over the fireplace.`, 2.2);
   } else if (act.startsWith('pichang:')) {   // hang one you own (one tap)
     const id = act.slice(8);
-    if (!barOwns(b) || !barPic(id) || !barPicOwned(b, id)) return;
+    if (!barOwns(b)) return;
+    if (!(barPic(id) || id.startsWith('photo:')) || !barPicOwned(b, id)) return;
     D.pics = D.pics || { owned: [], hang: 'sunset' }; D.pics.hang = id; saveBest(b); SFX.token();
   } else if (act.startsWith('gview:')) {   // through the swinging doors
     if (!barOwns(b) || !D.reno.includes('gameroom')) return;
@@ -9469,9 +9662,14 @@ function drawEggPix(g, cx, bottom) {
 }
 const BAR_SEATS = [112, 140, 214];   // x of each stool at the counter
 // The picture in the gilded frame over the fireplace (inner area 42 x 42 at 13,31)
-function drawBarPicture(g, P, id, t) {
+function drawBarPicture(g, P, id, t, b) {
   const X = 13, Y = 31, Wd = 42, Ht = 42;
   g.save(); g.beginPath(); g.rect(X, Y, Wd, Ht); g.clip();
+  if (String(id).startsWith('photo:')) {   // one of your photos, mounted on a white card
+    const Ph = b && albumPhoto(b, id.slice(6)); P(X, Y, Wd, Ht, '#f4f0e6'); P(X, Y + Ht - 1, Wd, 1, '#d8d0c0');
+    if (Ph) g.drawImage(photoCanvas(Ph, 96, 72), X + 1, Y + 6, 40, 30);
+    g.restore(); return;
+  }
   if (id === 'wanted') {
     P(X, Y, Wd, Ht, '#e8d6a4'); P(X, Y, Wd, 2, '#c8b07a'); P(X, Y + Ht - 2, Wd, 2, '#c8b07a'); P(X, Y, 2, Ht, '#c8b07a'); P(X + Wd - 2, Y, 2, Ht, '#c8b07a');
     pixText(g, 'WANTED', X + 21, Y + 3, '#5a2a14', 1, 'center');
@@ -9562,7 +9760,7 @@ function drawBarRoom() {
   // the gilded frame over the fireplace, and whichever picture is hanging (customers always see the Western Sunset)
   P(9, 27, 50, 52, '#8a6a20'); P(10, 28, 48, 50, '#d8b048'); P(12, 30, 44, 46, '#8a6a20');
   for (const [cx, cy] of [[10, 28], [55, 28], [10, 75], [55, 75]]) P(cx, cy, 3, 3, '#f0d070');
-  drawBarPicture(g, P, barHanging(b), t);
+  drawBarPicture(g, P, barHanging(b), t, b);
   // fireplace with flames
   P(6, 88, 54, 72, '#7a6e66'); for (let y = 92; y < 158; y += 8) for (let x = 8 + ((y / 8) % 2) * 6; x < 58; x += 12) P(x, y, 10, 6, '#8a7e76');
   P(14, 118, 38, 40, '#1a1410'); P(4, 84, 58, 6, '#5a3c26');
@@ -11088,10 +11286,13 @@ const cabSlot = id => CFG.CABIN_DECOR.find(s => s.id === id);
 const cabItem = id => { for (const s of CFG.CABIN_DECOR) { const it = s.items.find(x => x.id === id); if (it) return Object.assign({ slot: s.id }, it); } return null; };
 function cabinData(b) {
   if (!b.cabin || typeof b.cabin !== 'object') b.cabin = {};
+  cabAlbum = b.album && Array.isArray(b.album.photos) ? b.album.photos : [];
   const C = b.cabin; if (!Array.isArray(C.owned)) C.owned = []; if (!C.pick || typeof C.pick !== 'object') C.pick = {};
   return C;
 }
-const cabHas = (C, it) => !it.price || C.owned.includes(it.id);   // the first thing in each spot comes with the cabin
+let cabAlbum = [];   // the album's photos (set by cabinData)
+const cabHas = (C, it) => it.id === 'photo' ? cabAlbum.length > 0 : !it.price || C.owned.includes(it.id);   // the first thing in each spot comes with the cabin; Your Photo needs a photo
+const cabPhoto = C => cabAlbum.find(p => p.id === C.photo) || cabAlbum[cabAlbum.length - 1] || null;   // the one framed over the couch (the newest, until you pick)
 function cabPickOf(C, slot) { const S = cabSlot(slot), it = S.items.find(x => x.id === C.pick[slot]); return it && cabHas(C, it) ? it : S.items[0]; }
 const cabCount = C => { let n = 0, all = 0; for (const s of CFG.CABIN_DECOR) for (const it of s.items) if (it.price) { all++; if (C.owned.includes(it.id)) n++; } return [n, all]; };
 let cabSel = null, cabArm = null, cabTimer = 0, cabFrom = 'menu';
@@ -11106,8 +11307,9 @@ function cabinSpots(b) {
   const C = cabinData(b), L = cabLooks(C);
   const HIT = { walls: [0, 8, 320, 160], heat: [4, 8, 66, 164], window: [74, 30, 52, 68], kitchen: [72, 100, 58, 72], art: [150, 48, 62, 62], couch: [132, 112, 92, 60],
     lights: L.lights === 'lamp' ? [224, 86, 18, 86] : [76, 0, 54, 30], bed: [244, 76, 72, 96], rug: [100, 190, 156, 54], corner: [272, 192, 46, 70] };
-  const S = [dogOwned(b) ? { id: 'dog', name: 'Your dog', hit: [8, 172, 80, 40] } : { id: 'dogbed', name: 'The dog bed', hit: [8, 172, 80, 40] }, { id: 'hill', name: 'The sledding hill', hit: [56, 214, 44, 48] }, { id: 'awards', name: 'Trophy shelf', hit: [130, 8, 188, 40] }];
+  const S = [dogOwned(b) ? { id: 'dog', name: 'Your dog', hit: [8, 172, 80, 40] } : { id: 'dogbed', name: 'The dog bed', hit: [8, 172, 80, 40] }, { id: 'hill', name: 'The sledding hill', hit: [56, 214, 44, 48] }, { id: 'awards', name: 'Trophy shelf', hit: [130, 8, 188, 40] }, { id: 'album', name: 'Photo album', hit: [252, 50, 60, 25] }];
   for (const id of CAB_ORDER) S.push({ id, name: cabSlot(id).name, hit: HIT[id] });
+  if (truckOwns(b)) S.splice(2, 0, { id: 'truck', name: 'Your truck', hit: [128, 62, 14, 18] });   // the keys on their hook
   return S;
 }
 function openCabin(from) {
@@ -11130,6 +11332,8 @@ function renderCabin() {
   $('cabCash').textContent = `Wallet: $${st.cash.toLocaleString()}`;
   const tag = id => {
     if (id === 'hill') { const S = sledData(b); return S.tube.best || S.tob.best || S.derby.races ? 'Three runs' : 'Tube, toboggan, derby'; }
+    if (id === 'truck') return snoOpen(b) ? 'Sno-Park open today' : 'Drive to the Sno-Park';
+    if (id === 'album') { const A = b.album || {}, n = (A.photos || []).length; return (A.queue || []).length ? 'Full: a new one waiting' : n ? `${n} photo${n > 1 ? 's' : ''}` : 'Empty so far'; }
     if (id === 'awards') { const A = cabAwards(b), t = A.cups + (A.bigCup ? 1 : 0), p = []; if (A.mTotal) p.push(`${A.mTotal} medal${A.mTotal > 1 ? 's' : ''}`); if (t) p.push(`${t} troph${t > 1 ? 'ies' : 'y'}`); return p.join(', ') || 'Empty so far'; }
     return id === 'dog' ? (dogComes(b) ? 'Coming skiing' : 'Staying home') : id === 'dogbed' ? 'Empty' : cabPickOf(C, id).name;
   };
@@ -11153,6 +11357,37 @@ function renderCabin() {
     for (const r of BAR_REGULARS) if (here.includes(r.id)) acts.push([`hill:race:${r.id}`, `Race ${r.name.replace(/^(Whisky |Ranger )/, '').replace(/^The /, 'the ')}${beat[r.id] ? ' ✓' : ''}`]);
     acts.push(['hill:tob', 'Toboggan run'], ['hill:derby', 'Sled Derby: for fun']);
   }
+  else if (cabSel === 'truck') {
+    const T = truckData(b), D = smData(b), open = snoOpen(b), SC = CFG.SNOWMO;
+    info.push(`<b>Your Truck &amp; Camper</b>, keys on the hook. ${open ? 'You drove up today: <b>the Sno-Park is open</b> for the rest of the day.' : 'The Sno-Park is up the mountain road: drive it once a day and the hill climb is open for the rest of that day.'}`);
+    info.push(`<b>The mountain road</b>: about two minutes of switchbacks with a few of these every day: a snowplow on a blind curve, an elk herd, rockfall, a logging truck on a narrow stretch, a one-lane bridge, a chain-up checkpoint and, some days, Big Karl. ${NUM_WORD[vehCfg('truck', garOn(b, 'truck')).dents].replace(/^./, c => c.toUpperCase())} dents and you're towed home ($${CFG.TRUCK.towFee} fee). ${T.best ? `Your best drive: ${fmtTime(T.best)}.` : ''}`);
+    info.push(`<b>The hill climb</b>: highmark a steep backcountry slope on a snowmobile: big gaps to jump, old-growth firs, rock bands and a cornice near the top. Your best: ${D.best ? `${D.best} m` : 'none yet'}. Sno-Park goals: ${SC.goals.map(g => `${g.text}${D.goals.includes(g.id) ? ' ✓' : ` ($${g.pay.toLocaleString()})`}`).join('; ')}.`);
+    if (T.photos) info.push(`<small>Photos of Big Karl taken: ${T.photos}. They go in the album on the bookshelf.</small>`);
+    acts.push(['truck:go', open ? 'Sno-Park: the hill climb' : 'Drive to the Sno-Park']);
+    const g = garData(b), on = garOn(b);   // the Garage: buy a part and it goes on; take it off and put it back on any time, free
+    info.push('<b>The Garage</b>: parts for the sled and the truck. Buy one and it goes straight on. Take it off or put it back on any time, free.');
+    for (const [kind, label] of [['sled', 'The snowmobile'], ['truck', 'The Truck &amp; Camper']]) {
+      info.push(`<b>${label}</b><div class="jbsongs reno">` + CFG.GARAGE.parts.filter(p => p.kind === kind).map(p => {
+        const have = g.owned.includes(p.id), armed = cabArm === `gbuy:${p.id}`;
+        const btn = !have ? `<button type="button" class="btn sm" data-act="gbuy:${p.id}"${st.cash < p.price ? ' disabled' : ''}>${armed ? 'Tap again to buy' : st.cash < p.price ? `Need $${(p.price - st.cash).toLocaleString()}` : `Buy $${p.price.toLocaleString()}`}</button>`
+          : on.includes(p.id) ? `<em>On</em><button type="button" class="btn sm" data-act="goff:${p.id}">Take off</button>` : `<button type="button" class="btn sm" data-act="gon:${p.id}">Put on</button>`;
+        return `<div><span><b>${p.name}</b>${have ? '' : `, $${p.price.toLocaleString()}`}<br><small>${p.desc}</small></span>${btn}</div>`;
+      }).join('') + '</div>');
+    }
+    info.push('<small>Stuck around 760 m on the climb? The Big-Bore Engine and the Lightweight Chassis help most. Climbs with parts on get a 🔧 in the Rankings.</small>');
+  }
+  else if (cabSel === 'album') {   // your photos, oldest first: frame one over the couch (or the Bar fireplace, if it's yours)
+    const A = albumData(b), barMine = barOwns(b), hangB = barMine ? barHanging(b) : '', onCouch = L.art === 'photo' && cabPhoto(C), thumb = ph => `<img class="pthumb" alt="" src="${photoCanvas(ph, 96, 72).toDataURL()}">`;
+    info.push(`<b>Your photo album</b>, on the bookshelf over the bed. ${A.photos.length ? `${A.photos.length} of ${CFG.PHOTO.max} photos, oldest first.` : 'Empty so far.'} <small>Stop the truck in time when Big Karl steps out on the road to the Sno-Park and the camera comes out: one shot. Centred, mid-stride and sharp is Legendary.</small>`);
+    if (A.queue.length) { const q = A.queue[0];
+      info.push(`<div class="pnew">${thumb(q)}<span><b>A new photo is waiting</b>: ${escHTML(photoLabel(q))}. The album is full: take one out to make room for it (tap Take out twice), or let the new one go.${A.queue.length > 1 ? ` <small>(${A.queue.length - 1} more after it)</small>` : ''}</span><button type="button" class="btn sm" data-act="pskip">Let it go</button></div>`); }
+    if (A.photos.length) info.push('<div class="palbum">' + A.photos.map(ph => {
+      const b1 = onCouch && onCouch.id === ph.id ? '<em>Over the couch</em>' : `<button type="button" class="btn sm" data-act="cphoto:${ph.id}">Over the couch</button>`;
+      const b2 = !barMine ? '' : hangB === `photo:${ph.id}` ? '<em>At the Bar</em>' : `<button type="button" class="btn sm" data-act="pbar:${ph.id}">Bar fireplace</button>`;
+      const b3 = A.queue.length ? `<button type="button" class="btn sm" data-act="pdrop:${ph.id}">${cabArm === `pdrop:${ph.id}` ? 'Tap again' : 'Take out'}</button>` : '';
+      return `<div class="pcard">${thumb(ph)}<small><b>${PHOTO_GRADES[ph.g] || ph.g}</b><br>${photoDate(ph.d)}</small>${b1}${b2}${b3}</div>`;
+    }).join('') + '</div>');
+  }
   else if (cabSel === 'awards') {
     const A = cabAwards(b), word = ['gold', 'silver', 'bronze'];
     info.push('<b>Your trophy shelf.</b> It fills itself in as you earn things: every medal hangs underneath, and trophies, plaques, race bibs and golden eggs go up top.');
@@ -11172,10 +11407,12 @@ function renderCabin() {
     info.push(prev && prev.slot === S.id ? `<b>${S.name}</b>: here's the ${prev.name} in place. Tap again to buy it for $${prev.price.toLocaleString()}.` : `<b>${S.name}</b>: ${cur.name}. ${cur.desc}`);
     info.push('<div class="jbsongs reno">' + S.items.map(it => {
       const using = cur.id === it.id, have = cabHas(C, it), armed = cabArm === `cbuy:${it.id}`;
-      const btn = using ? '<em>In place</em>' : have ? `<button type="button" class="btn sm" data-act="cuse:${it.id}">Use</button>`
+      const btn = using ? '<em>In place</em>' : have ? `<button type="button" class="btn sm" data-act="cuse:${it.id}">Use</button>` : it.id === 'photo' ? '<em class="lk">Take a photo first</em>'
         : `<button type="button" class="btn sm" data-act="cbuy:${it.id}"${st.cash < it.price ? ' disabled' : ''}>${armed ? 'Tap again to buy' : st.cash < it.price ? `Need $${(it.price - st.cash).toLocaleString()}` : `Buy $${it.price.toLocaleString()}`}</button>`;
       return `<div><span><b>${it.name}</b>${have ? '' : `, $${it.price.toLocaleString()}`}<br><small>${it.desc}</small></span>${btn}</div>`;
     }).join('') + '</div>');
+    if (S.id === 'art' && cur.id === 'photo' && cabAlbum.length > 1) { const on = cabPhoto(C);   // which photo is framed
+      info.push('<div class="palbum">' + cabAlbum.map(ph => `<div class="pcard"><img class="pthumb" alt="" src="${photoCanvas(ph, 96, 72).toDataURL()}"><small>${PHOTO_GRADES[ph.g] || ph.g}<br>${photoDate(ph.d)}</small>${on && on.id === ph.id ? '<em>Framed</em>' : `<button type="button" class="btn sm" data-act="cphoto:${ph.id}">Frame it</button>`}</div>`).join('') + '</div>'); }
     info.push(`<small>${n} of ${all} things from the catalog bought. Whatever you buy stays yours: swap it back in any time. Tap Buy once to see it in place.</small>`);
   }
   $('cabInfo').innerHTML = info.join('<br>');
@@ -11194,6 +11431,29 @@ function cabinAction(act) {
   } else if (act.startsWith('cuse:')) {   // swap back to something you already have (one tap)
     const it = cabItem(act.slice(5)); if (!it || !cabHas(C, it)) return;
     cabArm = null; C.pick[it.slot] = it.id; saveBest(b); SFX.token();
+  } else if (act.startsWith('gbuy:')) {   // the Garage: buy a part (two taps); it goes straight on
+    const p = garPart(act.slice(5)), g = garData(b); if (!p || g.owned.includes(p.id) || st.cash < p.price || !truckOwns(b)) return;
+    if (cabArm !== act) { cabArm = act; renderCabin(); return; }
+    cabArm = null; st.cash -= p.price; b.gear = gearObj(st); g.owned.push(p.id); g.off = g.off.filter(x => x !== p.id); saveBest(b); SFX.chal(); toast(`${p.name}: on.`, 1.8);
+  } else if (act.startsWith('goff:') || act.startsWith('gon:')) {   // take a part off, or put it back on (one tap, free)
+    const id = act.slice(act.indexOf(':') + 1), g = garData(b); if (!g.owned.includes(id)) return;
+    cabArm = null; g.off = g.off.filter(x => x !== id); if (act.startsWith('goff:')) g.off.push(id); saveBest(b); SFX.token();
+  } else if (act.startsWith('cphoto:')) {   // frame this photo over the couch
+    const id = act.slice(7); if (!cabAlbum.some(p => p.id === id)) return;
+    cabArm = null; C.photo = id; C.pick.art = 'photo'; saveBest(b); SFX.token(); toast('Framed, over the couch.', 1.6);
+  } else if (act.startsWith('pbar:')) {   // or over the Bar fireplace (owners)
+    const id = act.slice(5); if (!barOwns(b) || !albumPhoto(b, id)) return;
+    cabArm = null; b.bar = b.bar || {}; b.bar.pics = b.bar.pics || { owned: [], hang: 'sunset' }; b.bar.pics.hang = `photo:${id}`; saveBest(b); SFX.token(); toast("It's up over the Bar fireplace.", 1.8);
+  } else if (act.startsWith('pdrop:')) {   // the album's full: take one out (two taps) and the waiting photo goes in
+    const A = albumData(b), id = act.slice(6), i = A.photos.findIndex(p => p.id === id); if (i < 0 || !A.queue.length) return;
+    if (cabArm !== act) { cabArm = act; renderCabin(); return; }
+    cabArm = null; A.photos.splice(i, 1); A.photos.push(A.queue.shift());
+    if (C.photo === id) delete C.photo;
+    if (b.bar && b.bar.pics && b.bar.pics.hang === `photo:${id}`) b.bar.pics.hang = 'sunset';
+    saveBest(b); SFX.token(); toast('Taken out. The new photo is in the album.', 2);
+  } else if (act === 'pskip') {   // or let the new one go
+    const A = albumData(b); if (!A.queue.length) return;
+    cabArm = null; A.queue.shift(); saveBest(b); SFX.token();
   } else if (act === 'hill:derby') {   // the derby, just for fun
     cabArm = null; clearInterval(cabTimer); bgOpen('derby', 'fun'); return;
   } else if (act === 'hill:tob') {   // the toboggan, with whoever's in today
@@ -11201,6 +11461,9 @@ function cabinAction(act) {
   } else if (act === 'hill:clock' || act.startsWith('hill:race:')) {   // out the back door, down the hill
     const who = act === 'hill:clock' ? null : act.slice(10); if (who && (!CFG.TUBE.skill[who] || !barOffers().some(o => o.who === who))) return;   // only the regulars who are in today
     cabArm = null; clearInterval(cabTimer); bgOpen('tube', who ? 'race' : 'clock', { who }); return;
+  } else if (act === 'truck:go') {   // out to the truck: the drive first each day, then straight to the Sno-Park
+    if (!truckOwns(b)) return;
+    cabArm = null; clearInterval(cabTimer); startGame(snoOpen(b) ? 'snowmo' : 'road'); return;
   } else if (act === 'cdog:home' || act === 'cdog:along') {
     if (!dogOwned(b)) return;
     const along = act === 'cdog:along'; b.dog = Object.assign({}, b.dog, { along }); saveBest(b); cabArm = null;
@@ -11318,6 +11581,10 @@ function drawCabinRoom() {
     const ci = Math.floor(t / 14); if (out && cabFx.cuckoo !== ci && G.state === 'cabin') { cabFx.cuckoo = ci; beep(880, 0.12, 'triangle', 0.035); beep(700, 0.18, 'triangle', 0.035, null, 0.22); }
     P(176, 87, 1, 12, '#808890'); P(186, 87, 1, 8, '#808890'); P(175, 99, 3, 6, '#5a3418'); P(185, 95, 3, 6, '#5a3418');   // chains and pine-cone weights
     const sw = Math.sin(t * 4) * 4; g.strokeStyle = '#8a6a20'; g.beginPath(); g.moveTo(181, 87); g.lineTo(181 + sw, 99); g.stroke(); P(179 + sw, 99, 4, 4, '#c8a040');
+  } else if (L.art === 'photo') {   // your photo, framed (dark wood, a white mat)
+    const Ph = cabPhoto(C);
+    P(151, 54, 60, 46, '#2a180c'); P(152, 55, 58, 44, '#6a4024'); P(152, 55, 58, 1, '#8a5a30'); P(155, 58, 52, 38, '#f4f0e6');
+    if (Ph) g.drawImage(photoCanvas(Ph, 96, 72), 157, 59, 48, 36);
   } else P(180, 66, 1, 2, '#3a2414');   // a nail, waiting
   // the couch
   {
@@ -11351,6 +11618,13 @@ function drawCabinRoom() {
     g.strokeStyle = '#5a5a3a'; g.lineWidth = 1; for (const lx of [252, 300]) { g.beginPath(); g.moveTo(lx, 153); g.lineTo(lx + 10, 170); g.moveTo(lx + 10, 153); g.lineTo(lx, 170); g.stroke(); }
     P(252, 139, 46, 8, '#2a6a8a'); P(252, 142, 46, 1, '#c8ccd4'); P(298, 138, 12, 7, '#e8e8e0');
   }
+  // the bookshelf over the bed: a few old books, your photo album, and the newest photo in a little stand-up frame
+  P(252, 72, 60, 3, '#6a4024'); P(252, 72, 60, 1, '#8a5a30'); P(256, 75, 2, 4, '#3a2414'); P(306, 75, 2, 4, '#3a2414');
+  for (const [x, w, h, c] of [[254, 4, 14, '#7a2a2a'], [258, 3, 12, '#2a4a7a'], [261, 5, 15, '#5a6a3a'], [266, 3, 11, '#c8a040'], [269, 4, 13, '#3a3a3a']]) { P(x, 72 - h, w, h, c); P(x, 72 - h + 2, w, 1, 'rgba(255,255,255,0.25)'); }
+  P(275, 56, 12, 16, '#2a5a3a'); P(275, 56, 12, 1, '#3a7a4a'); P(276, 59, 10, 1, '#c8a040'); P(276, 68, 10, 1, '#c8a040'); P(279, 62, 4, 3, '#c8a040');   // the album
+  if (cabAlbum.length) { P(287, 58, 1, 13, '#f4f0e6'); P(288, 61, 1, 2, '#f4f0e6'); P(288, 66, 1, 2, '#f4f0e6'); }   // photos sticking out of it
+  if (cabAlbum.length) { const nw = cabAlbum[cabAlbum.length - 1]; P(292, 58, 18, 14, '#3a2414'); g.drawImage(photoCanvas(nw, 96, 72), 293, 59, 16, 12); }
+  else { P(296, 66, 8, 6, '#e8e4d8'); P(304, 67, 2, 3, '#e8e4d8'); }   // a mug
   drawCabinAwards(g, P, b);   // the trophy shelf, high on the back wall
   // lights
   if (L.lights === 'string') {
@@ -11409,6 +11683,9 @@ function drawCabinRoom() {
       S(5, 7, 7, 9, c); S(2, 11, 6, 6, c); S(10, 12, 2, 5, d); S(12, 12, 2, 5, d); S(1, 16, 6, 1, d); S(9, 7, 1, 4, '#d42020');
       S(0, 9 + wag, 2, 4, c);
     }
+  }
+  if (truckOwns(b)) {   // your truck keys on a hook, with a little red fob
+    P(133, 64, 4, 2, '#5a3a1e'); P(134, 66, 1, 3, '#a0a0a8'); P(132, 69, 5, 4, '#c0c4c8'); P(133, 70, 3, 2, '#808890'); P(134, 73, 2, 5, '#b8b8c0'); P(131, 71, 2, 3, '#b8302a');
   }
   // selection
   const Ssel = cabinSpots(b).find(x => x.id === cabSel);
@@ -11487,7 +11764,7 @@ const RESORT_ITEMS = [
   { id: 'summit', name: 'Summit Lodge', hit: [104, 14, 40, 32], col: '#2a4a8a', needs: 'lodge2', desc: 'Keep going past the Legend Lodge (pick Keep going at its door, or ski around it) to a Summit Lodge at 9,000 m: a bigger bonus, a one-time $25,000 Summit purse, and a Summit plaque in the Bar. Needs the Second Lodge.' },
   { id: 'patrol', name: 'Ski Patrol Hut', hit: [280, 106, 34, 34], col: '#c41e1e', desc: 'Once per Freestyle run, when Big Karl would catch you, a ski patroller skis in and tackles him instead. He shakes it off, so the next catch is a real one.' },
   { id: 'cabin', name: 'Your Cabin', hit: [74, 144, 42, 40], col: '#8a5a30', desc: "A log cabin of your own in the trees. Decorate it from the catalog inside (walls, a stone fireplace, a couch, a bed, rugs, lights and more), and it's where your dog can stay home instead of skiing with you. Go inside from here or from the menu." },
-  { id: 'car', name: 'Car', hit: [250, 164, 62, 32], col: '#1a8a8a', desc: 'Your own ride, parked at the lodge.' },
+  { id: 'truck', name: 'Truck & Camper', hit: [248, 158, 66, 38], col: '#b8302a', needs: 'cabin', desc: "A pickup with a big sleeper camper, parked at the lodge. Drive it from your Cabin up the mountain road to the Sno-Park (once a day: plows, elk, rockfall, a logging truck, a one-lane bridge, chain-up and maybe Big Karl), then ride the snowmobile hill climb." },
   { id: 'bar', name: 'The Bar (deed)', hit: [202, 146, 40, 36], col: '#c87a20', always: true,
     desc: "The Bar is open to everyone. Buy the deed and it's yours: your name (or any name you like) on the sign, a safe that fills with the bar's takings from every run, a free PNW RootBeer every day, the jukebox, and renovations." },
 ];
@@ -11509,9 +11786,9 @@ function renderResort() {
   $('rsCash').textContent = `Wallet: $${st.cash.toLocaleString()}`;
   resortOwned = owned; drawResortMap();
   $('rsItems').innerHTML = RESORT_ITEMS.map(it => `<li><button type="button" class="item${resortSel === it.id ? ' sel' : ''}" data-rs="${it.id}"><span class="sw" style="background:${owned.has(it.id) || it.always ? it.col : '#a0a4ac'}"></span>` +
-    `<span class="nm">${it.name}</span><span class="st">${owned.has(it.id) ? 'Owned' : it.id === 'bar' && !barFound(b) ? 'Not found yet' : '$' + CFG.RESORT_PRICES[it.id].toLocaleString()}</span></button></li>`).join('');
-  const it = RESORT_ITEMS.find(x => x.id === resortSel), price = CFG.RESORT_PRICES[it.id], have = owned.has(it.id), lost = it.id === 'bar' && !barFound(b);
-  $('rsInfo').innerHTML = `<b>${it.name}</b> ${have ? '(owned)' : lost ? '- not found yet' : `- $${price.toLocaleString()}`}<br>${lost ? `Nobody on this account has found the Bar yet. It's at the first ski lodge, ${CFG.LODGE_M.toLocaleString()} m down the Freestyle run: ski in there and it's open from then on (and the deed's for sale).` : it.desc}<br><small>Tap anything on the map to see it. Faint things with a price tag aren't built yet.</small>`;
+    `<span class="nm">${it.name}</span><span class="st">${owned.has(it.id) ? 'Owned' : it.id === 'bar' && !barFound(b) ? 'Not found yet' : '$' + resortPrice(b, it.id).toLocaleString()}</span></button></li>`).join('');
+  const it = RESORT_ITEMS.find(x => x.id === resortSel), price = resortPrice(b, it.id), have = owned.has(it.id), lost = it.id === 'bar' && !barFound(b);
+  $('rsInfo').innerHTML = `<b>${it.name}</b> ${have ? '(owned)' : lost ? '- not found yet' : `- $${price.toLocaleString()}`}<br>${it.id === 'truck' && !have && owned.has('car') ? `${it.desc} <b>Your Car goes in as a trade-in: $${CFG.TRUCK.tradeIn.toLocaleString()} off.</b>` : lost ? `Nobody on this account has found the Bar yet. It's at the first ski lodge, ${CFG.LODGE_M.toLocaleString()} m down the Freestyle run: ski in there and it's open from then on (and the deed's for sale).` : it.desc}<br><small>Tap anything on the map to see it. Faint things with a price tag aren't built yet.</small>`;
   const btn = $('rsBuy');
   if (have && it.id === 'cabin') { btn.textContent = 'Go inside'; btn.disabled = false; }
   else if (have) { btn.textContent = 'Owned'; btn.disabled = true; }
@@ -11521,7 +11798,7 @@ function renderResort() {
   else { btn.textContent = resortArm ? 'Click again to buy' : `Buy for $${price.toLocaleString()}`; btn.disabled = false; }
 }
 function resortBuyPress() {
-  const b = loadBest(), st = gearState(b), price = CFG.RESORT_PRICES[resortSel];
+  const b = loadBest(), st = gearState(b), price = resortPrice(b, resortSel);
   b.resort = b.resort || { owned: [] };
   const need = RESORT_ITEMS.find(x => x.id === resortSel).needs;
   if (resortSel === 'cabin' && b.resort.owned.includes('cabin')) { clearInterval(resortTimer); openCabin('resort'); return; }
@@ -11530,10 +11807,11 @@ function resortBuyPress() {
   resortArm = 0;
   st.cash -= price; b.gear = gearObj(st); b.resort.owned.push(resortSel);
   if (resortSel === 'bar') barData(b).deed = barToday();   // the date goes on the framed deed
+  if (resortSel === 'truck') b.resort.owned = b.resort.owned.filter(id => id !== 'car');   // the old Car was traded in
   saveBest(b);
   applyOutfit(); SFX.chal(); renderResort();
   const it = RESORT_ITEMS.find(x => x.id === resortSel);
-  toast(resortSel === 'bar' ? "The Bar is yours! Geep says: welcome, boss." : resortSel === 'cabin' ? 'Your cabin is ready! Go inside from here or from the menu.' : `${it.name} is open!`, 2.4);
+  toast(resortSel === 'bar' ? "The Bar is yours! Geep says: welcome, boss." : resortSel === 'cabin' ? 'Your cabin is ready! Go inside from here or from the menu.' : resortSel === 'truck' ? 'The Truck & Camper is yours! Drive it to the Sno-Park from your Cabin.' : `${it.name} is open!`, 2.4);
 }
 // The resort map: a pixel-art picture of your mountain. Everything you own is drawn in full color;
 // anything you haven't bought is a faint outline with its price, so you can see what you'd get.
@@ -11651,6 +11929,7 @@ function drawResortMap() {
       if (owned.has('cabin')) { const bb = loadBest(); if (dogOwned(bb) && !dogComes(bb)) { P(101, 174, 4, 2, '#a06a30'); P(104, 172, 2, 2, '#a06a30'); P(100, 173, 1, 1, '#a06a30'); } }
       T('CABIN', 97, 181, '#5a3418', 5);
     },
+    truck() { drawTruckSide(P); },
     car() {
       P(268, 180, 28, 9, '#1a8a8a'); P(272, 175, 18, 6, '#1a8a8a'); P(274, 176, 6, 4, '#bfe0ff'); P(282, 176, 6, 4, '#bfe0ff');
       P(271, 188, 5, 4, '#202028'); P(287, 188, 5, 4, '#202028'); P(294, 182, 2, 2, '#ffe080'); P(268, 182, 2, 2, '#d42a2a');
@@ -11675,7 +11954,7 @@ function drawResortMap() {
     const have = owned.has(it.id), [x, y, w, h] = it.hit;
     g.save(); if (!have && !it.always) g.globalAlpha = 0.22; draw[it.id](); g.restore();   // the Bar is open to everyone, so it's always drawn in color
     if (!have) {   // price tag
-      const label = it.id === 'bar' && !barFound() ? 'Not found yet' : (it.always ? 'Deed $' : '$') + CFG.RESORT_PRICES[it.id].toLocaleString(); g.font = 'bold 6px sans-serif';
+      const label = it.id === 'bar' && !barFound() ? 'Not found yet' : (it.always ? 'Deed $' : '$') + resortPrice(loadBest(), it.id).toLocaleString(); g.font = 'bold 6px sans-serif';
       const tw = Math.ceil(g.measureText(label).width) + 6, tx = Math.min(316 - tw, x + w - tw), ty = it.always ? y - 9 : y;
       P(tx, ty, tw, 9, '#ffffff'); g.strokeStyle = '#404048'; g.lineWidth = 1; g.strokeRect(tx + 0.5, ty + 0.5, tw - 1, 8); T(label, tx + tw / 2, ty + 4.5, '#202028', 6);
     }
@@ -11841,8 +12120,8 @@ function drawNightPark() {
 const fmtTime = t => { const m = Math.floor(t / 60), sec = t - m * 60; return `${m}:${sec < 10 ? '0' : ''}${sec.toFixed(1)}`; };
 let hudAcc = 0;
 function setHudMode(mode) {
-  $('hudTitle').textContent = { freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', backcountry: 'Backcountry' }[mode];
-  const labels = mode === 'freestyle' ? ['Time:', 'Dist:', 'Speed:', 'Score:'] : mode === 'park' ? ['Time left:', 'Score:', 'Combo:', 'Tokens:'] : mode === 'pipe' ? ['Dist:', 'Score:', 'Combo:', 'Best air:'] : mode === 'bigair' ? ['Attempt:', 'Best:', 'Speed:', 'Height:'] : mode === 'backcountry' ? ['Time:', 'Dist:', 'Speed:', 'Tricks:'] : ['Time:', 'Gates:', 'Missed:', 'Speed:'];
+  $('hudTitle').textContent = { freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', backcountry: 'Backcountry', road: 'Mountain Road', snowmo: 'Hill Climb' }[mode];
+  const labels = mode === 'road' ? ['Time:', 'To go:', 'Speed:', 'Dents:'] : mode === 'snowmo' ? ['High mark:', 'Height:', 'Speed:', 'Gaps:'] : mode === 'freestyle' ? ['Time:', 'Dist:', 'Speed:', 'Score:'] : mode === 'park' ? ['Time left:', 'Score:', 'Combo:', 'Tokens:'] : mode === 'pipe' ? ['Dist:', 'Score:', 'Combo:', 'Best air:'] : mode === 'bigair' ? ['Attempt:', 'Best:', 'Speed:', 'Height:'] : mode === 'backcountry' ? ['Time:', 'Dist:', 'Speed:', 'Tricks:'] : ['Time:', 'Gates:', 'Missed:', 'Speed:'];
   labels.forEach((l, i) => $('l' + (i + 1)).textContent = l);
   spareRow(false); $('sprayBtn').classList.add('hidden');
 }
@@ -11859,6 +12138,7 @@ function hudTick(dt) {
   hudAcc += dt;
   if (hudAcc < 0.1 || !G.sk || $('hud').classList.contains('hidden')) return;
   hudAcc = 0;
+  if (isVeh(G.mode)) { vehHud(); return; }
   const s = G.sk, spd = Math.round((s.air ? Math.hypot(s.avx, s.avy) : s.speed) / CFG.PX_PER_M) + ' m/s';
   if (G.mode === 'pipe') {
     const c = G.combo;
@@ -11940,7 +12220,7 @@ function loadBest() { return loadSlot(ACCT.active); }
 function saveBest(b) { try { Store.set(slotKey(ACCT.active), JSON.stringify(b)); } catch (e) { /* storage unavailable */ } }
 loadAccounts();
 function refreshBest() {
-  if (G.storeReady) { const m = loadBest(); if (barRenoMigrate(m) | barMigrate(m) | olyMedalMigrate(m) | slCourseMigrate(m) | barFoundMigrate(m)) saveBest(m); slRanksTidy(); }   // once per account: the old tip jar is paid out, old Olympic medals are rechecked, old-course slalom times set aside
+  if (G.storeReady) { const m = loadBest(); if (barRenoMigrate(m) | barMigrate(m) | olyMedalMigrate(m) | slCourseMigrate(m) | barFoundMigrate(m) | photoMigrate(m)) saveBest(m); slRanksTidy(); }   // once per account: the old tip jar is paid out, old Olympic medals are rechecked, old-course slalom times set aside
   const b = loadBest();
   $('bFree').textContent = b.freestyle ? `Best ${b.freestyle} pts` : 'Endless';
   $('bSlalom').textContent = b.slalom ? `Best ${fmtTime(b.slalom)}` : b.slalomOld ? `Old course ${fmtTime(b.slalomOld)}` : `${CFG.SLALOM.gates} gates`;
@@ -11990,6 +12270,7 @@ function startGame(mode, fromOly) {
   G.rankKey = v === 'night' ? 'parkNight' : v === 'super' ? 'superpipe' : v === 'mega' ? 'megakicker' : mode;
   G.lastMode = mode;
   resetWorld(mode);
+  if (isVeh(mode)) { vehStart(mode); return; }   // the truck and the snowmobile have their own setup (no RootBeer, no weather)
   G.vibes = false;
   G.rbLeft = 0;
   { const bb = loadBest(), n = rbWaiting(bb); if (n > 0) { if (n > 1) bb.rootbeer = n - 1; else delete bb.rootbeer; saveBest(bb); G.vibes = true; G.rbLeft = n - 1; } }   // each PNW RootBeer from Geep lasts one run; the rest wait their turn
@@ -12010,7 +12291,7 @@ function startGame(mode, fromOly) {
   setHudMode(mode); hudAcc = 1; $('hud').classList.remove('hidden');
   if (v) $('hudTitle').textContent = EVENT_NAMES[G.rankKey];
   if (G.oly) $('hudTitle').textContent = `${G.oly.official ? 'Olympics' : 'Heat'}: ${EVENT_NAMES[mode]}`;
-  $('touch').classList.toggle('hidden', !isTouch);
+  $('touch').classList.toggle('hidden', !isTouch); $('tuckBtn').classList.remove('hidden'); $('jumpBtn').classList.remove('hidden');
   G.pointer.active = false;
   if (document.activeElement) document.activeElement.blur();
   // hidden eggs: one in the Olympic Slalom, one in Freestyle (each found once per account)
@@ -12027,6 +12308,17 @@ function startGame(mode, fromOly) {
   else if (mode === 'slalom' || mode === 'tree') { const bb = loadBest(), fresh = !bb[mode] && bb[mode + 'Old'];
     toast(`Press ↓ to start.${fresh ? ' New course!' : ''} Go round the outside of each flag, on the side it points. Weather: ${WEATHER_NAMES[G.weather]}.`, fresh ? 3.6 : 3); }
   else if (mode === 'freestyle') toast(`Press ↓ to start. Weather: ${WEATHER_NAMES[G.weather]}.`, 2.6);
+  thumbHint(mode);
+}
+// Phones, the first time in each event: one line at the top on how the controls work
+let thintTimer = 0;
+function thumbHint(mode) {
+  clearTimeout(thintTimer); $('thint').classList.add('hidden');
+  if (!isTouch || G.demo || G.practice) return;
+  const H = ACCT.thumbHint = ACCT.thumbHint || {}; if (H[mode]) return;
+  H[mode] = 1; saveAccounts();
+  $('thint').textContent = mode === 'road' ? 'Hold left or right to steer. The gas is automatic: hold both sides to brake.' : mode === 'snowmo' ? 'Hold left or right to turn. The throttle is automatic. Jump (bottom right) pops you off a gap.' : G.course ? 'Hold the side of the next flag. Switch as you pass it. Jump and Tuck: bottom right.' : 'Hold left or right to turn. Let go to straighten. Jump and Tuck: bottom right.';
+  $('thint').classList.remove('hidden'); thintTimer = setTimeout(() => $('thint').classList.add('hidden'), 6000);
 }
 function togglePause() {
   if (G.state === 'playing') { G.state = 'paused'; overlays('pause'); $('ghostRow').classList.toggle('hidden', !(G.mode === 'slalom' || G.mode === 'tree') || !!G.practice); $('ghostChk').checked = ACCT.ghost; }
@@ -12036,11 +12328,14 @@ function showGameOver() {
   musicStop();
   barCheckRun();
   $('oBarBtn').classList.toggle('hidden', G.escaped !== 'apres');
+  $('oSnoBtn').classList.toggle('hidden', !(G.mode === 'road' && G.road && G.road.phase === 'done'));
+  $('againBtn').textContent = G.mode === 'road' ? 'Drive again' : G.mode === 'snowmo' ? 'Ride again' : 'Ski again';
   if (G.oly) { olyEventDone(); return; }   // Olympic runs go to the Olympic scorecard instead
   const b = loadBest(); let isBest = false;
   const bk = G.rankKey || G.mode;   // variants (Night Park, Superpipe, Mega Kicker) keep their own bests
   const rows = [];
-  if (G.mode === 'backcountry') {
+  if (isVeh(G.mode)) { isBest = vehGameOver(b, rows); saveBest(b); }
+  else if (G.mode === 'backcountry') {
     const B = G.bc, J = B.judge || bcJudge();
     $('overTitle').textContent = 'Run complete'; $('overIcon').textContent = 'i';
     $('overMsg').textContent = `${B.faceName}: you skied into the lodge. The judges have scored your line.`;
@@ -12123,7 +12418,7 @@ function showGameOver() {
   const rv = rankValue();
   if (rv !== null && !G.demo && !G.practice) {
     const sl = G.mode === 'slalom' || G.mode === 'tree'; if (sl) slRanksTidy();
-    const rk = G.rankKey || G.mode, pos = rankAdd(rk, rv, G.mode === 'backcountry' && G.bc ? { face: G.bc.faceName } : sl ? { c: slCfg(G.mode).courseV } : null);
+    const rk = G.rankKey || G.mode, pos = rankAdd(rk, rv, G.mode === 'backcountry' && G.bc ? { face: G.bc.faceName } : sl ? { c: slCfg(G.mode).courseV } : G.mode === 'snowmo' && G.sm && G.sm.on.length ? { mod: 1 } : null);
     if (pos) rows.push(['', `<b>New #${pos} in ${EVENT_NAMES[rk]}!</b>`, 'wide']);
     rows.push(['', rankLinesHTML(rk, pos), 'wide rk']);
   }
@@ -12200,7 +12495,7 @@ function finishCourse() {
 /* ------------------------------ input ------------------------------ */
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down',
-  ArrowUp: 'up', KeyW: 'up', Space: 'jump', KeyF: 'tuck', KeyE: 'style', KeyN: 'music', KeyP: 'pause', KeyR: 'restart', KeyM: 'mute', Escape: 'menu', KeyB: 'spray',
+  ArrowUp: 'up', KeyW: 'up', Space: 'jump', Enter: 'snap', NumpadEnter: 'snap', KeyF: 'tuck', KeyE: 'style', KeyN: 'music', KeyP: 'pause', KeyR: 'restart', KeyM: 'mute', Escape: 'menu', KeyB: 'spray',
   Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', Digit5: 'm5', Digit6: 'm6', Digit7: 'm7', Digit8: 'm8',
 };
 const MODE_KEYS = { m1: 'freestyle', m2: 'slalom', m3: 'tree', m4: 'park', m5: 'pipe', m6: 'bigair', m7: 'olympics', m8: 'backcountry' };
@@ -12265,7 +12560,7 @@ cv.addEventListener('pointerdown', e => {
   if (G.state !== 'playing') return;
   ensureAudio();
   if (G.mode === 'backcountry' && G.bc && G.bc.phase !== 'ride') { if (G.bc.phase !== 'scout') bcIntroKey('tap'); return; }
-  tDown(e);
+  if (e.pointerType !== 'mouse') { touchDown(e); return; }
   const p = toLogical(e);
   if (e.pointerType === 'mouse' && e.button === 2) { action('jump'); return; }
   if (G.sk.crashed) { const d = dirToward(p.x, p.y); getUp(d === null ? G.sk.lastSide * 3 : d); }
@@ -12273,13 +12568,14 @@ cv.addEventListener('pointerdown', e => {
   if (e.pointerType !== 'mouse') G.touchSteer = true;
 });
 cv.addEventListener('pointermove', e => {
+  if (Hold.pts.has(e.pointerId) || Hold.ignore.has(e.pointerId)) return;   // a steering hold doesn't swipe
   tMove(e);
   const p = toLogical(e);
   if (e.pointerType === 'mouse') {
     if (!G.lastMouse || Math.hypot(p.x - G.lastMouse.x, p.y - G.lastMouse.y) > 2) { G.pointer = { active: true, x: p.x, y: p.y }; G.lastMouse = p; }
   } else if (G.touchSteer) { G.pointer.x = p.x; G.pointer.y = p.y; }
 });
-const endTouch = e => { tUp(e); if (e.pointerType !== 'mouse') { G.touchSteer = false; G.pointer.active = false; } };
+const endTouch = e => { if (holdUp(e)) return; tUp(e); if (e.pointerType !== 'mouse') { G.touchSteer = false; G.pointer.active = false; } };
 cv.addEventListener('pointerup', endTouch); cv.addEventListener('pointercancel', endTouch);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -12351,6 +12647,7 @@ $('bgCtl').addEventListener('click', e => { const t = e.target.closest('[data-bg
   cv.addEventListener('contextmenu', e => e.preventDefault());
 }
 $('oBarBtn').addEventListener('click', () => { showMenu(); openBar(); });
+$('oSnoBtn').addEventListener('click', () => { if (snoOpen()) startGame('snowmo'); });
 $('barItems').addEventListener('click', e => { const t = e.target.closest('[data-bar]'); if (t) barPick(t.dataset.bar); });
 $('barActs').addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (t && !t.disabled) barAction(t.dataset.act); });
 $('barInfo').addEventListener('click', e => { const t = e.target.closest('[data-act]'); if (t && !t.disabled) barAction(t.dataset.act); });
@@ -12382,6 +12679,688 @@ $('againBtn').addEventListener('click', () => { G.variantNext = G.variant; start
 $('oMenuBtn').addEventListener('click', showMenu);
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing') togglePause(); });
 addEventListener('resize', () => { resize(); if (G.sk) camFollow(); });
+
+/* ---------- the Truck & Camper: the mountain road (mode 'road') and the Sno-Park hill climb (mode 'snowmo') ----------
+   Both are full-screen modes in the main game, like Freestyle: the same canvas, HUD, pause, phone controls and game-over screen.
+   The road is drawn top-down and winds up through switchbacks; you drive it in road coordinates (s: px along the road, u: px
+   across it, + to the right), so the truck follows the bends by itself and the skill is speed, lines and the hazards. */
+const isVeh = m => m === 'road' || m === 'snowmo';
+function garData(b) { if (!b.garage || typeof b.garage !== 'object') b.garage = {}; const g = b.garage; if (!Array.isArray(g.owned)) g.owned = []; if (!Array.isArray(g.off)) g.off = []; return g; }
+const garPart = id => CFG.GARAGE.parts.find(p => p.id === id);
+// The parts on (bought, and not taken off), of one kind ('sled' or 'truck') or all
+function garOn(b, kind) { const g = b.garage || {}, off = g.off || []; return (g.owned || []).filter(id => { const p = garPart(id); return p && !off.includes(id) && (!kind || p.kind === kind); }); }
+// A run's settings: the base CFG with the parts that are on added in
+function vehCfg(kind, on) { const C = Object.assign({}, kind === 'sled' ? CFG.SNOWMO : CFG.ROAD); for (const id of on) { const p = garPart(id); for (const k in p.fx) C[k] = (C[k] || 0) + p.fx[k]; } return C; }
+const NUM_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six'];
+const vehZoom = () => clamp(Math.min(W, H) / 420, 1, 1.7);   // big screens see the road and the hill a little closer up
+const truckOwns = (b = loadBest()) => !!(b.resort && (b.resort.owned || []).includes('truck'));
+function truckData(b) { if (!b.truck || typeof b.truck !== 'object') b.truck = {}; return b.truck; }
+const snoOpen = (b = loadBest()) => !!(b.truck && b.truck.day === barToday());   // drove up today: the Sno-Park is open
+function smData(b) { if (!b.snowmo || typeof b.snowmo !== 'object') b.snowmo = {}; if (!Array.isArray(b.snowmo.goals)) b.snowmo.goals = []; return b.snowmo; }
+const resortPrice = (b, id) => id === 'truck' && b.resort && (b.resort.owned || []).includes('car') ? CFG.RESORT_PRICES.truck - CFG.TRUCK.tradeIn : CFG.RESORT_PRICES[id];
+const vehRot = (x, y, a, fn) => { ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a); fn((px, py, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(px, py, w, h); }); ctx.restore(); };
+const vehHash = (a, b) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+// Keys or phone holds: steer, gas and brake. Phones: hold a side to steer, the gas is automatic, hold both sides to brake.
+function vehInput() {
+  let hl = false, hr = false; for (const p of Hold.pts.values()) { if (p.side < 0) hl = true; else hr = true; }
+  const both = hl && hr;
+  return { steer: both ? 0 : (G.held.right || hr ? 1 : 0) - (G.held.left || hl ? 1 : 0), gas: !!G.held.up || (isTouch && !both && !G.held.down), brake: !!G.held.down || both };
+}
+// Keys and taps in these modes: Space (or a tap) works the chains; Space (or the Jump button) pops the sled off a gap's lip
+function vehAction(k) {
+  if (G.mode === 'road') { const R = G.road;
+    if (R && R.phase === 'camera') { if (k === 'jump' || k === 'tap' || k === 'snap') roadSnap(); return; }   // the photo moment: one shot
+    if (R && R.phase === 'develop') { if (R.cam.dt > 0.6) roadCameraEnd(); return; }   // any key (or a tap) and you drive on
+    if (R && R.phase === 'chain') { if (k === 'jump' || k === 'tap') chainPress(); else if (k === 'up') { R.phase = 'go'; R.chain = null; } } }
+  else if (G.mode === 'snowmo') { const M = G.sm; if (M && k === 'jump' && M.phase === 'go') { M.popT = (M.C || CFG.SNOWMO).popWin; if (!M.air) SFX.jump(); } }
+}
+function vehStart(mode) {
+  G.weather = 'clear'; G.snow = []; G.rec = null; G.ghost = null; G.vibes = false; G.rbLeft = 0; G.egg = null; G.finished = false; G.escaped = null;
+  if (mode === 'road') roadStart(); else smStart();
+  musicPlay('backcountry');
+  G.state = 'playing'; overlays(null); $('toast').classList.add('hidden');
+  setHudMode(mode); hudAcc = 1; $('hud').classList.remove('hidden');
+  $('touch').classList.toggle('hidden', !isTouch); $('tuckBtn').classList.add('hidden'); $('jumpBtn').classList.toggle('hidden', mode === 'road');
+  G.pointer.active = false; if (document.activeElement) document.activeElement.blur();
+  toast(mode === 'road' ? (isTouch ? 'The road to the Sno-Park. Hold a side to steer; hold both to brake.' : 'The road to the Sno-Park. Up: gas, Down: brake, Left/Right: steer.') + ` ${NUM_WORD[G.road.C.dents].replace(/^./, c => c.toUpperCase())} dents and you get towed.`
+    : (isTouch ? 'The hill climb. Hold a side to turn; Jump pops you off a gap.' : 'The hill climb. Up: throttle, Left/Right: turn, Space: pop off a gap.') + ' Climb as high as you can.', 3.2);
+  thumbHint(mode);
+}
+
+/* ---------- the road ---------- */
+let ROAD_GEO = null;
+function roadGeo() {   // the road's middle line, every 4 px: position, heading (0 = up the screen, + = turning right), curvature, segment
+  if (ROAD_GEO) return ROAD_GEO;
+  const st = 4, X = [0], Y = [0], Hd = [0], K = [0], SEG = [0]; let x = 0, y = 0, h = 0;
+  CFG.ROAD.course.forEach((seg, j) => {
+    const L = seg[1], k = seg[0] === 'b' ? seg[2] * Math.PI / 180 / L : 0;
+    for (let i = 0; i < Math.round(L / st); i++) { h += k * st; x += Math.sin(h) * st; y -= Math.cos(h) * st; X.push(x); Y.push(y); Hd.push(h); K.push(k); SEG.push(j); }
+  });
+  const near = new Set();   // 20 px cells near the road (no trees there)
+  for (let i = 0; i < X.length; i += 2) for (let dx = -3; dx <= 3; dx++) for (let dy = -3; dy <= 3; dy++) near.add(`${Math.floor(X[i] / 20) + dx},${Math.floor(Y[i] / 20) + dy}`);
+  ROAD_GEO = { st, X, Y, H: Hd, K, SEG, n: X.length, len: (X.length - 1) * st, near };
+  return ROAD_GEO;
+}
+function roadAt(s) {
+  const Q = roadGeo(), f = clamp(s / Q.st, 0, Q.n - 1.001), i = Math.floor(f), t = f - i;
+  return { x: Q.X[i] + (Q.X[i + 1] - Q.X[i]) * t, y: Q.Y[i] + (Q.Y[i + 1] - Q.Y[i]) * t, h: Q.H[i] + (Q.H[i + 1] - Q.H[i]) * t, k: Q.K[i + 1], seg: Q.SEG[i + 1] };
+}
+function roadPos(s, u) { const p = roadAt(s); return { x: p.x + Math.cos(p.h) * u, y: p.y + Math.sin(p.h) * u, h: p.h }; }
+const roadCliff = s => (Math.floor(roadAt(s).seg / 2) % 2 ? 1 : -1);   // which side the rock wall is on (the other side drops away, behind a guardrail)
+// The day's hazards: the slots shuffled by the date (the chain-up never in the last two, so its icy stretch comes before the top)
+function roadPlan(day) {
+  const C = CFG.ROAD; let h = 2166136261; for (const c of 'road' + day) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const rng = mulberry(h >>> 0), karl = rng() < C.karlChance, kinds = ['plow', 'elk', 'rocks', 'logger', 'bridge', 'chains', 'karl'];
+  let order = kinds; for (let t = 0; t < 40; t++) { order = kinds.map(k => [rng(), k]).sort((a, b) => a[0] - b[0]).map(x => x[1]); if (order.indexOf('chains') <= 4) break; }
+  return C.slots.map((s, i) => ({ kind: order[i], s })).filter(z => z.kind !== 'karl' || karl);
+}
+// The road's edges at s (px from the middle, left and right): narrows for the logging truck and the bridge; the chain-up bay on the right
+function roadEdges(s) {
+  const C = CFG.ROAD, R = G.road; let l = C.half, r = C.half;
+  if (R) for (const z of R.zones) {
+    const d = s - z.s;
+    if (z.kind === 'logger' && Math.abs(d) < 240) { const w = C.half - (C.half - C.narrow) * clamp((240 - Math.abs(d)) / 40, 0, 1); l = Math.min(l, w); r = Math.min(r, w); }
+    else if (z.kind === 'bridge' && Math.abs(d) < 150) { const w = C.half - (C.half - C.bridge) * clamp((150 - Math.abs(d)) / 70, 0, 1); l = Math.min(l, w); r = Math.min(r, w); }
+    else if (z.kind === 'chains' && d > -70 && d < 120) r = Math.max(r, C.half + (C.bay - C.half) * clamp(Math.min(d + 70, 120 - d) / 30, 0, 1));
+  }
+  return [l, r];
+}
+const roadOnBridge = (z, s, hs) => s + hs > z.s - 80 && s - hs < z.s + 80;
+function roadIce(s) { const R = G.road; return !!R && R.zones.some(z => z.kind === 'chains' && s > z.s + 250 && s < z.s + 250 + CFG.ROAD.iceLen); }
+function roadStart() {
+  const p = roadPos(30, 13), on = garOn(loadBest(), 'truck');
+  G.road = { s: 30, u: 13, v: 0, vu: 0, slide: 0, sway: 0, swayV: 0, dents: 0, crashT: 0, t: 0, started: false, phase: 'go', zones: roadPlan(barToday()), ents: [], fired: new Set(),
+    chains: false, chain: null, photo: false, karlHit: false, cam: null, camDone: false, photoRes: null, park: null, flash: 0, camX: p.x, camY: p.y, acc: 0, fall: null, parts: [], hits: [], on, C: vehCfg('truck', on) };
+  const Z = vehZoom(); G.camX = p.x - W / Z / 2; G.camY = p.y - H / Z / 2;
+}
+function roadUpdate(dt) {
+  const R = G.road; if (!R) return;
+  if (R.phase === 'park') { R.park.t += dt; if (R.park.t >= 1.9 && G.state === 'playing') { R.phase = 'done'; G.finished = true; G.state = 'over'; SFX.finish(); setTimeout(showGameOver, 700); } }
+  R.acc += dt; const h = 1 / 120;
+  while (R.acc >= h) { R.acc -= h; roadStep(h); if (G.state !== 'playing') break; }
+  const p = R.park ? roadParkPos(R.park) : roadPos(R.s, R.u), hd = p.h, look = R.park ? 10 : 40 + R.v * 0.5;
+  R.camX += (p.x + Math.sin(hd) * look - R.camX) * Math.min(1, dt * 3); R.camY += (p.y - Math.cos(hd) * look - R.camY) * Math.min(1, dt * 3);
+  const Z = vehZoom(); G.camX = R.camX - W / Z / 2; G.camY = R.camY - H / Z / 2; G.elapsed = R.t;
+  if (R.flash > 0) R.flash -= dt;
+  if (G.shake > 0) G.shake -= dt;
+  for (const q of R.parts) { q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt; }
+  R.parts = R.parts.filter(q => q.life > 0).slice(-80);
+}
+function roadStep(dt) {
+  const R = G.road, C = R.C, Q = roadGeo();
+  if (R.phase === 'done' || R.phase === 'towed' || R.phase === 'park') return;
+  if (R.phase === 'camera' || R.phase === 'develop') { roadCameraTick(dt); return; }   // the clock stops for the photo
+  if (R.started) R.t += dt;
+  roadHazards(dt);
+  if (R.crashT > 0) { R.crashT -= dt; if (R.crashT <= 0 && R.dents >= C.dents) roadTowed(); return; }
+  if (R.phase === 'chain') { R.chain.t += dt; return; }
+  const I = vehInput(), ice = roadIce(R.s), grip = C.grip * (ice && !R.chains ? C.ice : 1), vmax = C.vmax * (R.chains ? C.chainsMax : 1);
+  if (I.gas && !R.started) R.started = true;
+  const slick = ice && !R.chains, sk = slick ? C.slick : 0;   // on ice without chains: the brakes and the steering barely bite, and the back end wanders (less on studded tires)
+  R.v += ((I.gas ? C.acc * (1 - 0.4 * sk) : 0) - (I.brake ? C.brake * (1 - 0.65 * sk) : 0)) * dt; R.v -= R.v * C.drag * dt; R.v = clamp(R.v, 0, vmax);
+  const k = roadAt(R.s).k, over = Math.max(0, R.v * R.v * Math.abs(k) - grip);
+  if (over) R.slide -= Math.sign(k) * over * dt; else R.slide -= R.slide * Math.min(1, 3 * dt);   // past the grip: the camper drags you to the outside
+  if (slick && R.v > 25) R.slide += Math.sin(R.s / 37) * 30 * sk * (R.v / C.vmax) * dt;
+  const tgt = I.steer * C.steer * Math.min(1, R.v / 25 + 0.15) * (1 - 0.65 * sk);
+  R.vu += (tgt - R.vu) * Math.min(1, 10 * dt);
+  R.u += (R.vu + R.slide) * dt; R.s += R.v * dt;
+  const want = clamp(R.v * R.v * k / 90 + R.slide / 30, -1.2, 1.2) * C.sway; R.swayV += ((want - R.sway) * 30 - R.swayV * 5) * dt; R.sway += R.swayV * dt;   // the camper rocks
+  const [eL, eR] = roadEdges(R.s);
+  if (R.u + 6.5 > eR) return roadCrash(roadCliff(R.s) > 0 ? 'the rock wall' : 'the guardrail', 1);
+  if (R.u - 6.5 < -eL) return roadCrash(roadCliff(R.s) < 0 ? 'the rock wall' : 'the guardrail', -1);
+  for (const z of R.zones) if (z.kind === 'chains' && !R.chains && R.v < 4 && R.u > C.half - 3 && R.s > z.s - 50 && R.s < z.s + 100) { R.phase = 'chain'; R.chain = { t: 0, hits: 0 }; R.v = 0; SFX.token(); }
+  if (R.v > 70 && Math.abs(R.slide) > 8 && Math.random() < 0.5) { const p = roadPos(R.s - 12, R.u); R.parts.push({ x: p.x, y: p.y, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, life: 0.4 }); }
+  if (R.s >= Q.len - 30) roadArrive();
+}
+function roadCrash(what, side) {
+  const R = G.road, C = R.C;
+  R.dents++; R.crashT = C.crashT; R.v = 0; R.vu = 0; R.slide = 0; R.swayV = 0; R.sway = 0;
+  const [eL, eR] = roadEdges(R.s); R.u = clamp(side ? R.u - side * 6 : R.u, -eL + 10, eR - 10);   // back on the road, clear of the edge
+  G.shake = 0.35; SFX.crash(); R.hits.push(what);
+  toast(R.dents >= C.dents ? `Crunch! You hit ${what}. That's dent ${R.dents}: the tow truck's on its way.` : `Crunch! You hit ${what}. Dent ${R.dents} of ${C.dents}.`, 2.2);
+}
+function roadTowed() {
+  const R = G.road; R.phase = 'towed'; G.finished = false; G.state = 'over'; SFX.over && SFX.over();
+  setTimeout(showGameOver, 900);
+}
+function roadArrive() {   // into the Sno-Park lot: the truck pulls into a spot (then the run's over)
+  const R = G.road, L = roadLot(), p = roadPos(R.s, R.u);
+  R.phase = 'park'; R.v = 0; R.park = { t: 0, x0: p.x, y0: p.y, h0: p.h, x1: L.x + 40, y1: L.y - 6 }; SFX.token();
+}
+// The lot: just past the end of the road (the road comes in at its bottom)
+function roadLot() { const Q = roadGeo(), p = roadPos(Q.len, 0); return { x: p.x + Math.sin(p.h) * 60, y: p.y - Math.cos(p.h) * 60 }; }
+function roadParkPos(K) {   // up into the lot and across into the spot, nose up
+  const k = clamp(K.t / 1.6, 0, 1), e = k * k * (3 - 2 * k), d = 44, ax = [K.x0, K.x0 + Math.sin(K.h0) * d, K.x1, K.x1], ay = [K.y0, K.y0 - Math.cos(K.h0) * d, K.y1 + d, K.y1];
+  const bz = (a, t) => (1 - t) ** 3 * a[0] + 3 * (1 - t) ** 2 * t * a[1] + 3 * (1 - t) * t * t * a[2] + t ** 3 * a[3];
+  const db = (a, t) => 3 * (1 - t) ** 2 * (a[1] - a[0]) + 6 * (1 - t) * t * (a[2] - a[1]) + 3 * t * t * (a[3] - a[2]);
+  const t = Math.min(e, 0.999), dx = db(ax, t), dy = db(ay, t);
+  return { x: bz(ax, e), y: bz(ay, e), h: k >= 1 ? 0 : Math.atan2(dx, -dy) };
+}
+// The hazards: each one comes to life as you near its spot, moves, and crashes you if you hit it
+function roadSpawn(z) {
+  const R = G.road, C = CFG.ROAD, cl = roadCliff(z.s);
+  if (z.kind === 'plow') R.ents.push({ kind: 'plow', s: z.s + 170, u: -9, vs: -C.plowV, hs: 14, hu: 16 });   // its blade sticks out into your lane: hug the right
+  else if (z.kind === 'logger') R.ents.push({ kind: 'logger', s: z.s + 260, u: -8, vs: -C.loggerV, hs: 30, hu: 12 });
+  else if (z.kind === 'bridge') R.ents.push({ kind: 'car', s: z.s + 320, u: -13, vs: -C.carV, hs: 11, hu: 7, z });
+  else if (z.kind === 'elk') for (let i = 0; i < 6; i++) R.ents.push({ kind: 'elk', s: z.s - 40 + i * 15 + (i % 2) * 4, u: -cl * 58, vu: cl * C.elkV * (0.85 + 0.1 * (i % 3)), wait: i * 1.15, hs: 4, hu: 7 });
+  else if (z.kind === 'rocks') { // fallen rocks (the line through them is the middle of the road), and more coming down
+    for (const [ds, u] of [[-40, 16], [40, -13], [110, 17]]) R.ents.push({ kind: 'rock', s: z.s + ds, u, hs: 5, hu: 5, still: true }); R.fall = { s0: z.s - 260, s1: z.s + 220, next: 0, side: cl }; }
+  else if (z.kind === 'karl') R.ents.push({ kind: 'karl', s: z.s, u: cl * 52, vu: -cl * C.karlV, pause: 1.6, hs: 6, hu: 7 });
+}
+function roadHazards(dt) {
+  const R = G.road, C = CFG.ROAD;
+  for (const z of R.zones) {
+    if (R.fired.has(z.s)) continue;
+    const lead = { plow: 320, elk: 420, rocks: 300, logger: 380, bridge: 460, chains: 1e9, karl: 300 }[z.kind];
+    if (R.s > z.s - lead) { R.fired.add(z.s); roadSpawn(z); }
+  }
+  const F = R.fall;   // rockfall: rocks bouncing off the rock wall and across the road ahead of you
+  if (F && R.s > F.s0 && R.s < F.s1) { F.next -= dt; if (F.next <= 0) { F.next = 1.4; R.ents.push({ kind: 'rock', s: R.s + 90 + Math.random() * 80, u: F.side * 34, vu: -F.side * C.rockV, hs: 5, hu: 5 }); } }
+  for (const e of R.ents) {
+    if (e.kind === 'car') {   // the one-lane bridge: it waits at its end if you're on the bridge first; on the bridge it takes the middle
+      const z = e.z, enter = z.s + 80 + e.hs, nexts = e.s + e.vs * dt;
+      if (e.s >= enter && nexts < enter && roadOnBridge(z, R.s, 13)) { e.waiting = true; continue; }
+      e.waiting = false; e.s = nexts; e.u += ((roadOnBridge(z, e.s, e.hs) ? 0 : -13) - e.u) * Math.min(1, 4 * dt);
+    } else if (e.vs) e.s += e.vs * dt;
+    else if (e.kind === 'elk') { if (e.wait > 0) e.wait -= dt; else e.u += e.vu * dt; }
+    else if (e.kind === 'karl') { if (Math.abs(e.u) < 3 && e.pause > 0) e.pause -= dt; else e.u += e.vu * dt; }
+    else if (e.vu) e.u += e.vu * dt;
+    if (R.crashT <= 0 && !e.gone && Math.abs(e.s - R.s) < e.hs + 13 && Math.abs(e.u - R.u) < e.hu + 6.5) {
+      e.gone = true;
+      if (e.kind === 'karl') R.karlHit = true;
+      roadCrash({ plow: 'the snowplow', logger: 'the logging truck', car: 'the oncoming car', elk: 'an elk', rock: 'a rock', karl: 'Big Karl (he shrugs it off and lumbers into the trees)' }[e.kind], 0);
+    }
+    if (e.kind === 'karl' && !R.camDone && !e.gone && Math.abs(e.u) < 30 && e.s - R.s > C.photo[0] && e.s - R.s < C.photo[1] && R.v < 6 && R.crashT <= 0) { R.camDone = true; roadCameraStart(e); }   // stopped in time: the camera comes out
+  }
+  R.ents = R.ents.filter(e => !e.gone && e.s > R.s - 420 && e.s < R.s + 900 && !((e.kind === 'elk' || e.kind === 'karl' || (e.kind === 'rock' && !e.still)) && Math.abs(e.u) > 75));
+}
+function chainPress() {
+  const R = G.road, c = R.chain; if (!c) return;
+  const x = (Math.sin(c.t * 3.2) + 1) / 2;
+  if (x > 0.36 && x < 0.64) { c.hits++; beep(660, 0.06, 'square', 0.04); if (c.hits >= CFG.ROAD.chainHits) { R.chains = true; R.phase = 'go'; R.chain = null; SFX.chal(); toast('Chains on! The icy stretch ahead won\'t bother you now (a little slower, though).', 2.6); } }
+  else beep(180, 0.08, 'square', 0.04);
+}
+// The road, top-down: snow and old firs, the rock wall or the guardrail and the drop, the road and its lines, the hazards, your truck
+function roadRender() {
+  const R = G.road, C = CFG.ROAD, Q = roadGeo();
+  let ox = 0, oy = 0; if (G.shake > 0) { ox = Math.round(Math.random() * 4 - 2); oy = Math.round(Math.random() * 4 - 2); }
+  RCX = G.camX + ox; RCY = G.camY + oy;
+  ctx.fillStyle = '#eef3f8'; ctx.fillRect(0, 0, W, H);
+  const Z = vehZoom(), VW = W / Z, VH = H / Z; ctx.save(); ctx.scale(Z, Z);
+  for (let gx = Math.floor(RCX / 37) - 1; gx <= Math.floor((RCX + VW) / 37) + 1; gx++) for (let gy = Math.floor(RCY / 29) - 1; gy <= Math.floor((RCY + VH) / 29) + 1; gy++) {
+    const hsh = vehHash(gx, gy); if (hsh < 0.5) { ctx.fillStyle = '#dbe4ee'; ctx.fillRect(Math.round(gx * 37 + hsh * 30 - RCX), Math.round(gy * 29 + hsh * 20 - RCY), 2, 1); }
+  }
+  const x0 = RCX - 120, x1 = RCX + VW + 120, y0 = RCY - 120, y1 = RCY + VH + 120, vis = [];
+  for (let i = 0; i < Q.n - 2; i += 2) if (Q.X[i] > x0 && Q.X[i] < x1 && Q.Y[i] > y0 && Q.Y[i] < y1) vis.push(i);
+  const quad = (i, j, a0, a1, col) => {   // a strip between offsets a0..a1 (px across the road, + right) from sample i to j
+    const n = (k, a) => [Q.X[k] + Math.cos(Q.H[k]) * a - RCX, Q.Y[k] + Math.sin(Q.H[k]) * a - RCY];
+    const p1 = n(i, a0), p2 = n(i, a1), p3 = n(j, a1), p4 = n(j, a0);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.lineTo(p4[0], p4[1]); ctx.closePath(); ctx.fill();
+  };
+  // the land beside the road: the rock wall on one side, the slope dropping away on the other
+  for (const i of vis) {
+    const s = i * Q.st, [eL, eR] = roadEdges(s), cl = roadCliff(s), j = Math.min(Q.n - 1, i + 3);
+    if (cl > 0) { quad(i, j, eR, eR + 16, '#7d8590'); quad(i, j, -eL - 22, -eL, '#c6d2de'); } else { quad(i, j, -eL - 16, -eL, '#7d8590'); quad(i, j, eR, eR + 22, '#c6d2de'); }
+  }
+  // the forest: big old firs everywhere the road isn't
+  const LOT = roadLot();
+  for (let gx = Math.floor(x0 / 20); gx <= Math.floor(x1 / 20); gx++) for (let gy = Math.floor(y0 / 20); gy <= Math.floor(y1 / 20); gy++) {
+    const hsh = vehHash(gx * 3 + 1, gy * 7 + 2); if (hsh > 0.16 || Q.near.has(`${gx},${gy}`) || (Math.abs(gx * 20 - LOT.x) < 140 && Math.abs(gy * 20 - LOT.y) < 100)) continue;
+    drawS(hsh < 0.11 ? SPR.large : SPR.small, gx * 20 + hsh * 60, gy * 20 + hsh * 90);
+  }
+  // the road, in passes so no strip paints over the one before: the creek and the shoulders, then the surface, then the ice, lines, rails and posts
+  const isBridge = s => G.road.zones.some(z => z.kind === 'bridge' && Math.abs(s - z.s) < 80);
+  for (const i of vis) {
+    const s = i * Q.st, [eL, eR] = roadEdges(s), j = Math.min(Q.n - 1, i + 3);
+    if (G.road.zones.some(z => z.kind === 'bridge' && Math.abs(s - z.s) < 26)) quad(i, j, -eL - 70, eR + 70, (i / 2) % 4 < 2 ? '#6a9ad4' : '#5284c0');   // the creek under the bridge
+    else quad(i, j, -eL - 2, eR + 2, '#e8eef4');
+  }
+  for (const i of vis) { const s = i * Q.st, [eL, eR] = roadEdges(s), j = Math.min(Q.n - 1, i + 3); quad(i, j, -eL, eR, isBridge(s) ? ((i / 2) % 2 ? '#8a6a44' : '#7a5c3a') : '#565b62'); }
+  for (const i of vis) {
+    const s = i * Q.st, [eL, eR] = roadEdges(s), j = i + 2;
+    if (roadIce(s) && vehHash(Math.floor(i / 10), 5) < 0.7) quad(i, j, -eL + 3, eR - 3, 'rgba(200,232,250,0.55)');   // the ice, in long glassy patches
+    if (isBridge(s)) { quad(i, j, -eL - 2, -eL, '#4a3018'); quad(i, j, eR, eR + 2, '#4a3018'); continue; }
+    if (eL >= C.narrow - 1 && (i / 2) % 6 < 3) quad(i, j, -0.8, 0.8, '#e8c040');   // the middle line
+    quad(i, j, -eL + 1, -eL + 2, '#d8dde2'); quad(i, j, eR - 2, eR - 1, '#d8dde2');
+    if ((i / 2) % 5 === 0) { const sd = -roadCliff(s), a = sd > 0 ? eR + 3 : -eL - 3, p = roadPos(s, a); ctx.fillStyle = '#8a9098'; ctx.fillRect(Math.round(p.x - RCX) - 1, Math.round(p.y - RCY) - 1, 3, 3); }
+    { const sd = -roadCliff(s); if (sd > 0) quad(i, j, eR + 2.5, eR + 3.5, '#c0c6cc'); else quad(i, j, -eL - 3.5, -eL - 2.5, '#c0c6cc'); }   // the rail
+  }
+
+  // signs: chains required, the bridge, the Sno-Park at the top
+  for (const z of R.zones) {
+    if (z.kind === 'chains') roadSign(z.s - 170, 'CHAINS', '#f0c020', '#202020');
+    if (z.kind === 'bridge') roadSign(z.s - 150, 'ONE LANE', '#f0c020', '#202020');
+  }
+  roadSign(Q.len - 160, 'SNO-PARK', '#2a6a3a', '#ffffff');
+  if (Math.abs(LOT.x - RCX - VW / 2) < VW / 2 + 140 && Math.abs(LOT.y - RCY - VH / 2) < VH / 2 + 100) drawSnoLot(LOT.x, LOT.y);   // the Sno-Park lot
+  // the hazards
+  for (const e of R.ents) roadDrawEnt(e);
+  // your truck
+  const tp = R.park ? roadParkPos(R.park) : roadPos(R.s, R.u), slip = !R.park && R.v > 1 ? Math.atan2(R.vu + R.slide, R.v) * 0.6 : 0;
+  vehRot(tp.x - RCX, tp.y - RCY, tp.h + slip, P => drawTruckTop(P, R.sway, R.on));
+  for (const q of R.parts) { ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(Math.round(q.x - RCX), Math.round(q.y - RCY), 2, 2); }
+  for (const f of G.floaters) { ctx.globalAlpha = Math.max(0, 1 - Math.max(0, f.t - 0.8) / 0.5); text(f.text, f.x - RCX, f.y - RCY, f.col); ctx.globalAlpha = 1; }
+  ctx.restore();
+  if (R.phase === 'chain' && R.chain) roadChainUI(R.chain);
+  else if (R.zones.some(z => z.kind === 'chains' && !R.chains && R.s > z.s - 260 && R.s < z.s + 100)) text(isTouch ? 'Chains required: hold both sides to stop in the bay on the right' : 'Chains required: stop in the bay on the right (or skip it)', W / 2, H - 30, '#8a5a00', 9);
+  if ((R.phase === 'camera' || R.phase === 'develop') && R.cam) roadCameraUI();
+  if (R.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${R.flash / 0.3})`; ctx.fillRect(0, 0, W, H); }
+}
+function roadSign(s, label, bg, fg) {
+  const p = roadPos(s, CFG.ROAD.half + 18), x = Math.round(p.x - RCX), y = Math.round(p.y - RCY);
+  if (x < -40 || x > W + 40 || y < -20 || y > H + 20) return;   // (in world px on screen: generous)
+  ctx.fillStyle = '#5a5a5a'; ctx.fillRect(x, y, 1, 8);
+  ctx.font = 'bold 7px "Courier New", monospace'; const w = Math.ceil(ctx.measureText(label).width) + 6;
+  ctx.fillStyle = '#202020'; ctx.fillRect(x - w / 2 - 1, y - 10, w + 2, 11); ctx.fillStyle = bg; ctx.fillRect(x - w / 2, y - 9, w, 9);
+  ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillText(label, x, y - 2);
+}
+function roadChainUI(c) {
+  const x = (Math.sin(c.t * 3.2) + 1) / 2, bw = Math.min(220, W - 40), bx = Math.round(W / 2 - bw / 2), by = Math.round(H * 0.3);
+  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(bx - 8, by - 26, bw + 16, 48);
+  text(`Chain up: ${isTouch ? 'tap' : 'press Space'} in the green (${c.hits} of ${CFG.ROAD.chainHits})`, W / 2, by - 12, '#ffffff', 9);
+  ctx.fillStyle = '#404040'; ctx.fillRect(bx, by, bw, 10); ctx.fillStyle = '#3aa04a'; ctx.fillRect(bx + bw * 0.36, by, bw * 0.28, 10);
+  ctx.fillStyle = '#ffd040'; ctx.fillRect(bx + Math.round(bw * x) - 1, by - 3, 3, 16);
+  if (!isTouch) text('(Up to drive off without them)', W / 2, by + 20, '#c0c0c0', 8);
+}
+function roadDrawEnt(e) {
+  const p = roadPos(e.s, e.u), x = p.x - RCX, y = p.y - RCY; if (x < -80 || x > W + 80 || y < -80 || y > H + 80) return;
+  const t = G.time;
+  if (e.kind === 'plow') vehRot(x, y, p.h + Math.PI, P => {   // a yellow plow, blade first, beacon going
+    P(-6, -12, 12, 26, '#e8b820'); P(-6, -12, 12, 7, '#f0c838'); P(-5, -10, 10, 3, '#9fc8e8'); P(-17, -16, 34, 3, '#505860'); P(-15, -14, 30, 1, '#7a828a');
+    P(-1, -4, 2, 2, Math.floor(t * 6) % 2 ? '#ff8020' : '#803010'); P(-6, 6, 12, 8, '#c89a10');
+  });
+  else if (e.kind === 'logger') vehRot(x, y, p.h + Math.PI, P => {   // a red cab, then a long load of logs
+    P(-6, -30, 12, 14, '#b02a2a'); P(-5, -28, 10, 3, '#9fc8e8'); P(-7, -14, 14, 44, '#3a3a40');
+    for (let i = 0; i < 3; i++) { P(-6 + i * 4, -12, 4, 40, i % 2 ? '#8a5a30' : '#7a4a24'); P(-6 + i * 4, 27, 4, 3, '#d8b080'); }
+  });
+  else if (e.kind === 'car') vehRot(x, y, p.h + Math.PI, P => { P(-6, -11, 12, 22, '#2a5ad4'); P(-5, -7, 10, 4, '#bfe0ff'); P(-5, 4, 10, 3, '#bfe0ff'); P(-6, -11, 2, 1, '#ffe080'); P(4, -11, 2, 1, '#ffe080'); });
+  else if (e.kind === 'rock') { ctx.fillStyle = '#6a7078'; ctx.fillRect(Math.round(x) - 5, Math.round(y) - 4, 10, 8); ctx.fillStyle = '#8a9098'; ctx.fillRect(Math.round(x) - 4, Math.round(y) - 4, 6, 3); ctx.fillStyle = '#4a5058'; ctx.fillRect(Math.round(x) - 5, Math.round(y) + 2, 10, 2); }
+  else if (e.kind === 'elk') drawElk(Math.round(x), Math.round(y), (e.vu || 0) * (Math.cos(p.h) >= 0 ? 1 : -1) > 0 ? 1 : -1, e.wait <= 0);
+  else if (e.kind === 'karl') { const S = SPR.karlSmall[Math.abs(e.u) < 3 && e.pause > 0 ? 'closed' : Math.floor(t * 4) % 2 ? 'runA' : 'runB']; if (S) ctx.drawImage(S.c, Math.round(x - S.ax * 0.8), Math.round(y - S.ay * 0.8), Math.round(S.c.width * 0.8), Math.round(S.c.height * 0.8)); }
+}
+function drawElk(x, y, face, walking) {   // a bull elk, side on: brown body, pale rump, dark neck, antlers
+  const P = (dx, dy, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x + (face > 0 ? dx : -dx - w), y + dy, w, h); }, l = walking && Math.floor(G.time * 6) % 2;
+  P(-6, -6, 12, 6, '#8a5a30'); P(-7, -6, 3, 5, '#d8c0a0'); P(4, -10, 4, 6, '#4a3020'); P(6, -12, 4, 3, '#5a3a20'); P(9, -11, 2, 1, '#202020');
+  P(5, -17, 1, 5, '#e8dcc0'); P(8, -17, 1, 5, '#e8dcc0'); P(3, -16, 3, 1, '#e8dcc0'); P(8, -16, 3, 1, '#e8dcc0');
+  P(-5, 0, 1, 5 + (l ? 0 : -1), '#5a3a20'); P(-2, 0, 1, 5, '#5a3a20'); P(2, 0, 1, 5 + (l ? -1 : 0), '#5a3a20'); P(4, 0, 1, 5, '#5a3a20');
+}
+// Your truck from above (pointing up): a red pickup under a big cream sleeper camper that hangs out over the cab
+function drawTruckTop(P, sway, on = []) {
+  const lift = on.includes('g_lift') ? 1 : 0;   // the lift kit: bigger tyres, sticking out
+  P(-7 - lift, -11, 2 + lift, 4 + lift, '#202020'); P(5, -11, 2 + lift, 4 + lift, '#202020'); P(-7 - lift, 6, 2 + lift, 5 + lift, '#202020'); P(5, 6, 2 + lift, 5 + lift, '#202020');   // tyres
+  if (on.includes('g_studs')) for (const [x, y] of [[-7 - lift, -10], [5 + lift, -9], [-7 - lift, 8], [5 + lift, 9]]) P(x, y, 1, 1, '#e8eef4');   // studs
+  if (on.includes('g_bullbar')) { P(-7, -16, 14, 2, '#5a6068'); P(-5, -16, 1, 3, '#5a6068'); P(4, -16, 1, 3, '#5a6068'); P(-7, -16, 14, 1, '#9098a0'); }   // the bull bar
+  P(-6, -13, 12, 9, '#b8302a'); P(-6, -13, 12, 1, '#d84a40'); P(-6, -13, 2, 1, '#ffe080'); P(4, -13, 2, 1, '#ffe080');   // the hood
+  if (on.includes('g_tune')) { P(-2, -12, 4, 4, '#7a1a14'); P(-1, -12, 2, 1, '#202020'); }   // the tuned engine's hood scoop
+  P(-5, -6, 10, 2, '#9fc8e8');   // the windshield
+  const o = Math.round(sway * 1.5);
+  P(-7 + o, -5, 15, 19, '#ece6d6'); P(-7 + o, -5, 15, 1, '#fff8ea'); P(-7 + o, 13, 15, 1, '#b8b0a0');   // the camper (over the cab, out past the bed)
+  P(-7 + o, 1, 1, 9, '#7a5232'); P(7 + o, 1, 1, 9, '#7a5232');   // the brown stripe down its sides
+  P(-3 + o, -2, 6, 3, '#a8b0b8'); P(-2 + o, 6, 4, 4, '#c8ccd0'); P(-1 + o, 7, 2, 2, '#9098a0');   // the roof vent and the air conditioner
+}
+// The Resort map's truck, side on (facing right)
+function drawTruckSide(P) {
+  const on = garOn(loadBest(), 'truck');
+  if (on.includes('g_lift')) { P(255, 185, 8, 8, '#202020'); P(289, 185, 8, 8, '#202020'); }   // lifted, on big tyres
+  P(256, 186, 6, 6, '#202020'); P(290, 186, 6, 6, '#202020'); P(257, 187, 4, 4, '#606060'); P(291, 187, 4, 4, '#606060');   // wheels
+  if (on.includes('g_bullbar')) { P(302, 176, 2, 10, '#5a6068'); P(300, 184, 4, 2, '#5a6068'); }   // the bull bar
+  P(252, 178, 50, 9, '#b8302a'); P(286, 172, 14, 8, '#b8302a'); P(300, 180, 3, 3, '#ffe080');   // body, hood
+  P(288, 173, 7, 4, '#9fc8e8');   // cab window
+  P(250, 162, 36, 18, '#ece6d6'); P(276, 164, 16, 9, '#ece6d6'); P(250, 162, 42, 1, '#fff8ea');   // the camper and its over-cab sleeper
+  P(250, 171, 36, 1, '#7a5232'); P(278, 166, 10, 4, '#9fc8e8'); P(256, 165, 8, 4, '#9fc8e8'); P(268, 166, 5, 11, '#c8bca8');   // stripe, windows, door
+}
+
+/* ---------- the Sno-Park hill climb ---------- */
+let SM_WORLD = null;
+function smWorld() {   // the same hill every time: old-growth firs, rock bands with gaps through them, gullies to jump, powder, the cornice
+  if (SM_WORLD) return SM_WORLD;
+  const C = CFG.SNOWMO, rng = mulberry(424242), trees = [], bands = [], powder = [];
+  const blocked = h => C.gaps.some(([gh, w]) => h > gh - 26 && h < gh + w + 26) || C.bands.concat(C.clearings).some(bh => Math.abs(h - bh) < 24) || Math.abs(h - C.cornice) < 30 || h < 120 || h > C.top - 20;
+  for (let h = 120; h < C.top; h += 24) {
+    const fr = h / C.top, dens = 0.1 + 0.14 * fr;
+    for (let x = -C.half; x < C.half; x += 30) {
+      const hh = h + rng() * 20, xx = x + rng() * 26; if (rng() > dens || blocked(hh)) continue;
+      trees.push({ x: xx, h: hh, r: 8 + rng() * 5 });
+    }
+  }
+  for (const bh of C.bands) {   // a few ways through each rock band
+    const n = C.bandOpen, [w0, w1] = C.bandOpenW, op = []; for (let i = 0; i < n; i++) { const w = w0 + rng() * (w1 - w0), cx = -C.half + 40 + (i + 0.15 + rng() * 0.7) * (2 * C.half - 80) / n; op.push([cx - w / 2, cx + w / 2]); }
+    bands.push({ h: bh, op });
+  }
+  for (let i = 0; i < 16; i++) powder.push({ x: -C.half + rng() * 2 * C.half, h: 160 + rng() * (C.top - 300), rx: 30 + rng() * 40, rh: 20 + rng() * 30 });
+  const rows = new Map(); for (const t of trees) { const k = Math.floor(t.h / 50); if (!rows.has(k)) rows.set(k, []); rows.get(k).push(t); }
+  SM_WORLD = { trees, rows, bands, powder, gaps: C.gaps.map(([h, w]) => ({ h, w })) };
+  return SM_WORLD;
+}
+function smStart() {
+  const b = loadBest(), D = smData(b), on = garOn(b, 'sled');
+  G.sm = { on, C: vehCfg('sled', on), x: 0, h: 24, th: 0, v: 0, air: 0, airDur: 0, gap: null, popT: 0, stallT: 0, rollT: 0, mark: 24, gaps: 0, bigGap: 0, phase: 'go', end: null, t: 0, started: false,
+    camH: 24 + H / vehZoom() * 0.22, camX: 0, parts: [], best: D.best || 0, acc: 0, note: null };
+}
+const smG = h => { const C = CFG.SNOWMO, f = clamp(h / C.top, 0, 1); return C.g[0] + (C.g[1] - C.g[0]) * Math.pow(f, 1.2); };
+const smRollMax = h => { const C = CFG.SNOWMO; return C.roll[0] + (C.roll[1] - C.roll[0]) * clamp(h / C.top, 0, 1) + (G.sm && G.sm.C ? G.sm.C.rollAdd : 0); };
+function smUpdate(dt) {
+  const M = G.sm; if (!M) return;
+  M.acc += dt; const h = 1 / 120;
+  while (M.acc >= h) { M.acc -= h; smStep(h); if (G.state !== 'playing') break; }
+  const Z = vehZoom();
+  M.camH += (M.h + H / Z * 0.22 - M.camH) * Math.min(1, dt * 4); M.camX += (M.x * 0.7 - M.camX) * Math.min(1, dt * 3);
+  G.camX = M.camX - W / Z / 2; G.camY = -M.camH - H / Z / 2; G.elapsed = M.t;
+  if (G.shake > 0) G.shake -= dt;
+  if (M.note) { M.note.t -= dt; if (M.note.t <= 0) M.note = null; }
+  for (const q of M.parts) { q.x += q.vx * dt; q.h += q.vh * dt; q.life -= dt; }
+  M.parts = M.parts.filter(q => q.life > 0).slice(-90);
+}
+function smStep(dt) {
+  const M = G.sm, C = M.C || CFG.SNOWMO, Wd = smWorld(); if (M.phase !== 'go') return;
+  const I = vehInput(), h0 = M.h;
+  if (I.gas && !M.started) M.started = true;
+  if (M.started) M.t += dt;
+  if (M.popT > 0) M.popT -= dt;
+  if (M.air > 0) {
+    M.air -= dt;
+    if (M.air <= 0) { M.air = 0; const g = M.gap; if (g && M.h < g.h + g.w) return smEnd('gap');
+      if (g) { M.gaps++; M.bigGap = Math.max(M.bigGap, g.w * C.mPerPx); M.note = { text: `Cleared ${Math.round(g.w * C.mPerPx)} m!`, t: 1.2 }; SFX.land(); } M.gap = null; }
+  } else {
+    M.th = clamp(M.th + I.steer * C.turn * dt, -C.maxTurn, C.maxTurn);
+    const pw = Wd.powder.some(p => ((M.x - p.x) / p.rx) ** 2 + ((M.h - p.h) / p.rh) ** 2 < 1);
+    const a = (I.gas ? C.acc : 0) - (I.brake ? 60 : 0) - smG(M.h) * Math.cos(M.th) - M.v * C.drag - (pw ? M.v * C.powder : 0);
+    M.v = clamp(M.v + a * dt, 0, C.vmax);
+    if (M.v > 20 && Math.random() < 0.6) M.parts.push({ x: M.x - Math.sin(M.th) * 12, h: M.h - Math.cos(M.th) * 12, vx: (Math.random() - 0.5) * 40, vh: -20 - Math.random() * 30, life: pw ? 0.7 : 0.35 });
+  }
+  M.h += M.v * Math.cos(M.th) * dt; M.x += M.v * Math.sin(M.th) * dt;
+  M.mark = Math.max(M.mark, M.h);
+  if (M.h >= C.top) { M.mark = C.top; return smEnd('top'); }
+  if (Math.abs(M.x) > C.half) return smEnd('trees');
+  if (M.air > 0) return;
+  for (const g of Wd.gaps) if (h0 < g.h && M.h >= g.h) {   // off the lip: speed x airtime has to clear the gully
+    const T = C.air + (M.popT > 0 ? C.pop : 0); M.air = T; M.airDur = T; M.gap = g; M.popT = 0; SFX.jump(); return;
+  }
+  if (h0 < C.cornice && M.h >= C.cornice && (M.v < C.corniceV || Math.abs(M.th) > C.corniceTurn)) return smEnd('cornice');
+  for (const B of Wd.bands) if (Math.abs(M.h - B.h) < 7 && !B.op.some(([a, b]) => M.x > a + 4 && M.x < b - 4)) return smEnd('rocks');
+  for (const k of [Math.floor(M.h / 50) - 1, Math.floor(M.h / 50), Math.floor(M.h / 50) + 1]) for (const t of Wd.rows.get(k) || []) if (Math.hypot(M.x - t.x, M.h - t.h) < t.r * 0.55 + 4) return smEnd('tree');
+  if (M.h > 60 && M.v < C.stallV) { M.stallT += dt; if (M.stallT >= C.stallT) return smEnd('stall'); } else M.stallT = 0;
+  if (Math.abs(M.th) > smRollMax(M.h) && M.v > 5) { M.rollT += dt; if (M.rollT >= C.rollT) return smEnd('roll'); } else M.rollT = Math.max(0, M.rollT - dt * 2);
+}
+function smEnd(why) {
+  const M = G.sm; M.phase = 'done'; M.end = why; G.finished = true; G.state = 'over';
+  if (why === 'top') SFX.finish(); else if (why === 'stall') SFX.miss(); else { SFX.crash(); G.shake = 0.35; }
+  setTimeout(showGameOver, why === 'top' ? 1200 : 1000);
+}
+const smMarkM = M => Math.round(M.mark * CFG.SNOWMO.mPerPx);
+function smRender() {
+  const M = G.sm, C = CFG.SNOWMO, Wd = smWorld();
+  let ox = 0, oy = 0; if (G.shake > 0) { ox = Math.round(Math.random() * 4 - 2); oy = Math.round(Math.random() * 4 - 2); }
+  RCX = G.camX + ox; RCY = G.camY + oy;
+  const Z = vehZoom(), VW = W / Z, VH = H / Z;
+  const sy = h => -h - RCY, sx = x => x - RCX, hLo = -(RCY + VH) - 60, hHi = -RCY + 60;
+  ctx.fillStyle = '#f4f8fc'; ctx.fillRect(0, 0, W, H); ctx.save(); ctx.scale(Z, Z);
+  for (let gx = Math.floor(RCX / 31) - 1; gx <= Math.floor((RCX + VW) / 31) + 1; gx++) for (let gy = Math.floor(RCY / 23) - 1; gy <= Math.floor((RCY + VH) / 23) + 1; gy++) {
+    const hs = vehHash(gx, gy + 99); if (hs < 0.45) { ctx.fillStyle = '#dde6f1'; ctx.fillRect(Math.round(gx * 31 + hs * 20 - RCX), Math.round(gy * 23 + hs * 17 - RCY), 2, 1); }
+  }
+  for (const p of Wd.powder) if (p.h > hLo - 60 && p.h < hHi + 60) { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(sx(p.x), sy(p.h), p.rx, p.rh, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#e8f0f8'; ctx.fillRect(Math.round(sx(p.x)) - 3, Math.round(sy(p.h)), 2, 1); }
+  // the lot at the bottom: your truck and camper, the Sno-Park sign
+  if (hLo < 100) drawSnoLot(0, 10, { you: [30, -6], gaps: [Math.PI / 2, -Math.PI / 2] });   // (world y is -height: the way up the hill is out the top of the lot)
+  // height marks every 100 m, the gullies, the rock bands, the cornice, the top
+  for (let m = 100; m <= 1000; m += 100) { const h = m / C.mPerPx; if (h < hLo || h > hHi) continue; ctx.fillStyle = 'rgba(0,0,128,0.25)'; for (let x = -C.half; x < C.half; x += 12) ctx.fillRect(Math.round(sx(x)), Math.round(sy(h)), 6, 1); text(`${m} m`, sx(-C.half) + 24, sy(h) - 3, '#000080', 8); }
+  for (const g of Wd.gaps) if (g.h + g.w > hLo && g.h < hHi) {
+    ctx.fillStyle = '#9ab4d0'; ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(g.h + g.w)), C.half * 2 + 120, Math.round(g.w));
+    ctx.fillStyle = '#7898bc'; ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(g.h + g.w * 0.55)), C.half * 2 + 120, Math.max(2, Math.round(g.w * 0.15)));
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(g.h)) - 2, C.half * 2 + 120, 3); ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(g.h + g.w)), C.half * 2 + 120, 2);
+    text(`${Math.round(g.w * C.mPerPx)} m gap`, sx(C.half) - 34, sy(g.h) + 10, '#204060', 8);
+  }
+  for (const B of Wd.bands) if (B.h > hLo && B.h < hHi) for (let x = -C.half - 40; x < C.half + 40; x += 14) { if (B.op.some(([a, b]) => x > a - 2 && x < b + 2)) continue; drawS(SPR.rock, x, -B.h); }
+  if (C.cornice > hLo && C.cornice < hHi) { ctx.fillStyle = '#d6e2ee'; ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(C.cornice)), C.half * 2 + 120, 8); ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(C.cornice + 14)), C.half * 2 + 120, 14); text('CORNICE', sx(-C.half) + 30, sy(C.cornice + 16), '#204060', 8); }
+  if (C.top > hLo && C.top < hHi + 40) { ctx.fillStyle = '#ffffff'; ctx.fillRect(Math.round(sx(-C.half - 60)), Math.round(sy(C.top + 80)), C.half * 2 + 120, 80); ctx.fillStyle = '#d42a2a'; ctx.fillRect(Math.round(sx(0)), Math.round(sy(C.top + 22)), 1, 22); ctx.fillRect(Math.round(sx(0)) + 1, Math.round(sy(C.top + 22)), 9, 5); text('THE TOP: 1,000 m', sx(0), sy(C.top) + 12, '#d42a2a', 9); }
+  // your best and this run's high mark
+  for (const [hh, col, lab] of [[M.best / C.mPerPx, '#c8a000', 'Your best'], [M.mark, '#d42a2a', '']]) if (hh > 40 && hh > hLo && hh < hHi) { ctx.fillStyle = col; for (let x = -C.half; x < C.half; x += 8) ctx.fillRect(Math.round(sx(x)), Math.round(sy(hh)), 4, 1); if (lab) text(`${lab} ${Math.round(hh * C.mPerPx)} m`, sx(C.half) - 44, sy(hh) - 3, col, 8); }
+  // the forest: big old firs (and a solid wall of them past the edges)
+  const tree = (x, h, r) => { const S = SPR.large, k = r / 7, w = S.c.width * k, hh = S.c.height * k; ctx.drawImage(S.c, Math.round(sx(x) - S.ax * k), Math.round(sy(h) - S.ay * k), Math.round(w), Math.round(hh)); };
+  const rowsLo = Math.floor(hLo / 50) - 1, rowsHi = Math.floor(hHi / 50) + 2;
+  const draw = [];
+  for (let k = rowsLo; k <= rowsHi; k++) for (const t of Wd.rows.get(k) || []) draw.push(t);
+  for (let h = Math.floor(hLo / 22) * 22; h < hHi + 40; h += 22) for (const side of [-1, 1]) for (let i = 0; i < 4; i++) draw.push({ x: side * (C.half + 14 + i * 22 + vehHash(h, i) * 10), h: h + vehHash(i, h) * 14, r: 9 + vehHash(h, i + 9) * 4 });
+  draw.sort((a, b) => b.h - a.h);
+  for (const t of draw) tree(t.x, t.h, t.r);   // the forest, back to front
+  for (const q of M.parts) { ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(Math.round(sx(q.x)), Math.round(sy(q.h)), 2, 2); }
+  // you: the sled, the rider; in the air a shadow and a little bigger
+  const k = M.air > 0 ? 1 + 0.35 * Math.sin(Math.PI * (1 - M.air / M.airDur)) : 1;
+  if (M.air > 0) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(Math.round(sx(M.x)) - 5, Math.round(sy(M.h)) + 6, 10, 4); }
+  ctx.save(); ctx.translate(Math.round(sx(M.x)), Math.round(sy(M.h)) - (k - 1) * 14); ctx.scale(k, k); ctx.rotate(M.th);
+  drawSledTop((px, py, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(px, py, w, h); }, M.end === 'roll' || M.end === 'tree' || M.end === 'rocks', M.on);
+  ctx.restore();   // you're always drawn on top, so the firs never hide you
+  if (M.note) text(M.note.text, sx(M.x), sy(M.h) - 26, '#1a7a2a', 10);
+  ctx.restore();
+  if (M.phase === 'go' && M.rollT > 0.1) text('Sidehilling too hard: straighten up!', W / 2, H - 30, '#b01010', 9);
+  if (M.phase === 'go' && M.stallT > 0.15) text('Bogging down...', W / 2, H - 44, '#b06a00', 9);
+}
+function drawSledTop(P, wreck, on = []) {   // a snowmobile from above (pointing up): skis, red hood, windshield, the rider, the track (and any Garage parts)
+  const st = gearState(loadBest()), jk = gearById(st.outfit.jacket), hat = gearById(st.outfit.hat), J = jk ? jk.col : '#d42a2a', Hc = hat ? hat.col : '#2a7a3a';
+  if (on.includes('g_skis')) { P(-5, -17, 1, 12, '#303038'); P(4, -17, 1, 12, '#303038'); P(-5, -18, 1, 1, '#c8a040'); P(4, -18, 1, 1, '#c8a040'); }   // narrow mountain skis
+  else { P(-6, -14, 2, 9, '#303038'); P(4, -14, 2, 9, '#303038'); P(-6, -15, 2, 1, '#606068'); P(4, -15, 2, 1, '#606068'); }   // skis
+  P(-5, -9, 10, 7, wreck ? '#802020' : '#c82020'); P(-4, -9, 8, 2, '#e04040'); P(-4, -3, 8, 2, '#bfe0ff');   // hood, windshield
+  if (on.includes('g_chassis')) { P(-5, -9, 1, 7, '#202024'); P(4, -9, 1, 7, '#202024'); P(-1, -9, 2, 7, '#f0f0f0'); }   // the light chassis: carbon sides, a race stripe
+  if (on.includes('g_turbo')) { P(1, -8, 3, 3, '#c0c4c8'); P(2, -7, 1, 1, '#5a6068'); }   // the turbo
+  const tl = on.includes('g_track') ? 4 : 0;   // the paddle track: longer, with big lugs
+  P(-4, -1, 8, 9, '#202028'); P(-5, 7, 10, 7 + tl, '#3a3a44'); for (let i = 0; i < 3 + tl / 2; i++) P(-5, 8 + i * 2, 10, 1, '#202028');   // seat, the track
+  if (on.includes('g_riser')) { P(-6, -3, 12, 1, '#d0d4d8'); P(-1, -3, 2, 2, '#808890'); }   // tall riser bars
+  P(-4, 0, 8, 6, J); P(-3, -2, 6, 4, Hc); P(-2, -2, 4, 1, '#ffffff');   // the rider: jacket, helmet
+}
+
+/* ---------- hooks: HUD, game over ---------- */
+function vehHud() {
+  if (G.mode === 'road') {
+    const R = G.road, C = R.C, Q = roadGeo();
+    $('v1').textContent = fmtTime(R.t); $('v2').textContent = `${(Math.max(0, Q.len - R.s) * C.mPerPx / 1000).toFixed(1)} km`;
+    $('v3').textContent = `${Math.round(R.v * 0.6)} mph${R.chains ? ' (chains)' : ''}`; $('v4').textContent = `${R.dents} of ${C.dents}`;
+  } else {
+    const M = G.sm, C = CFG.SNOWMO;
+    $('v1').textContent = `${smMarkM(M)} m`; $('v2').textContent = `${Math.round(M.h * C.mPerPx)} m`; $('v3').textContent = `${Math.round(M.v * 0.3)} mph`; $('v4').textContent = String(M.gaps);
+  }
+}
+// Game over rows for the two modes; returns isBest
+function vehGameOver(b, rows) {
+  const st = gearState(b); let isBest = false;
+  if (G.mode === 'road') {
+    const R = G.road, C = R.C, T = truckData(b), ok = R.phase === 'done';
+    $('overTitle').textContent = ok ? 'Sno-Park!' : 'Towed'; $('overIcon').textContent = ok ? 'i' : '!';
+    $('overMsg').textContent = ok ? 'You made it up the mountain road. The Sno-Park is open for the rest of today: the hill climb is waiting.'
+      : `${NUM_WORD[C.dents].replace(/^./, c => c.toUpperCase())} dents and the tow truck hauled you home. Try the drive again${R.photo ? ' (your photo of Big Karl is safe)' : ''}.`;
+    rows.push(['Time', fmtTime(R.t)], ['Dents', `${R.dents} of ${C.dents}`]);
+    if (R.zones.some(z => z.kind === 'chains')) rows.push(['Chains', R.chains ? 'On' : 'Skipped']);
+    if (ok) {
+      T.day = barToday(); T.drives = (T.drives || 0) + 1;
+      if (!T.best || R.t < T.best) { isBest = !!T.best; T.best = Math.round(R.t * 100) / 100; }
+      rows.push(['Best drive', fmtTime(T.best)]);
+    } else { const fee = Math.min(st.cash, CFG.TRUCK.towFee); st.cash -= fee; rows.push(['Tow fee', `-$${fee.toLocaleString()}`]); }
+    if (R.photoRes) {   // (the photo was kept, and paid for, the moment it was taken)
+      const pr = R.photoRes, where = pr.queued ? 'Your album is full: make room for it on the Cabin bookshelf.' : `It's in your album on the Cabin bookshelf: frame it over the couch${barOwns(b) ? ', or over the Bar fireplace' : ''}.`;
+      rows.push(['', pr.g === 'missed' ? `<b>You snapped an empty road.</b> Big Karl had already gone into the trees. ${where}`
+        : `<b>Your photo of Big Karl: ${PHOTO_GRADES[pr.g]}!</b>${pr.pay ? ` Your first ${PHOTO_GRADES[pr.g]} one: +$${pr.pay.toLocaleString()}.` : ''} ${where}`, 'wide']);
+    } else if (R.karlHit) rows.push(['', 'You hit Big Karl. He shrugged it off. No photo.', 'wide']);
+    else if (R.camDone) rows.push(['', 'Big Karl walked right past and you didn\'t take the shot.', 'wide']);
+  } else {
+    const M = G.sm, C = CFG.SNOWMO, D = smData(b), m = smMarkM(M), old = D.best || 0;
+    const why = { top: 'You reached the top!', stall: 'You bogged down and stalled.', roll: 'You sidehilled too hard and rolled it.', tree: 'You hit a tree.', rocks: 'You hit the rocks.', trees: 'You ran into the forest.', gap: 'Not enough speed: you dropped into the gully.', cornice: 'The cornice turned you back: hit it fast and straight on.' }[M.end] || '';
+    $('overTitle').textContent = M.end === 'top' ? 'The top!' : 'High mark'; $('overIcon').textContent = 'i';
+    $('overMsg').textContent = why;
+    rows.push(['High mark', `${m} m`], ['Gaps cleared', String(M.gaps)], ['Time', fmtTime(M.t)]);
+    D.runs = (D.runs || 0) + 1;
+    if (m > old) { D.best = m; isBest = true; if (old) { st.cash += C.bestPrize; rows.push(['New best', `+$${C.bestPrize} (was ${old} m)`]); } }
+    rows.push(['Best', `${D.best || m} m`]);
+    for (const gl of C.goals) {
+      if (D.goals.includes(gl.id)) continue;
+      if ((gl.m && m >= gl.m) || (gl.gap && M.bigGap >= gl.gap)) { D.goals.push(gl.id); st.cash += gl.pay; rows.push(['', `<b>Sno-Park goal: ${gl.text}!</b> +$${gl.pay.toLocaleString()}`, 'wide']); SFX.chal(); }
+    }
+    rows.push(['', `Sno-Park goals: ${C.goals.map(gl => `${gl.text} ${D.goals.includes(gl.id) ? '✓' : ''}`).join('; ')}`, 'wide']);
+  }
+  b.gear = gearObj(st);
+  return isBest;
+}
+
+/* ---------- photos: taken in the moment, kept in the album on the Cabin's bookshelf, framed in the Cabin or the Bar ----------
+   A photo is saved as what was in the frame (not a picture): its kind, where the subject was and their stride, the focus,
+   the scenery's seed, the grade and the date. photoCanvas() draws it from that, identically everywhere it's shown.
+   Each kind (only 'karl' so far) brings its own scene and timing, so more photo opportunities can be added later. */
+const PHOTO_W = 96, PHOTO_H = 72, PHOTO_CACHE = new Map();
+const PHOTO_KINDS = { karl: { name: 'Big Karl on the road', where: 'on the road up to the Sno-Park' } };   // more kinds of photo can come later
+const PHOTO_GRADES = { legendary: 'Legendary', good: 'Good', blurry: 'Blurry', missed: 'Missed him' };
+function albumData(b) {
+  if (!b.album || typeof b.album !== 'object') b.album = {};
+  const A = b.album; if (!Array.isArray(A.photos)) A.photos = []; if (!Array.isArray(A.queue)) A.queue = []; if (!A.paid || typeof A.paid !== 'object') A.paid = {};
+  return A;
+}
+const albumPhoto = (b, id) => (b.album && Array.isArray(b.album.photos) ? b.album.photos.find(p => p.id === id) : null) || null;
+const photoDate = d => { const m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(d || ''); return m ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m[2] - 1]} ${+m[3]}, ${m[1]}` : ''; };
+const photoLabel = P => `${PHOTO_GRADES[P.g] || P.g}, ${photoDate(P.d)}`;
+// A fir, drawn bottom-up as stacked rows (for the photo scenery)
+function photoFir(g, x, base, h, col, snow) {
+  const R = (a, b, w, hh, c) => { g.fillStyle = c; g.fillRect(Math.round(a), Math.round(b), w, hh); };
+  R(x - 0.5, base - 3, 1, 3, '#3a2a1e');
+  for (let r = 0; r < h; r++) { const w = Math.max(1, Math.round((h - r) * 0.42 + (r % 4 === 0 ? 1 : 0))); R(x - w / 2, base - 3 - r, w, 1, snow && r % 4 === 1 ? snow : col); }
+}
+// The sharp scene at 96 x 72, drawn from the photo's data
+function photoBase(P) {
+  const c = document.createElement('canvas'); c.width = PHOTO_W; c.height = PHOTO_H;
+  const g = c.getContext('2d'), R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), w, h); }, rng = mulberry((P.seed >>> 0) || 1);
+  g.imageSmoothingEnabled = false;
+  if (P.kind === 'karl') {   // the forest edge beside the mountain road, mist in the trees, and him crossing
+    R(0, 0, 96, 72, '#c9d3da'); R(0, 0, 96, 16, '#bdc8d1'); R(0, 30, 96, 12, '#d2dbe1');
+    for (let i = 0; i < 16; i++) photoFir(g, rng() * 104 - 4, 44, 12 + rng() * 10, '#8fa29c', null);
+    for (let i = 0; i < 9; i++) photoFir(g, rng() * 104 - 4, 50, 22 + rng() * 18, '#3e5a48', '#dfe8e6');
+    R(0, 47, 96, 25, '#eef2f4'); R(0, 54, 96, 10, '#6a7078'); R(0, 53, 96, 1, '#ffffff'); R(0, 64, 96, 2, '#dfe6ec');
+    for (let x = 2 + Math.floor(rng() * 8); x < 96; x += 12) R(x, 58, 6, 1, '#e8c040');
+    const S = SPR.karlSmall && SPR.karlSmall[P.st ? 'runA' : 'runB'];
+    if (S && P.x > -0.2 && P.x < 1.2) { const k = 30 * (P.z || 1) / S.c.height, w = S.c.width * k, h = S.c.height * k; g.drawImage(S.c, Math.round(P.x * 96 - S.ax * k), Math.round(58 - S.ay * k), Math.round(w), Math.round(h)); }
+    else { g.fillStyle = 'rgba(96,68,46,0.55)'; g.fillRect(P.x > 0.5 ? 88 : 0, 22, 8, 30); }   // just a blur at the edge: he's gone
+  }
+  return c;
+}
+// The photo at w x h: soft if it was out of focus, with the date stamp burned into the corner
+function photoCanvas(P, w, h, live) {   // live: the camera's moving view (not kept)
+  const key = `${P.kind}|${P.x}|${P.st}|${P.f}|${P.seed}|${P.d}|${P.z || 1}|${w}x${h}`;
+  let c = live ? null : PHOTO_CACHE.get(key); if (c) return c;
+  const base = photoBase(P); c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'), f = clamp(+P.f || 0, 0, 1);
+  if (f > 0.15) {   // out of focus: down to a smaller size and back up, smoothed
+    const sw = Math.max(8, Math.round(PHOTO_W / (1 + f * 2.6))), sh = Math.max(6, Math.round(sw * PHOTO_H / PHOTO_W)), sc = document.createElement('canvas');
+    sc.width = sw; sc.height = sh; const sg = sc.getContext('2d'); sg.imageSmoothingEnabled = true; sg.drawImage(base, 0, 0, sw, sh);
+    g.imageSmoothingEnabled = true; g.drawImage(sc, 0, 0, w, h);
+  } else { g.imageSmoothingEnabled = false; g.drawImage(base, 0, 0, w, h); }
+  const m = /^\d{4}-(\d\d)-(\d\d)$/.exec(P.d || ''); if (m && w >= 40) { const fs = Math.max(5, Math.round(h / 15)); g.font = `bold ${fs}px "Courier New", monospace`; g.textAlign = 'right'; g.textBaseline = 'alphabetic'; g.fillStyle = '#f08a30'; g.fillText(`${m[1]} ${m[2]} '${P.d.slice(2, 4)}`, w - 2, h - 2); }
+  if (live) return c;
+  if (PHOTO_CACHE.size > 80) PHOTO_CACHE.clear();
+  PHOTO_CACHE.set(key, c); return c;
+}
+// How good is it? Centred and mid-stride and sharp = Legendary; mostly in frame = Good; half out or soft = Blurry; gone = Missed
+function photoGrade(P) {
+  if (P.x < -0.08 || P.x > 1.08) return 'missed';
+  const off = Math.abs(P.x - 0.5);
+  if (off < 0.1 && P.st === 1 && P.f < 0.45) return 'legendary';
+  if (off < 0.3 && P.f < 0.7) return 'good';
+  return 'blurry';
+}
+// Into the album (or, when it's full, waiting for you to make room); the first photo of each grade, per kind, pays
+function photoKeep(P) {
+  const b = loadBest(), A = albumData(b), C = CFG.PHOTO, paid = A.paid[P.kind] = Array.isArray(A.paid[P.kind]) ? A.paid[P.kind] : [];
+  let pay = 0, queued = false;
+  if (A.photos.length < C.max) A.photos.push(P); else { A.queue.push(P); A.queue = A.queue.slice(-C.queue); queued = true; }
+  if (!paid.includes(P.g) && (C.pay[P.kind] || {})[P.g]) { pay = C.pay[P.kind][P.g]; paid.push(P.g); const st = gearState(b); st.cash += pay; b.gear = gearObj(st); }
+  if (P.kind === 'karl') { const T = truckData(b); T.photos = (T.photos || 0) + 1; T.photo = P.d; }
+  saveBest(b); return { pay, queued };
+}
+// v93 saves: a Big Karl photo count, no pictures. Each one becomes a Blurry photo in the album (up to 12)
+function photoMigrate(b) {
+  if (!b.truck || !b.truck.photos || b.album) return false;
+  const A = albumData(b);
+  for (let i = 0; i < Math.min(b.truck.photos, CFG.PHOTO.max) && A.photos.length < CFG.PHOTO.max; i++)
+    A.photos.push({ id: `old${i}`, kind: 'karl', x: 0.36 + 0.08 * i % 0.3, st: 0, f: 0.8, seed: 9001 + i * 77, d: b.truck.photo || barToday(), g: 'blurry' });
+  if (b.bar && b.bar.pics) { if (b.bar.pics.hang === 'karlphoto') b.bar.pics.hang = A.photos[0] ? `photo:${A.photos[0].id}` : 'sunset'; delete b.bar.pics.hangC; }
+  return true;
+}
+
+/* ---------- the photo moment on the road: the camera, then the photo developing ---------- */
+const camKarlX = t => -0.15 + t / 3 * 1.3;                     // he walks across the frame, left to right, in about 3 s
+const camStride = t => Math.floor(t / 0.22) % 2 === 0 ? 1 : 0;   // 1: mid-stride (legs apart)
+const camFocus = c => { const k = c.lens ? 0.6 : 1; return clamp(0.32 + 0.28 * k * Math.sin(c.t * 2.3 * k + c.ph) + 0.12 * k * Math.sin(c.t * 6.1 * k + c.ph * 2), 0, 1); };
+function camLive(c) { const P = { kind: 'karl', x: +camKarlX(c.t).toFixed(3), st: camStride(c.t), f: +camFocus(c).toFixed(2), seed: c.seed, d: barToday() }; if (c.lens) P.z = 1.3; return P; }
+function roadCameraStart(e) {
+  const R = G.road; e.cam = true;
+  R.phase = 'camera'; R.cam = { t: 0, seed: (Math.random() * 1e9) | 0, ph: Math.random() * 6.28, shot: null, dt: 0, lens: R.C.lens > 0 }; R.v = 0;
+  $('toast').classList.add('hidden'); $('thint').classList.add('hidden'); if (isTouch) { $('jumpBtn').textContent = 'Snap'; $('jumpBtn').classList.remove('hidden'); }
+  beep(600, 0.05, 'square', 0.04);
+}
+function roadSnap() {
+  const R = G.road, c = R.cam; if (!c || c.shot) return;
+  const P = Object.assign(camLive(c), { id: `${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}` });
+  P.g = photoGrade(P); c.shot = P; c.dt = 0; R.phase = 'develop'; R.flash = 0.3;
+  beep(1400, 0.05, 'square', 0.05); setTimeout(() => beep(900, 0.08, 'square', 0.04), 60);
+  R.photo = P.g !== 'missed'; R.photoRes = Object.assign({ g: P.g }, photoKeep(P));
+  if (isTouch) $('jumpBtn').textContent = 'OK';
+}
+function roadCameraEnd() {   // back to the road: he's off into the trees
+  const R = G.road; R.phase = 'go'; R.cam = null; R.ents = R.ents.filter(e => !e.cam);
+  if (isTouch) { $('jumpBtn').textContent = 'Jump'; $('jumpBtn').classList.add('hidden'); }
+}
+function roadCameraTick(dt) {
+  const R = G.road, c = R.cam;
+  if (R.phase === 'camera') { c.t += dt; if (c.t >= 3.6) { roadCameraEnd(); toast("He's gone into the trees. No photo this time.", 2.2); } }
+  else c.dt += dt;
+}
+function roadCameraUI() {
+  const R = G.road, c = R.cam, vw = Math.min(W - 24, (H - 90) * 4 / 3), vh = vw * 3 / 4, x = Math.round((W - vw) / 2), y = Math.round((H - vh) / 2) - 10;
+  ctx.fillStyle = 'rgba(10,12,16,0.92)'; ctx.fillRect(0, 0, W, H);
+  if (R.phase === 'camera') {
+    ctx.drawImage(photoCanvas(camLive(c), Math.round(vw), Math.round(vh), true), x, y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2; const k = Math.round(vw * 0.08);
+    for (const [cx, cy, sx, sy] of [[x + 6, y + 6, 1, 1], [x + vw - 6, y + 6, -1, 1], [x + 6, y + vh - 6, 1, -1], [x + vw - 6, y + vh - 6, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx, cy + sy * k); ctx.lineTo(cx, cy); ctx.lineTo(cx + sx * k, cy); ctx.stroke(); }   // rounded-ish corners
+    const fx = x + vw / 2, fy = y + vh / 2, fb = Math.round(vw * 0.12);
+    ctx.strokeStyle = camFocus(c) < 0.45 ? 'rgba(80,220,100,0.95)' : 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1;
+    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { ctx.beginPath(); ctx.moveTo(fx + sx * fb, fy + sy * (fb - 6)); ctx.lineTo(fx + sx * fb, fy + sy * fb); ctx.lineTo(fx + sx * (fb - 6), fy + sy * fb); ctx.stroke(); }   // focus brackets
+    text('1 shot', x + 30, y + 18, '#ffffff', 9); text('REC', x + vw - 24, y + 18, Math.floor(c.t * 3) % 2 ? '#ff4040' : '#802020', 9);
+    text(isTouch ? 'Tap Snap!' : 'Space or Enter: snap!', W / 2, y + vh + 22, '#ffd040', 10);
+  } else {   // the instant photo, developing
+    const P = c.shot, pw = Math.round(Math.min(vw * 0.62, 260)), ph = Math.round(pw * 3 / 4), px = Math.round(W / 2 - pw / 2), py = Math.round(H / 2 - ph / 2) - 22;
+    ctx.fillStyle = '#f6f2e8'; ctx.fillRect(px - 8, py - 8, pw + 16, ph + 40); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(px - 8, py + ph + 32, pw + 16, 2);
+    ctx.drawImage(photoCanvas(P, pw, ph), px, py);
+    const dev = clamp(c.dt / 1.5, 0, 1); if (dev < 1) { ctx.fillStyle = `rgba(120,124,130,${(1 - dev) * 0.95})`; ctx.fillRect(px, py, pw, ph); }
+    text(`${PHOTO_GRADES[P.g]}${R.photoRes && R.photoRes.pay ? `  +$${R.photoRes.pay.toLocaleString()}` : ''}`, W / 2, py + ph + 18, P.g === 'legendary' ? '#a07000' : '#303030', 10);
+    text(photoDate(P.d), W / 2, py + ph + 29, '#606060', 8);
+    if (c.dt > 0.6) text(R.photoRes && R.photoRes.queued ? 'Your album is full: make room in the Cabin. ' + (isTouch ? 'Tap to drive on.' : 'Any key to drive on.') : (isTouch ? 'Tap to drive on.' : 'Press a key to drive on.'), W / 2, py + ph + 52, '#ffffff', 9);
+  }
+}
+
+/* ---------- the Sno-Park lot: rough, plowed, berms all round ---------- */
+// cx, cy: the middle of the lot (world px); o.gaps: angles of the openings in the berm (default: the road coming in at the bottom);
+// o.you: [x, y] in the lot to draw your truck parked there, with the empty sled trailer behind it
+function drawSnoLot(cx, cy, o = {}) {
+  const you = o.you, gaps = o.gaps || [Math.PI / 2];
+  const X = x => Math.round(cx + x - RCX), Y = y => Math.round(cy + y - RCY), R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(X(x), Y(y), w, h); }, rng = mulberry(77123);
+  ctx.fillStyle = '#d3d9de'; ctx.beginPath();   // the lot: packed snow and gravel, an irregular plowed shape
+  for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2, rr = 1 + (vehHash(i, 3) - 0.5) * 0.12; ctx.lineTo(X(Math.cos(a) * 96 * rr), Y(Math.sin(a) * 62 * rr)); }
+  ctx.fill();
+  for (let i = 0; i < 160; i++) { const a = rng() * 6.283, r = Math.sqrt(rng()); R(Math.cos(a) * 90 * r, Math.sin(a) * 56 * r, 1, 1, rng() < 0.5 ? '#9ea4aa' : '#b8bec4'); }   // gravel
+  for (let i = 0; i < 4; i++) { ctx.fillStyle = '#c0c8d0'; ctx.beginPath(); ctx.ellipse(X(-30 + i * 22), Y(30 - i * 18), 26, 2, -0.6, 0, Math.PI * 2); ctx.fill(); }   // tyre ruts
+  for (const [x, y, w, h] of [[-40, 18, 9, 4], [12, -6, 7, 3], [52, 24, 10, 4], [-8, 40, 8, 3], [30, -30, 6, 3]]) { ctx.fillStyle = '#a7b2bd'; ctx.beginPath(); ctx.ellipse(X(x), Y(y), w, h, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c3cdd7'; ctx.beginPath(); ctx.ellipse(X(x - 1), Y(y - 1), w * 0.5, h * 0.5, 0, 0, Math.PI * 2); ctx.fill(); }   // slushy potholes
+  for (let i = 0; i < 30; i++) { const a = i / 30 * Math.PI * 2; if (gaps.some(gp => Math.abs(Math.atan2(Math.sin(a - gp), Math.cos(a - gp))) < 0.32)) continue; const rr = 6 + vehHash(i, 9) * 5;   // plow berms all round (a gap where the road comes in)
+    const x = Math.cos(a) * 104, y = Math.sin(a) * 68; ctx.fillStyle = '#c4cfda'; ctx.beginPath(); ctx.arc(X(x + 1), Y(y + 2), rr, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(X(x), Y(y), rr, 0, Math.PI * 2); ctx.fill(); }
+  // the other rigs: a pickup with a sled trailer, a flatbed with two snowmobiles
+  vehRot(X(-62), Y(-6), 0.15, P => { P(-6, -13, 12, 9, '#2a5ad4'); P(-5, -6, 10, 2, '#9fc8e8'); P(-6, -4, 12, 12, '#2448b0'); P(-1, 8, 2, 5, '#404040'); P(-7, 13, 14, 20, '#7a828a'); P(-5, 15, 4, 13, '#d42a2a'); P(1, 15, 4, 13, '#f0c020'); });
+  vehRot(X(-30), Y(-32), -0.05, P => { P(-6, -13, 12, 9, '#2a7a3a'); P(-5, -6, 10, 2, '#9fc8e8'); P(-7, -3, 14, 22, '#5a5f66'); P(-5, -1, 4, 11, '#202028'); P(1, 5, 4, 11, '#c82020'); P(-5, -1, 4, 3, '#d8d8d8'); P(1, 5, 4, 3, '#d8d8d8'); });
+  // the sign and the permit kiosk, the vault toilet, the dumpster, the light pole
+  R(66, 30, 1, 10, '#5a5a5a'); R(92, 30, 1, 10, '#5a5a5a'); R(62, 20, 34, 11, '#202020'); R(63, 21, 32, 9, '#2a6a3a');
+  ctx.font = 'bold 6px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#ffffff'; ctx.fillText('SNO-PARK', X(79), Y(28));
+  R(64, 32, 30, 6, '#ffffff'); ctx.fillStyle = '#202020'; ctx.font = 'bold 4px "Courier New", monospace'; ctx.fillText('PERMIT REQUIRED', X(79), Y(37));
+  R(56, 40, 9, 8, '#7a5232'); R(57, 41, 7, 3, '#e8e4d8');   // the kiosk
+  R(-84, -46, 12, 12, '#7a5a3a'); R(-85, -47, 14, 3, '#4a3424'); R(-75, -52, 2, 6, '#606870'); R(-80, -40, 4, 6, '#5a3a22');   // vault toilet
+  R(62, -46, 16, 9, '#2a6a3a'); R(62, -46, 16, 2, '#3a8a4a');   // dumpster
+  { const lx = you ? -48 : 0, ly = -60; ctx.fillStyle = 'rgba(255,220,120,0.1)'; ctx.beginPath(); ctx.arc(X(lx), Y(ly + 10), 26, 0, Math.PI * 2); ctx.fill(); R(lx, ly, 2, 14, '#5a5f66'); R(lx - 3, ly - 2, 8, 3, '#40444a'); R(lx - 1, ly + 1, 4, 1, '#ffe080'); }   // light pole
+  if (you) {   // your truck and camper parked, the empty sled trailer behind, ramp down
+    vehRot(X(you[0]), Y(you[1]), 0, P => drawTruckTop(P, 0, garOn(loadBest(), 'truck')));
+    R(you[0] - 4, you[1] + 16, 9, 14, '#7a828a'); R(you[0] - 3, you[1] + 30, 7, 4, '#9aa2aa');
+  }
+}
 
 /* ------------------------------ boot ------------------------------ */
 let last = performance.now();
