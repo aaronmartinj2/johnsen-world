@@ -82,6 +82,20 @@ body{margin:0;height:100%;background:var(--page);overflow:hidden;color:var(--tex
 .ofield .sw{display:inline-block;width:10px;height:10px;border:1px solid #000;margin-right:5px;vertical-align:-1px}
 .ofield li.me{background:#e6ecff;border-color:#000080}
 .topseed{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:#b08000;padding:0 5px;margin-left:4px}
+.wctabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 8px}
+.wctabs button[aria-pressed="true"]{background:#000080;color:#fff;border-color:#000080}
+.wcstop{background:#fff;border:1px solid var(--win-lo);padding:6px 8px;margin:0 0 8px;font-size:12px}
+.wcglobe{margin:0 0 8px}
+.wccal{grid-column:1/-1;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px;font-size:11px}
+.wccal li{display:grid;grid-template-columns:3.4em 1fr auto;gap:4px;align-items:center;background:#fff;border:1px solid var(--win-lo);padding:2px 5px}
+.wccal li small{display:block;font-size:9px;opacity:.75}
+.wccal li.past{background:#eef0f4;color:#4a4a58}
+.wccal li.today{background:#000080;color:#fff}
+.wccal li.games{background:#fff4d0}
+.wccal li.finals{border-color:#c41e1e}
+.wccal .d{font-weight:700}
+.wcchamp li{grid-template-columns:3em 1fr auto}
+.wcev li{grid-template-columns:6.6em 1fr auto}
 .oqual{background:#fff;border:1px solid var(--win-lo);padding:6px 8px;margin:0 0 8px;font-size:12px}
 .oqual ul{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:2px}
 .oqual li{display:flex;justify-content:space-between;gap:8px}
@@ -402,6 +416,7 @@ body.inbar #toast{z-index:30}
           <button class="btn mode" data-mode="bigair"><span>6. Big Air</span><small id="bBigair"></small></button>
           <button class="btn mode" data-mode="olympics" id="olyBtn"><span>7. Olympics</span><small id="bOly"></small></button>
           <button class="btn mode" data-mode="backcountry" id="bcBtn"><span>8. Backcountry</span><small id="bBC"></small></button>
+          <button class="btn mode" data-mode="worldcup" id="wcBtn"><span>9. World Cup</span><small id="bWC"></small></button>
         </div>
         <div class="mrow"><button class="btn practice" id="practiceBtn">Practice: learn the moves</button><button class="btn practice" id="ranksBtn">Rankings</button></div>
         <div class="mrow" id="resortRow" style="grid-template-columns:1fr 1fr"><button class="btn practice" id="resortBtn">Resort: build your mountain</button><button class="btn practice" id="barBtn">The Bar</button><button class="btn practice hidden" id="cabinBtn">Your Cabin</button></div>
@@ -1543,12 +1558,8 @@ const CFG = {
   OLY_WEIGHT: { park: 0.025, pipe: 0.025, bigair: 0.2 },   // Olympic points per event point: a strong 40,000 park or pipe run or a 5,000 Big Air = 1,000
   OLY_EVENT_CAP: 1200,          // most Olympic points one trick event can give, so a long butter-combo run can't swamp the others
   OLY_OFFICIAL_PER_DAY: 1,      // official Games (the ones that win medals) per account per Olympics; after that, Practice Heats
-  // The Olympics come round every `len` days, the same for every account (by the local date, like the daily field): a cycle is
-  // normal days, then `qualDays` qualifying days, then `gamesDays` Games days (the official Games can be skied on any of them, once).
-  // `start`: a date that begins a cycle (2026-10-19: qualifying Oct 20-21, Games Oct 22, then every 4 days). qualDays 0: no qualifying.
-  OLY_CYCLE: { len: 4, qualDays: 2, gamesDays: 1, start: '2026-10-19' },
-  // Qualifying standards: to enter a Games you must meet every one, in normal runs on that cycle's qualifying days (not practice,
-  // Practice Heats or the Night Park / Superpipe / Mega Kicker variants). Slalom: a final time at or under this (s); the others: a score
+  // The Olympics come once a World Cup season, on day CFG.WORLD_CUP.games (the same for every account, by the date).
+  // Qualifying standards: to enter a Games you must meet every one in World Cup races in the first half of that season. Slalom: a final time at or under this (s); the others: a score
   // at or over it. Test players (one run each): strong 24.6-25.6 s, 23,000-27,000, 53,000-79,000, Big Air 0-12,400 (7 runs in 10 over
   // 4,000); a steady one skis about 26.75 s; rough 36-57 s, 17,700-20,300, 11,000-19,800, 0-5,100. So a strong player qualifies in a
   // couple of tries, a steady one needs a good run in each event, and a rough one doesn't (the Slalom keeps them out).
@@ -1574,6 +1585,38 @@ const CFG = {
     { id: 'biscuit', name: 'Billy "Biscuit" Barnes', country: 'Canada', spec: 'Wild card', tag: 'Sends everything off the big kicker. Lands some of it.', col: '#d42a2a', slalom: 40.9, park: 8000, pipe: 4000, bigair: 8500 },
     { id: 'tomasz', name: 'Tomasz Wolny', country: 'Poland', spec: 'Steady', tag: 'Never crashes. Never wins either.', col: '#d8d8e0', slalom: 32.5, park: 12000, pipe: 10000, bigair: 1000 },
   ],
+
+  // ---------------------------- World Cup ----------------------------
+  WORLD_CUP: {
+    start: '2026-10-26',        // day 1 of season 1 (a Monday); every season after it is `len` days, the same for every account
+    len: 28,                    // days in a season: day `games` is the Olympic Games (no race), the last day the Finals
+    games: 14,                  // the Olympic Games: qualify by hitting the Olympic marks (OLY_STANDARDS) in World Cup races before it
+    finalsMult: 2,              // the Finals pay this many times the points and prize money
+    card: { slalom: 27, park: 22000, pipe: 50000, bigair: 8000 },   // the start card: every mark, in normal runs (Slalom time in s, the others scores)
+    events: ['slalom', 'tree', 'park', 'pipe', 'bigair', 'backcountry', 'freestyle'],
+    runs: { slalom: 2, tree: 2, park: 2, pipe: 2, bigair: 1, backcountry: 1, freestyle: 1 },   // runs at a stop (Big Air: one go of three jumps, the best two added)
+    points: [100, 80, 60, 50, 45, 40, 36, 32],   // World Cup points by place
+    prize: [6000, 4000, 2500, 1500, 1000, 750, 500, 400],   // prize money by place, at every stop
+    globePay: { overall: 25000, event: 5000 },   // a globe's purse at the end of the season
+    variants: { park: ['night', 0.3], pipe: ['super', 0.3], bigair: ['mega', 0.3] },   // the share of stops held under the lights, on the Superpipe, off the Mega Kicker
+    weather: { clear: 5, snow: 3, fog: 2 },   // Slalom, Tree Slalom and Freestyle stops: the weather (weights)
+    bigair2: 0.82,              // a rival's second-best Big Air jump, as a share of their best
+    champKeep: 12,              // past seasons listed on the Champions page
+    // The rivals' base results in the events the Olympics don't have (Slalom, Park, Pipe and Big Air come from OLY_RIVALS):
+    // tree = one Tree Slalom run (s; a near-perfect line is about 21.3 s, a steady one 31-32 s), backcountry = the judges' score (out of 100), freestyle = a Freestyle score.
+    rivals: {
+      sven: { tree: 21.0, backcountry: 82, freestyle: 16000 },
+      kenji: { tree: 23.9, backcountry: 88, freestyle: 14000 },
+      margaux: { tree: 20.7, backcountry: 62, freestyle: 9000 },
+      dusty: { tree: 29.6, backcountry: 70, freestyle: 11000 },
+      ingrid: { tree: 33.2, backcountry: 74, freestyle: 21000 },
+      biscuit: { tree: 44.0, backcountry: 85, freestyle: 12500 },
+      tomasz: { tree: 34.6, backcountry: 56, freestyle: 7000 },
+    },
+    venues: ['Kettle Crest', 'Bluebird Basin', 'Sawtooth Bowl', 'Larch Ridge', 'Hoarfrost Valley', 'Cinder Cone', 'Pika Peak', 'Stormking', 'Glacier Lily', 'Cougar Bowl',
+      'Marmot Pass', 'Silver Fir', 'Thunder Notch', 'Huckleberry Hill', 'Raven Ridge', 'Granite Falls', 'Snowberry', 'Windy Gap', 'Ptarmigan Peak', 'Elk Meadow',
+      'Bear Paw', 'Tamarack', 'Frostfire', 'Copper Creek', 'Avalanche Lily', 'Lone Pine', 'Spindrift Bowl', 'Cascade Crest'],
+  },
 
   // ---------------------------- Welcome screen ----------------------------
   VERSION: '2.1',
@@ -2000,6 +2043,7 @@ function skierSprite(o) {
     if (back) P(bx - 1, 11 + cr, 2, 6, pal.dark);
     if (pal.cross) { P(bx - 1, 11 + cr, 2, 6, pal.cross); P(bx - 3, 13 + cr, 6, 2, pal.cross); }   // ski patrol: a white cross
     if (pal.patches) pal.patches.forEach((c, i) => { P(bx - 4 + i * 3, 12 + cr, 2, 2, '#000'); P(bx - 4 + i * 3, 12 + cr, 2, 1, c); P(bx - 4 + i * 3, 13 + cr, 1, 1, c); });
+    if (pal.bib && !back) { P(bx - 3, 10 + cr, 6, 7, '#ffffff'); P(bx - 2, 11 + cr, 4, 5, '#e01818'); P(bx - 1, 12 + cr, 2, 2, '#ffffff'); P(bx, 13 + cr, 1, 1, '#202020'); }   // the World Cup leader's red bib (white-edged, so it shows on a red jacket)
     if (arms === 'normal') {
       P(bx - 6, 11 + cr, 2, 6, pal.jacket); P(bx + 4, 11 + cr, 2, 6, pal.dark);
       if (pal.stripe) { P(bx - 6, 14 + cr, 2, 1, pal.stripe); P(bx + 4, 14 + cr, 2, 1, pal.stripe); }
@@ -4187,7 +4231,7 @@ function wakeCamTick(dt) {
   if (G.wakeCam < 0.5 && !want) G.wakeCam = 0;
 }
 // ---------- bear spray ----------
-const sprayCan = () => G.mode === 'freestyle' && !G.demo && !G.practice && !G.oly && G.sprayCans > 0 && !G.sprayUsed;
+const sprayCan = () => G.mode === 'freestyle' && !G.demo && !G.practice && !G.oly && !G.wc && G.sprayCans > 0 && !G.sprayUsed;
 const sprayRange = () => { const p = G.pur, s = G.sk; return !!p && !p.demo && !p.held && p.sprayHit === undefined && Math.hypot(s.x - p.x, s.y - p.y) <= CFG.SPRAY.range * CFG.PX_PER_M; };
 function bearSpray() {
   if (!sprayCan() || !G.pur || G.pur.demo) return false;
@@ -4204,7 +4248,7 @@ function bearSpray() {
   return true;
 }
 // ---------- the Ski Patrol ----------
-const patrolReady = () => G.mode === 'freestyle' && !G.demo && !G.practice && !G.oly && !!(G.res && G.res.has('patrol')) && !G.patrolUsed;
+const patrolReady = () => G.mode === 'freestyle' && !G.demo && !G.practice && !G.oly && !G.wc && !!(G.res && G.res.has('patrol')) && !G.patrolUsed;
 function patrolSpawn(p) {   // from the side of the screen he's on, at his height
   const side = p.x >= G.sk.x ? 1 : -1;
   G.patrolGuy = { x: side > 0 ? G.camX + W + 12 : G.camX - 12, y: p.y + 6, side, phase: 'in', t: 0, rot: 0 };
@@ -4270,7 +4314,7 @@ function dogTick(dt) {
 }
 
 // With the Second Lodge bought, skiing into the first lodge asks: stop here (the usual escape), or ski out the front door for the Legend Lodge
-const lodgeCanGo = () => G.mode === 'freestyle' && resortHas('lodge2') && !G.demo && !G.practice && !G.oly && !G.passedLodge && !G.lodgeGone;
+const lodgeCanGo = () => G.mode === 'freestyle' && resortHas('lodge2') && !G.demo && !G.practice && !G.oly && !G.wc && !G.passedLodge && !G.lodgeGone;
 let lodgeAskAt = 0;
 function reachLodge() {
   barFind('lodge');
@@ -5480,16 +5524,13 @@ function launchMode(mode) {
     bigair: ['megakicker', 'Big Air', 'Hit the standard kicker or the Mega Kicker?', 'Standard', 'Mega Kicker', 'mega'] }[mode];
   if (V && resortHas(V[0])) { showChoice(mode, V); return; }
   if (mode === 'freestyle' && resortHas('summit')) { showChoice('freestyle', [null, 'Freestyle', 'Ski down from the usual start, or head up the mountain to the Summit Lodge on the peak?', 'Ski down', 'Head up the mountain', 'climb']); return; }
+  if (mode === 'worldcup') { wcOpen(); return; }
   if (mode !== 'olympics') { startGame(mode); return; }
   const b = loadBest(), q = olyStatus(b);
-  if (!q.qualified) {
-    let html = `<p class="tag">Complete every Slalom, Terrain Park, Halfpipe and Big Air goal to qualify. ${q.done} of ${q.total} done.</p><div class="infolist">`;
-    let last = '';
-    for (const [m, t] of q.missing) { if (m !== last) { html += `<b>${EVENT_NAMES[m]}</b>`; last = m; } html += `<div>☐ ${escHTML(t)}</div>`; }
-    showInfo('Olympics: not qualified yet', html + '</div>');
+  if (!wcHasCard(b)) {   // (the Olympics and their Practice Heats need a World Cup start card)
+    showInfo('Olympics: World Cup start card needed', `<p class="tag">The Olympics are on day ${CFG.WORLD_CUP.games} of each World Cup season. To get in, you need a World Cup start card, then the Olympic marks in first-half World Cup races.</p>${wcCardHTML(b)}`);
     return;
   }
-  if (!b.olyQualified) { b.olyQualified = true; saveBest(b); }
   olyStart();
 }
 // ---- the rival field: today's form, the same for every account (date-seeded like the Bar's bets) ----
@@ -5535,11 +5576,10 @@ const olyDayStr = n => { const d = new Date(n * 864e5); return `${d.getUTCFullYe
 const olyDayName = day => { const [y, m, d] = String(day).split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); };
 // kind: 'off' (a normal day), 'qual' (a qualifying day) or 'games'. games: the date of this cycle's Games (its first Games day),
 // which is also the key for this cycle's qualifying; toGames: days until it; qualFrom / qualTo: the qualifying days.
-function olyCycle(day = barToday()) {
-  const C = CFG.OLY_CYCLE, n = olyDayNum(day), pos = ((n - olyDayNum(C.start)) % C.len + C.len) % C.len;
-  const gStart = C.len - C.gamesDays, qStart = gStart - C.qualDays, g = n - pos + gStart;
-  return { kind: pos >= gStart ? 'games' : pos >= qStart ? 'qual' : 'off', pos, games: olyDayStr(g), toGames: g - n,
-    qualFrom: olyDayStr(g - C.qualDays), qualTo: olyDayStr(g - 1), needQual: C.qualDays > 0 };
+function olyCycle(day = barToday()) {   // (the World Cup season: the first half qualifies, day `games` is the Games, the rest is off)
+  const C = CFG.WORLD_CUP, w = wcDay(day), s = w.idx > C.games ? w.s + 1 : w.s, n = olyDayNum(day), g = olyDayNum(wcDate(s, C.games));
+  return { kind: w.idx === C.games ? 'games' : w.idx < C.games ? 'qual' : 'off', pos: w.idx, games: olyDayStr(g), toGames: g - n,
+    qualFrom: wcDate(s, 1), qualTo: wcDate(s, C.games - 1), needQual: true };
 }
 // Your qualifying for a Games: the best result in each event from its qualifying days (b.olyQ, kept for the coming Games only)
 function olyQual(b, cyc = olyCycle()) { const Q = b.olyQ; return Q && Q.games === cyc.games && Q.best ? Q : { games: cyc.games, best: {} }; }
@@ -5550,6 +5590,7 @@ function olyQualCount(b, cyc = olyCycle()) { const Q = olyQual(b, cyc); return C
 function olyQualifiedFor(b, cyc = olyCycle()) { return !cyc.needQual || olyQualCount(b, cyc) === CFG.OLY_EVENTS.length; }
 // A finished normal run on a qualifying day: keep your best in that event. Not practice, demo, the Olympics or the variants.
 function olyQualRecord(b) {
+  return null;   // (normal runs don't qualify any more: World Cup races do, in wcOlyMark)
   if (G.demo || G.practice || G.oly || G.variant || !CFG.OLY_EVENTS.includes(G.mode)) return null;
   const cyc = olyCycle(); if (cyc.kind !== 'qual') return null;
   const ev = G.mode, v = ev === 'slalom' ? (G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null) : ev === 'bigair' ? (G.bigair ? G.bigair.best : 0) : G.score;
@@ -5572,21 +5613,21 @@ function olyDayData(b) { const c = olyCycle(), k = c.kind === 'games' ? c.games 
 function olyOfficialLeft(b = loadBest()) { const c = olyCycle(); if (c.kind !== 'games' || !olyQualifiedFor(b, c)) return 0; return Math.max(0, CFG.OLY_OFFICIAL_PER_DAY - olyDayData(b).n); }
 // the menu's Olympics button
 function olyMenuLabel(b) {
-  const q = olyStatus(b); if (!q.qualified) return `Locked: ${q.done}/${q.total} goals`;
+  if (!wcHasCard(b)) return 'Locked: World Cup start card';
   const c = olyCycle(), N = CFG.OLY_EVENTS.length;
   if (c.kind === 'games') {
     if (!olyQualifiedFor(b, c)) return 'Not qualified this time';
     if (olyOfficialLeft(b) > 0) return 'Today: the Olympics!';
     return olyDayData(b).res === 'dnf' ? "Today's Games: DNF (heats only)" : "Today's Games: done (heats only)";
   }
-  if (c.kind === 'qual') { const n = olyQualCount(b, c); return n >= N ? `Qualified! Games ${c.toGames === 1 ? 'tomorrow' : `in ${c.toGames} days`}` : `Qualifying: ${n} of ${N} standards met`; }
+  if (c.kind === 'qual') { const n = olyQualCount(b, c); return n >= N ? `Qualified! Games ${c.toGames === 1 ? 'tomorrow' : `in ${c.toGames} days`}` : `Qualifying: ${n} of ${N} marks (World Cup)`; }
   return `Olympics in ${c.toGames} days`;
 }
 // The qualifying box on the Olympics card: each standard, met or not, with your best
 function olyQualHTML(b, c) {
   const Q = olyQual(b, c).best, n = olyQualCount(b, c), N = CFG.OLY_EVENTS.length;
   const when = c.kind === 'qual' ? `Qualifying for the Olympics on ${olyDayName(c.games)} is open ${c.qualFrom === c.qualTo ? 'today' : `${olyDayName(c.qualFrom)} to ${olyDayName(c.qualTo)}`}` : `Qualifying for the Olympics on ${olyDayName(c.games)} opens ${olyDayName(c.qualFrom)}`;
-  return `<div class="oqual"><b>${when}.</b> Meet every standard in a normal run (not a heat or a variant). ${n} of ${N} met.<ul>` +
+  return `<div class="oqual"><b>${when}.</b> Meet every standard in a World Cup race in the first half of the season. ${n} of ${N} met.<ul>` +
     CFG.OLY_EVENTS.map(ev => { const ok = olyStdMet(ev, Q[ev]); return `<li class="${ok ? 'ok' : ''}"><span>${ok ? '☑' : '☐'} ${EVENT_NAMES[ev]}: ${olyStdText(ev)}</span><small>${typeof Q[ev] === 'number' ? `best ${olyQualFmt(ev, Q[ev])}` : c.kind === 'qual' ? 'no run yet' : ''}</small></li>`; }).join('') + '</ul></div>';
 }
 function medalData(b) { b.medals = b.medals || {}; const M = b.medals; M.c = M.c || {}; M.h = M.h || []; return M; }
@@ -5684,7 +5725,7 @@ function showOlyCard() {
   G.state = 'olycard'; O.quitArm = 0;
   overlays('olycard'); $('touch').classList.add('hidden'); $('hud').classList.add('hidden');
   const c = O.cyc || olyCycle(O.day), b = loadBest(), N = CFG.OLY_EVENTS.length;
-  const nextGames = c.kind === 'games' ? olyCycle(olyDayStr(olyDayNum(c.games) + CFG.OLY_CYCLE.len)).games : c.games;
+  const nextGames = c.kind === 'games' ? olyCycle(olyDayStr(olyDayNum(c.games) + CFG.WORLD_CUP.len)).games : c.games;
   $('ocBadge').className = 'ocbadge ' + (O.official || O.watch ? 'off' : 'heat');
   $('ocBadge').textContent = O.watch ? `Official Games, ${fmtDay(O.day)}: you didn't qualify` : O.official ? `Official Games, ${fmtDay(O.day)}: medals count`
     : c.kind === 'games' && olyQualifiedFor(b, c) ? "Practice Heat: today's official Games is done. Heats win no medals."
@@ -5704,14 +5745,14 @@ function showOlyCard() {
   } else if (!O.started) {   // Today's field
     $('ocTitle').textContent = O.official ? "Olympics: today's field" : "Practice Heat: today's field";
     $('ocLines').innerHTML = ''; $('ocTotal').textContent = '';
-    $('ocMedal').innerHTML = !O.official && c.needQual && c.kind !== 'games' && olyStatus(b).qualified ? olyQualHTML(b, c) : '';
+    $('ocMedal').innerHTML = !O.official && c.needQual && c.kind !== 'games' ? olyQualHTML(b, c) : '';
     const S = O.seeds, li = R => `<li><span class="sw" style="background:${R.col}"></span><b>${escHTML(R.name)}</b> <small>${escHTML(R.country)}, ${escHTML(R.spec)}${S ? `, seed ${S.seed[R.id]}` : ''}</small><br><span>${escHTML(R.tag)}</span></li>`;
     const meLi = S ? `<li class="me"><span class="sw" style="background:#000080"></span><b>${escHTML(olyMe())} (you)</b> <small>seed ${S.me}, qualifying ${S.mine.toLocaleString()}</small>${S.me === 1 ? ' <span class="topseed">Top seed</span>' : ''}<br><span>${CFG.OLY_EVENTS.map(ev => `${EVENT_NAMES[ev]} ${olyQualFmt(ev, olyQual(b, c).best[ev])}`).join(' · ')}</span></li>` : '';
     const order = S ? O.field.slice().sort((a, z) => S.seed[z.id] - S.seed[a.id]) : O.field;   // start order: the top seed goes last
     $('ocTables').innerHTML = '<ul class="ofield">' + (S ? order.map(R => [S.seed[R.id], li(R)]).concat([[S.me, meLi]]).sort((a, z) => z[0] - a[0]).map(x => x[1]).join('') : order.map(li).join('')) + '</ul>';
     $('ocNote').textContent = O.official
       ? `${N} events, one run each, against ${O.field.length} rivals. Top ${CFG.OLY_MEDAL_PLACES} in an event or overall wins a medal. One official Games each Olympics: it counts from the moment the Slalom starts, and leaving partway is a DNF.${S ? ' Seeds come from your best qualifying runs; the top seed goes last. Seeds are for pride only: they don\'t change points.' : ''}`
-      : `Heats pay your sponsor and count for your best and the Olympics top 3, but win no medals.${c.needQual ? ` The Olympics come round every ${CFG.OLY_CYCLE.len} days.` : ''}`;
+      : `Heats pay your sponsor and count for your best and the Olympics top 3, but win no medals. The Olympics come once a World Cup season, on day ${CFG.WORLD_CUP.games}.`;
     $('ocNext').classList.remove('hidden'); $('ocNext').textContent = `Start: ${EVENT_NAMES[CFG.OLY_EVENTS[0]]}`;
   } else {
     const placeOf = ev => O.done ? O.evPlaces[ev] : olyEventTable(O, ev).find(r => r.me).place;
@@ -5763,6 +5804,7 @@ function drawPodium(O) {
   });
 }
 function olyNextPress() {
+  if (G.wc) { wcNextPress(); return; }
   const O = G.oly; if (O && O.watch) { olyStart(true); return; }   // not qualified: a Practice Heat instead
   if (!O || O.done) return;
   if (!O.started) {
@@ -5775,6 +5817,7 @@ function olyNextPress() {
 }
 // Leaving mid-Olympics takes two presses; nothing from the Olympics is saved (an official Games counts as a DNF for the day)
 function olyQuitPress() {
+  if (G.wc) { wcQuitPress(); return; }
   const O = G.oly;
   if (!O || O.done || !O.started) { showMenu(); return; }
   if (O.quitArm && performance.now() - O.quitArm < 3000) { showMenu(); return; }
@@ -5782,6 +5825,316 @@ function olyQuitPress() {
   if (G.state === 'olycard') $('ocQuit').textContent = 'Click again to leave';
   else { if (G.state === 'paused') $('pMenuBtn').textContent = 'Click again to leave'; toast(O.official ? "Press again to leave. Today's official Games will count as a DNF." : 'Press again to leave the heat. Nothing will be saved.', 2.6); }
   setTimeout(() => { if (G.oly === O && O.quitArm && performance.now() - O.quitArm >= 2900) { O.quitArm = 0; if (G.state === 'olycard') $('ocQuit').textContent = 'Leave Olympics'; $('pMenuBtn').textContent = 'Menu'; } }, 3000);
+}
+
+/* ------------------------------ the World Cup ------------------------------
+   A season is CFG.WORLD_CUP.len days, the same calendar for everyone (by the date): days 1-13 the first half (one stop a day),
+   day 14 the Olympic Games (no race), days 15-27 the second half, day 28 the Finals (double points). Seven events. The rivals
+   race every stop whether you do or not; a missed day scores you zero. Getting in takes a start card (the marks in
+   CFG.WORLD_CUP.card, from normal runs); getting into the Olympics takes the Olympic marks, hit in first-half World Cup races.
+   Saved per account in b.wc: card (the date it came), cardBest (your best toward it), res (your official result per stop date),
+   settled (seasons whose globes are done), won (the globes: [{ s, g: ['overall', 'slalom', ...] }]). */
+const wcCfg = () => CFG.WORLD_CUP;
+const WC_TIME = ev => ev === 'slalom' || ev === 'tree';   // lower is better
+function wcData(b) { if (!b.wc || typeof b.wc !== 'object') b.wc = {}; const D = b.wc; D.cardBest = D.cardBest || {}; D.res = D.res || {}; D.won = D.won || []; D.settled = D.settled || []; return D; }
+const wcHasCard = (b = loadBest()) => !!(b.wc && b.wc.card);
+// The season and its day (1 to len) for a date. Season 1 starts on CFG.WORLD_CUP.start.
+function wcDay(day = barToday()) { const C = wcCfg(), n = olyDayNum(day) - olyDayNum(C.start), s = Math.floor(n / C.len) + 1; return { s, idx: n - (s - 1) * C.len + 1, day }; }
+const wcDate = (s, idx) => olyDayStr(olyDayNum(wcCfg().start) + (s - 1) * wcCfg().len + idx - 1);
+const wcHash = str => { let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const wcFmt = (ev, v) => v === null || v === undefined ? 'DNF' : WC_TIME(ev) ? fmtSec(v) : ev === 'backcountry' ? (+v).toFixed(1) : Math.round(v).toLocaleString();
+const wcCardMet = (ev, v) => typeof v === 'number' && (WC_TIME(ev) ? v <= wcCfg().card[ev] : v >= wcCfg().card[ev]);
+const wcCardText = ev => WC_TIME(ev) ? `${fmtSec(wcCfg().card[ev])} or faster` : `${wcCfg().card[ev].toLocaleString()}+`;
+const wcShortDay = day => { const [y, m, d] = String(day).split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const wcStopNo = idx => idx < wcCfg().games ? idx : idx - 1;   // (no stop on Games day)
+const WC_STOPS = () => wcCfg().len - 1;
+// ---- the calendar: dealt from the season number, the same for everyone ----
+const WC_CAL = new Map();
+function wcCalendar(s) {
+  if (WC_CAL.has(s)) return WC_CAL.get(s);
+  const C = wcCfg(), rng = mulberry(wcHash('wc-season' + s)), all = C.events, pick = () => all[Math.floor(rng() * all.length)];
+  const fill = (list, n) => { while (list.length < n) list.push(pick()); return list.slice(0, n); };
+  const deal = list => {   // shuffled, keeping the same event off back-to-back days where it can
+    let a = list;
+    for (let k = 0; k < 80; k++) { a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } if (a.every((e, i) => !i || e !== a[i - 1])) break; }
+    return a;
+  };
+  const nFirst = C.games - 1, nSecond = C.len - C.games - 1;
+  const first = deal(fill(CFG.OLY_EVENTS.concat(CFG.OLY_EVENTS, all.filter(e => !CFG.OLY_EVENTS.includes(e))), nFirst));   // the Olympic four twice each before the Games
+  const second = deal(fill(all.slice(), nSecond)), finals = pick();
+  const evs = first.concat([null], second, [finals]);
+  const venues = C.venues.slice(); for (let i = venues.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [venues[i], venues[j]] = [venues[j], venues[i]]; }
+  const wsum = Object.values(C.weather).reduce((a, x) => a + x, 0);
+  const cal = [null];
+  evs.forEach((ev, i) => {
+    const idx = i + 1, day = wcDate(s, idx);
+    if (!ev) { cal.push({ s, idx, day, games: true }); return; }
+    const V = C.variants[ev], variant = V && rng() < V[1] ? V[0] : null;
+    let weather = 'clear'; if (WEATHER_MODES.includes(ev)) { let r = rng() * wsum; for (const k in C.weather) { r -= C.weather[k]; if (r <= 0) { weather = k; break; } } }
+    cal.push({ s, idx, day, ev, venue: venues[(i - (i >= C.games ? 1 : 0)) % venues.length], variant, weather, face: Math.floor(rng() * BACKCOUNTRY_FACES.length), finals: idx === C.len, mult: idx === C.len ? C.finalsMult : 1 });
+  });
+  WC_CAL.set(s, cal); return cal;
+}
+const wcConditions = st => st.ev === 'backcountry' ? `the ${BACKCOUNTRY_FACES[st.face % BACKCOUNTRY_FACES.length].name} face`
+  : st.variant ? { night: 'under the lights (Night Park)', super: 'on the Superpipe', mega: 'off the Mega Kicker' }[st.variant] : WEATHER_MODES.includes(st.ev) ? WEATHER_NAMES[st.weather] : 'clear skies';
+const wcFormat = ev => ({ slalom: 'two runs, times added', tree: 'two runs, times added', park: 'best of two runs', pipe: 'best of two runs', bigair: 'best two of three jumps, added',
+  backcountry: 'one run, the judges score it', freestyle: 'one run: your score when Big Karl catches you or you reach a lodge' })[ev];
+// ---- the rivals at a stop: date-seeded, the same for every account ----
+function wcField(st) {
+  const C = wcCfg(), rng = mulberry(wcHash('wc' + st.day)), S = CFG.OLY_RIVAL_SPREAD, TS = CFG.OLY_RIVAL_TIME_SPREAD, j = s => 1 + (rng() * 2 - 1) * s;
+  return CFG.OLY_RIVALS.map(R => {
+    const X = C.rivals[R.id] || {}, base = X[st.ev] !== undefined ? X[st.ev] : R[st.ev];
+    const v = WC_TIME(st.ev) ? Math.round((base * j(TS) + base * j(TS)) * 100) / 100
+      : st.ev === 'bigair' ? Math.round(base * j(S) + base * C.bigair2 * j(S))
+      : st.ev === 'backcountry' ? Math.min(100, Math.round(base * j(S) * 10) / 10) : Math.round(base * j(S));
+    return { id: R.id, name: R.name, country: R.country, col: R.col, v };
+  });
+}
+// One stop's results: the rivals plus you (mine: { v }, or null when you didn't race or didn't finish), with places and points
+function wcStopTable(st, mine) {
+  const C = wcCfg(), rows = wcField(st);
+  if (mine && typeof mine.v === 'number') rows.push({ me: true, name: olyMe(), v: mine.v });
+  const t = WC_TIME(st.ev); rows.sort((a, c) => (t ? a.v - c.v : c.v - a.v) || olyTie(a, c));
+  rows.forEach((r, i) => { r.place = i + 1; r.pts = (C.points[i] || 0) * (st.mult || 1); r.prize = (C.prize[i] || 0) * (st.mult || 1); });
+  return rows;
+}
+// The last day (1 to len) of season s that counts: past days, plus today once your official race is over
+function wcUpto(b, s) { const w = wcDay(); if (s < w.s) return wcCfg().len; if (s > w.s) return 0; const r = wcData(b).res[w.day]; return w.idx - 1 + (r && r.fin ? 1 : 0); }
+function wcStandings(b, s, upto = wcUpto(b, s)) {
+  const D = wcData(b), tot = {}, evp = {};
+  for (const st of wcCalendar(s)) {
+    if (!st || st.games || st.idx > upto) continue;
+    const r = D.res[st.day];
+    for (const row of wcStopTable(st, r && !r.dnf ? r : null)) { const k = row.me ? 'me' : row.id; tot[k] = (tot[k] || 0) + row.pts; const E = evp[st.ev] = evp[st.ev] || {}; E[k] = (E[k] || 0) + row.pts; }
+  }
+  const mk = m => { const rows = CFG.OLY_RIVALS.map(R => ({ id: R.id, name: R.name, country: R.country, col: R.col, pts: m[R.id] || 0 })); rows.push({ me: true, name: olyMe(), pts: m.me || 0 });
+    rows.sort((a, c) => (c.pts - a.pts) || (a.me && a.pts ? -1 : c.me && c.pts ? 1 : 0)); rows.forEach((r, i) => { r.place = i + 1; }); return rows; };
+  const out = { overall: mk(tot), ev: {}, upto }; for (const e of wcCfg().events) out.ev[e] = mk(evp[e] || {});
+  return out;
+}
+// You lead the season: the red bib
+function wcLeads(b = loadBest()) { if (!wcHasCard(b)) return false; const w = wcDay(), St = wcStandings(b, w.s); return !!(St.upto > 0 && St.overall[0].me && St.overall[0].pts > 0); }
+function wcBibApply(b) {
+  const want = !G.demo && wcLeads(b); if (!PALS.hero || !!PALS.hero.bib === want) return;
+  PALS.hero.bib = want; for (const k in SKCACHE) if (k.includes('|hero|')) delete SKCACHE[k];
+}
+// ---- the globes: when a season's over (or you've raced its Finals), each table you top is a globe ----
+function wcSettle(b) {
+  const D = wcData(b), w = wcDay(), C = wcCfg(), got = [];
+  if (!D.card) return got;
+  const seasons = [...new Set(Object.keys(D.res).map(d => wcDay(d).s))].sort((a, c) => a - c);
+  for (const s of seasons) {
+    if (D.settled.includes(s) || wcUpto(b, s) < C.len) continue;
+    const St = wcStandings(b, s, C.len), g = [];
+    if (St.overall[0].me && St.overall[0].pts > 0) g.push('overall');
+    for (const e of C.events) if (St.ev[e][0].me && St.ev[e][0].pts > 0) g.push(e);
+    D.settled.push(s); D.settled = D.settled.slice(-40);
+    if (g.length) {
+      const pay = g.reduce((a, k) => a + (k === 'overall' ? C.globePay.overall : C.globePay.event), 0), st = gearState(b);
+      st.cash += pay; b.gear = gearObj(st); D.won.push({ s, g }); got.push({ s, g, pay });
+    }
+  }
+  return got;
+}
+function wcGlobes(b) { const n = { overall: 0 }; for (const e of wcCfg().events) n[e] = 0; for (const x of wcData(b).won) for (const k of x.g) n[k] = (n[k] || 0) + 1; return n; }
+const wcGlobeName = k => k === 'overall' ? 'the Crystal Globe' : `the ${EVENT_NAMES[k]} globe`;
+// The champions of past seasons (rivals too), newest first
+function wcChampions(b) {
+  const w = wcDay(), out = [];
+  for (let s = w.s - 1; s >= Math.max(1, w.s - wcCfg().champKeep); s--) {
+    const St = wcStandings(b, s, wcCfg().len);
+    out.push({ s, overall: St.overall[0], ev: Object.fromEntries(wcCfg().events.map(e => [e, St.ev[e][0]])) });
+  }
+  return out;
+}
+// ---- the start card: hit every mark in normal runs (not practice, the Olympics, the World Cup or the variants) ----
+function wcCardRecord(b) {
+  const C = wcCfg(); if (G.demo || G.practice || G.oly || G.wc || G.variant || !(G.mode in C.card)) return null;
+  const D = wcData(b); if (D.card) return null;
+  const ev = G.mode, v = ev === 'slalom' ? (G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null) : ev === 'bigair' ? (G.bigair ? G.bigair.best : 0) : G.score;
+  if (typeof v !== 'number' || (ev !== 'slalom' && !(v > 0))) return null;
+  const old = D.cardBest[ev], was = wcCardMet(ev, old);
+  if (typeof old !== 'number' || (WC_TIME(ev) ? v < old : v > old)) D.cardBest[ev] = v;
+  const all = Object.keys(C.card), n = all.filter(e => wcCardMet(e, D.cardBest[e])).length;
+  if (n === all.length) D.card = barToday();
+  return { ev, v, met: wcCardMet(ev, v), fresh: !was && wcCardMet(ev, v), n, N: all.length, card: n === all.length };
+}
+function wcCardHTML(b) {
+  const D = wcData(b), all = Object.keys(wcCfg().card), n = all.filter(e => wcCardMet(e, D.cardBest[e])).length;
+  return `<div class="oqual"><b>The World Cup start card</b>: hit every mark in a normal run (not practice, a heat, or the Night Park, Superpipe or Mega Kicker). ${n} of ${all.length} hit. It's yours for good.<ul>` +
+    all.map(ev => { const ok = wcCardMet(ev, D.cardBest[ev]); return `<li class="${ok ? 'ok' : ''}"><span>${ok ? '☑' : '☐'} ${EVENT_NAMES[ev]}: ${wcCardText(ev)}</span><small>${typeof D.cardBest[ev] === 'number' ? `best ${wcFmt(ev, D.cardBest[ev])}` : 'no run yet'}</small></li>`; }).join('') + '</ul></div>';
+}
+// ---- Olympic qualifying: the Olympic marks, hit in first-half World Cup races (kept in b.olyQ for that season's Games) ----
+function wcOlyMark(b, ev, v) {
+  const cyc = olyCycle(); if (cyc.kind !== 'qual' || !CFG.OLY_EVENTS.includes(ev) || typeof v !== 'number') return null;
+  const Q = b.olyQ = olyQual(b, cyc), old = Q.best[ev], was = olyStdMet(ev, old);
+  if (typeof old !== 'number' || (ev === 'slalom' ? v < old : v > old)) Q.best[ev] = v;
+  return { ev, v, met: olyStdMet(ev, v), fresh: !was && olyStdMet(ev, v), n: olyQualCount(b, cyc), cyc };
+}
+function wcOlyHTML(b) {
+  const c = olyCycle(), Q = olyQual(b, c).best, n = olyQualCount(b, c), N = CFG.OLY_EVENTS.length;
+  return `<div class="oqual"><b>Olympic qualifying</b> for the Games on ${olyDayName(c.games)}: hit every Olympic mark in a World Cup race in the first half (days 1 to ${wcCfg().games - 1}). ${n} of ${N} hit.<ul>` +
+    CFG.OLY_EVENTS.map(ev => { const ok = olyStdMet(ev, Q[ev]); return `<li class="${ok ? 'ok' : ''}"><span>${ok ? '☑' : '☐'} ${EVENT_NAMES[ev]}: ${olyStdText(ev)}</span><small>${typeof Q[ev] === 'number' ? `best ${olyQualFmt(ev, Q[ev])}` : ''}</small></li>`; }).join('') + '</ul></div>';
+}
+// ---- the menu button and the Resort pop-up ----
+function wcMenuLabel(b) {
+  const D = wcData(b); if (!D.card) { const all = Object.keys(wcCfg().card); return `Start card: ${all.filter(e => wcCardMet(e, D.cardBest[e])).length} of ${all.length} marks`; }
+  const w = wcDay(), st = wcCalendar(w.s)[w.idx], r = D.res[w.day];
+  if (st.games) return 'Today: the Olympic Games';
+  if (r && r.fin) return `Today: ${r.dnf ? 'DNF' : `${ordinal(r.place)} (+${r.pts})`}`;
+  return `Today: ${EVENT_NAMES[st.ev]}${st.finals ? ' (Finals)' : ''}`;
+}
+function wcResortInfo(b) {
+  const D = wcData(b), w = wcDay(), st = wcCalendar(w.s)[w.idx];
+  let s = `Seven events, one stop a day for ${wcCfg().len} days, against the Olympic field. Places score points (the Finals on day ${wcCfg().len} double), and the standings decide the Crystal Globe and a globe for each event. The Olympic Games are on day ${wcCfg().games}: qualify in the first half.`;
+  s += st.games ? '<br><b>Today: the Olympic Games.</b>' : `<br><b>Today (season ${w.s}, day ${w.idx})</b>: ${EVENT_NAMES[st.ev]} at ${escHTML(st.venue)}${st.finals ? ', the Finals' : ''}.`;
+  if (!D.card) s += ' <small>You need a start card to race: see the World Cup for the marks.</small>';
+  return s;
+}
+// ---- the World Cup card (the Olympics' window): today's stop, the calendar, the standings, the champions ----
+function wcOpen(view) {
+  const b = loadBest(), got = wcSettle(b); saveBest(b);
+  const w = wcDay(), stop = wcCalendar(w.s)[w.idx];
+  G.oly = null; G.wc = { view: view || 'today', w, stop, runs: [], started: false, done: false, official: false, quitArm: 0, settled: got };
+  showWcCard();
+}
+function wcPlaceLine(St) {
+  const me = St.overall.find(r => r.me); if (!me.pts) return St.upto ? "You've no points yet this season." : '';
+  if (me.place === 1) return `You lead the World Cup by ${(me.pts - St.overall[1].pts).toLocaleString()} (the red bib is yours).`;
+  return `You're ${ordinal(me.place)} overall with ${me.pts.toLocaleString()}, ${(St.overall[0].pts - me.pts).toLocaleString()} behind ${escHTML(St.overall[0].name.replace(/".*?"\s*/, ''))}.`;
+}
+function showWcCard() {
+  const W = G.wc, b = loadBest(), D = wcData(b), C = wcCfg(), w = W.w, st = W.stop, r = D.res[w.day];
+  G.state = 'olycard'; W.quitArm = 0; overlays('olycard'); $('touch').classList.add('hidden'); $('hud').classList.add('hidden');
+  $('ocTitle').textContent = `World Cup: season ${w.s}, day ${w.idx} of ${C.len}`;
+  $('ocPodium').classList.add('hidden'); $('ocLines').innerHTML = ''; $('ocTotal').textContent = '';
+  const tabs = `<div class="wctabs">${[['today', 'Today'], ['cal', 'Calendar'], ['stand', 'Standings'], ['champs', 'Champions']].map(([k, l]) => `<button type="button" class="btn sm" data-wcv="${k}" aria-pressed="${W.view === k}">${l}</button>`).join('')}</div>`;
+  let badge = '', heat = false, body = '', tables = '', note = '', next = null;
+  const St = wcStandings(b, w.s), stopLine = s2 => `<div class="wcstop"><b>${EVENT_NAMES[s2.ev]}</b> at <b>${escHTML(s2.venue)}</b>${s2.finals ? ' <span class="topseed">Finals: double points</span>' : ''}<br><small>Stop ${wcStopNo(s2.idx)} of ${WC_STOPS()}, ${wcConditions(s2)}. ${wcFormat(s2.ev).replace(/^./, c => c.toUpperCase())}.</small></div>`;
+  for (const x of W.settled || []) body += `<div class="mwon wcglobe">Season ${x.s} is over: ${x.g.map(wcGlobeName).join(', ')} ${x.g.length > 1 ? 'are' : 'is'} yours! +$${x.pay.toLocaleString()}</div>`;
+  if (W.view === 'cal') {
+    badge = `Season ${w.s}: ${olyDayName(wcDate(w.s, 1))} to ${olyDayName(wcDate(w.s, C.len))}`;
+    tables = '<ol class="wccal">' + wcCalendar(w.s).slice(1).map(s2 => {
+      const cls = [s2.idx === w.idx ? 'today' : '', s2.idx < w.idx ? 'past' : '', s2.games ? 'games' : '', s2.finals ? 'finals' : ''].join(' ').trim(), mine = D.res[s2.day];
+      const what = s2.games ? '<b>Olympic Games</b>' : `<b>${EVENT_NAMES[s2.ev]}</b>${s2.finals ? ' (Finals)' : ''}<small>${escHTML(s2.venue)}</small>`;
+      const res = s2.games ? '' : mine && mine.fin ? (mine.dnf ? 'DNF' : `${ordinal(mine.place)} +${mine.pts}`) : s2.idx < w.idx || (s2.idx === w.idx && mine) ? (D.card ? '-' : '') : '';
+      return `<li class="${cls}"><span class="d">${s2.idx}<small>${wcShortDay(s2.day)}</small></span><span class="e">${what}</span><b>${res}</b></li>`;
+    }).join('') + '</ol>';
+    note = `Points: ${C.points.join(', ')} for 1st to ${ordinal(C.points.length)}, doubled at the Finals. Miss a day and you score nothing; the rivals race every stop.`;
+  } else if (W.view === 'stand') {
+    badge = St.upto ? `Standings after day ${St.upto}` : 'Standings: nothing raced yet this season';
+    tables = `<div><h4>Overall</h4>${olyRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div><div><h4>Event standings</h4><ol class="otab wcev">` +
+      C.events.map(e => { const T = St.ev[e], me = T.find(x => x.me), lead = T[0]; return `<li class="${lead.me && lead.pts ? 'me' : ''}"><span class="pl">${EVENT_NAMES[e]}</span><span class="nm">${lead.pts ? escHTML(lead.name) + (lead.me ? ' (you)' : '') : 'no races yet'}<small>you: ${me.pts ? `${ordinal(me.place)}, ${me.pts}` : '0'}</small></span><b>${lead.pts}</b></li>`; }).join('') + '</ol></div>';
+    note = wcPlaceLine(St) + ' The leader wears the red bib. Top a table at the end of the season and its globe is yours.';
+  } else if (W.view === 'champs') {
+    const n = wcGlobes(b), mine = Object.entries(n).filter(([, k]) => k);
+    badge = mine.length ? `Your globes: ${mine.map(([k, c]) => `${k === 'overall' ? 'Crystal Globe' : EVENT_NAMES[k]} ${c}`).join(', ')}` : 'No globes yet';
+    const ch = wcChampions(b);
+    tables = ch.length ? '<ol class="otab wcchamp">' + ch.map(x => `<li class="${x.overall.me ? 'me' : ''}"><span class="pl">S${x.s}</span><span class="nm">${escHTML(x.overall.name)}${x.overall.me ? ' (you)' : ''}<small>${C.events.map(e => `${EVENT_NAMES[e]}: ${x.ev[e].me ? 'you' : escHTML(x.ev[e].name.replace(/".*?"\s*/, '').split(' ')[0])}`).join(' · ')}</small></span><b>${x.overall.pts}</b></li>`).join('') + '</ol>'
+      : '<p class="tag">No season has finished yet. The first champions are crowned on day ' + C.len + '.</p>';
+    note = `Globes pay $${C.globePay.overall.toLocaleString()} (the Crystal Globe) and $${C.globePay.event.toLocaleString()} (an event globe). They stand on the window sills at the Bar and in your Cabin.`;
+  } else if (!D.card) {
+    badge = 'Start card needed'; heat = true;
+    body += wcCardHTML(b) + (st.games ? '<div class="wcstop"><b>Today: the Olympic Games</b></div>' : stopLine(st));
+    note = 'The rivals race every stop with or without you: the Calendar and Standings show how the season is going.';
+  } else if (st.games) {
+    const q = olyQualifiedFor(b);
+    badge = `Day ${C.games}: the Olympic Games. No World Cup race today.`;
+    body += wcOlyHTML(b); note = q ? "You qualified in the first half. Today's the day." : "You didn't hit every Olympic mark in the first half, so the Games go on without you. The second half starts tomorrow.";
+    next = 'Go to the Olympics';
+  } else {
+    const need = C.runs[st.ev] || 1;
+    body += stopLine(st);
+    if (W.started && !W.done) {
+      badge = W.official ? 'Official race: counts for points' : 'Practice: no points'; heat = !W.official;
+      $('ocLines').innerHTML = W.runs.map((x, i) => `<li><span>${st.ev === 'bigair' ? 'Jumps' : `Run ${i + 1}`}: ${escHTML(x.label)}</span><b>${wcFmt(st.ev, x.v)}</b></li>`).join('');
+      next = `Run ${W.runs.length + 1} of ${need}`; note = 'Leaving now counts as a DNF for the official race.';
+    } else if (W.done || (r && r.fin)) {
+      const tab = W.done ? W.table : wcStopTable(st, r.dnf ? null : r), me = tab.find(x => x.me);
+      if (W.done) $('ocLines').innerHTML = W.runs.map((x, i) => `<li><span>${st.ev === 'bigair' ? 'Jumps' : need > 1 ? `Run ${i + 1}` : 'Run'}: ${escHTML(x.label)}</span><b>${wcFmt(st.ev, x.v)}</b></li>`).join('');
+      if (W.done && !W.official) { badge = 'Practice: no points'; heat = true; }
+      else badge = r && r.fin ? `Today's official race: ${r.dnf ? 'DNF' : `${ordinal(r.place)}, +${r.pts} points${r.prize ? `, $${r.prize.toLocaleString()}` : ''}`}` : '';
+      tables = `<div><h4>${EVENT_NAMES[st.ev]} at ${escHTML(st.venue)}</h4>${olyRowsHTML(tab, x => wcFmt(st.ev, x.v), true)}</div><div><h4>World Cup overall</h4>${olyRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div>`;
+      if (me && me.place <= 3) { $('ocPodium').classList.remove('hidden'); drawPodium({ final: tab }); }
+      const om = W.oly; note = (W.done && !W.official && me ? `That would have been ${ordinal(me.place)}. ` : '') + (om && om.fresh ? `<b>Olympic mark hit: ${EVENT_NAMES[om.ev]}!</b> ${om.n} of ${CFG.OLY_EVENTS.length}. ` : '') + wcPlaceLine(St);
+      next = 'Practice this stop';
+    } else {
+      badge = r ? "Today's official race: DNF (you left)" : 'Official race today: one entry. It counts from the first run; leaving partway is a DNF.';
+      next = r ? 'Practice this stop' : `Race: ${EVENT_NAMES[st.ev]}${need > 1 ? ` (run 1 of ${need})` : ''}`;
+      tables = `<div><h4>World Cup overall</h4>${olyRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div>`;
+      note = wcPlaceLine(St);
+    }
+    if (w.idx < C.games && !(W.started && !W.done)) body += wcOlyHTML(b);
+  }
+  $('ocBadge').className = 'ocbadge ' + (heat ? 'heat' : 'off'); $('ocBadge').textContent = badge;
+  $('ocMedal').innerHTML = tabs + body; $('ocTables').innerHTML = tables; $('ocNote').innerHTML = note;
+  $('ocNext').classList.toggle('hidden', !next); if (next) $('ocNext').textContent = next;
+  $('ocQuit').textContent = W.started && !W.done ? 'Leave the race' : 'Menu';
+  const dbody = $('olycard').querySelector('.dbody'); if (dbody) dbody.scrollTop = 0;   // (the top of the card: the badge and the tabs)
+  setTimeout(() => { if (!isTouch && G.state === 'olycard') (next ? $('ocNext') : $('ocQuit')).focus({ preventScroll: true }); }, 0);
+}
+function wcNextPress() {
+  const W = G.wc, b = loadBest(), D = wcData(b); if (!W || !D.card) return;
+  if (W.view !== 'today') { W.view = 'today'; showWcCard(); return; }
+  if (W.stop.games) { G.wc = null; launchMode('olympics'); return; }
+  if (!W.started) {   // a new go at today's stop: the official race the first time, practice after
+    W.official = !D.res[W.w.day]; W.runs = []; W.done = false; W.started = true; W.table = null; W.oly = null; W.settled = [];
+    if (W.official) { D.res[W.w.day] = { s: W.w.s, ev: W.stop.ev, dnf: true, fin: false }; saveBest(b); }   // used the moment it starts (a reload can't undo it)
+  }
+  startGame(W.stop.ev, true);
+}
+function wcQuitPress() {
+  const W = G.wc;
+  if (!W || !W.started || W.done || !W.official) { showMenu(); return; }
+  if (W.quitArm && performance.now() - W.quitArm < 3000) { const b = loadBest(), r = wcData(b).res[W.w.day]; if (r) { r.fin = true; r.dnf = true; r.place = 0; r.pts = 0; } saveBest(b); showMenu(); return; }
+  W.quitArm = performance.now();
+  if (G.state === 'olycard') $('ocQuit').textContent = 'Click again to leave';
+  else { if (G.state === 'paused') $('pMenuBtn').textContent = 'Click again to leave'; toast("Press again to leave. Today's official race will count as a DNF.", 2.6); }
+  setTimeout(() => { if (G.wc === W && W.quitArm && performance.now() - W.quitArm >= 2900) { W.quitArm = 0; if (G.state === 'olycard') $('ocQuit').textContent = 'Leave the race'; $('pMenuBtn').textContent = 'Menu'; } }, 3000);
+}
+// A run's result, by event
+function wcRunValue(ev) {
+  if (WC_TIME(ev)) { const t = G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null; return { v: t, single: t, label: t === null ? 'did not finish' : `${fmtTime(t)}${G.missed ? `, ${G.missed} missed` : ''}` }; }
+  if (ev === 'bigair') { const sc = ((G.bigair && G.bigair.scores) || []).map(x => x.pts).sort((a, c) => c - a), two = (sc[0] || 0) + (sc[1] || 0); return { v: two, single: sc[0] || 0, label: `best two ${(sc[0] || 0).toLocaleString()} + ${(sc[1] || 0).toLocaleString()}` }; }
+  if (ev === 'backcountry') { const J = G.bc ? (G.bc.judge || bcJudge()) : null, v = J ? J.total : 0; return { v, single: v, label: `${v.toFixed(1)} / 100 from the judges` }; }
+  return { v: G.score || 0, single: G.score || 0, label: `${(G.score || 0).toLocaleString()} pts` };
+}
+function wcRunDone() {
+  const W = G.wc, ev = W.stop.ev, run = wcRunValue(ev); W.runs.push(run);
+  if (run.v === null || W.runs.length >= (wcCfg().runs[ev] || 1)) wcFinish(); else SFX.finish();
+  G.state = 'olycard'; showWcCard();
+}
+function wcFinish() {
+  const W = G.wc, C = wcCfg(), st = W.stop, ev = st.ev, b = loadBest(), D = wcData(b);
+  const vals = W.runs.map(x => x.v), dnf = vals.some(v => v === null);
+  const v = dnf ? null : WC_TIME(ev) ? Math.round(vals.reduce((a, x) => a + x, 0) * 100) / 100 : ev === 'park' || ev === 'pipe' ? Math.max(...vals) : vals[0];
+  W.done = true; W.started = false; W.table = wcStopTable(st, dnf ? null : { v });
+  const me = W.table.find(x => x.me);
+  if (W.official) {
+    const r = D.res[W.w.day] = { s: W.w.s, ev, v, dnf, fin: true, place: me ? me.place : 0, pts: me ? me.pts : 0, prize: me ? me.prize : 0 };
+    if (r.prize) { const g = gearState(b); g.cash += r.prize; b.gear = gearObj(g); }
+    if (!dnf && W.w.idx < C.games) { const singles = W.runs.map(x => x.single).filter(x => typeof x === 'number'); W.oly = singles.length ? wcOlyMark(b, ev, WC_TIME(ev) ? Math.min(...singles) : Math.max(...singles)) : null; }
+    W.settled = wcSettle(b);
+  }
+  saveBest(b); wcBibApply(b);
+  SFX.finish(); crowd(0.7); if (W.official && me && me.place <= 3) setTimeout(olyFanfare, 300);
+}
+// A crystal globe on its little stand (x: the middle, y: the bottom of the stand)
+function drawWcGlobe(g, P, x, y, big) {
+  const r = big ? 4 : 2.5, cy = y - 3 - r;
+  P(x - (big ? 3 : 2), y - 1, big ? 7 : 5, 1, '#5a3418'); P(x - 1, y - 3, 3, 2, '#c8a040');
+  g.fillStyle = '#bcdcf8'; g.beginPath(); g.arc(x + 0.5, cy, r, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#7aa8d8'; g.lineWidth = 1; g.beginPath(); g.ellipse(x + 0.5, cy, r, r * 0.35, 0, 0, Math.PI * 2); g.stroke();
+  P(x - Math.round(r * 0.5), cy - Math.round(r * 0.6), 1, 1, '#ffffff'); if (big) P(x - 1, cy - 2, 1, 1, '#ffffff');
+}
+// The globes you've won, in a row along a sill (the Crystal Globes first, bigger)
+function drawWcGlobes(g, P, b, x0, y, width) {
+  const n = wcGlobes(b), list = []; for (let i = 0; i < n.overall; i++) list.push(true); for (const e of wcCfg().events) for (let i = 0; i < n[e]; i++) list.push(false);
+  let x = x0; for (const big of list) { const w = big ? 9 : 6; if (x + w > x0 + width) break; drawWcGlobe(g, P, x + (w >> 1), y, big); x += w; }
+}
+function wcGlobeText(b) {
+  const n = wcGlobes(b), got = Object.entries(n).filter(([, k]) => k);
+  return got.length ? `<b>Crystal globes</b> from the World Cup: ${got.map(([k, c]) => `${k === 'overall' ? 'the Crystal Globe (overall)' : EVENT_NAMES[k]}${c > 1 ? ` x${c}` : ''}`).join(', ')}.` : '';
 }
 
 /* ------------------------------ backcountry ------------------------------ */
@@ -5867,7 +6220,7 @@ const BACKCOUNTRY_FACES = [
 const BC_TIER_NAMES = ['', 'Safe', 'Medium', 'Big'];
 function dailyFaceIndex() { const d = new Date(), k = d.getFullYear() * 400 + (d.getMonth() + 1) * 32 + d.getDate(); return (Math.imul(k, 2654435761) >>> 0) % BACKCOUNTRY_FACES.length; }
 function buildBC() {
-  const PX = CFG.PX_PER_M, fi = G.variant === 'daily' ? dailyFaceIndex() : Math.floor(Math.random() * BACKCOUNTRY_FACES.length);
+  const PX = CFG.PX_PER_M, fi = G.wc && G.wc.stop.ev === 'backcountry' ? G.wc.stop.face % BACKCOUNTRY_FACES.length : G.variant === 'daily' ? dailyFaceIndex() : Math.floor(Math.random() * BACKCOUNTRY_FACES.length);
   const face = BACKCOUNTRY_FACES[fi], rng = mulberry(9100 + fi);
   const F = [], rocks = [], zones = [], splits = [], hares = [], goats = [];
   let m = 0, id = 0, airFull = 0;
@@ -6858,7 +7211,7 @@ function barFoundMigrate(b) {   // once per account
 }
 // The moment: called at the first lodge's door, skiing past it, and at the Bar's door
 function barFind(where) {
-  if (G.mode !== 'freestyle' || G.demo || G.practice || G.oly || G.barFoundNow) return;
+  if (G.mode !== 'freestyle' || G.demo || G.practice || G.oly || G.wc || G.barFoundNow) return;
   const b = loadBest(); barFoundMigrate(b);
   if (barFound(b)) { saveBest(b); return; }
   b.barFound = barToday(); b.barNew = 1;
@@ -7075,6 +7428,7 @@ function barSpots(b) {
   }
   if (b.legend && b.legend.runs && b.legend.runs.length) S.push({ id: 'legend', name: 'Legend plaque', hit: [16, 94, 36, 18] });   // under the mantle, once you've made it
   if (b.summit && b.summit.runs && b.summit.runs.length) S.push({ id: 'summitp', name: 'Summit plaque', hit: [12, 3, 42, 18] });   // high on the wall, over the picture
+  if (b.wc && b.wc.won && b.wc.won.length) S.push({ id: 'globes', name: 'Crystal globes', hit: [68, 44, 46, 15] });   // on the window sill
   S.push({ id: 'tipjar', name: "Geep's tip jar", hit: [151, 104, 10, 14] },
     { id: 'posters', name: 'Sponsor posters', hit: [120, 14, 72, 32] }, { id: 'medals', name: 'Medal case', hit: [196, 9, 36, 45] },
     { id: 'chalkboard', name: 'Chalkboard', hit: [232, 10, 78, 52] }, { id: 'trophies', name: 'Trophy shelf', hit: [120, 62, 76, 14] },
@@ -7222,6 +7576,7 @@ function renderBar() {
       else info.push("<small>Finish top 3 in an Olympic event or overall, in the day's official Games, to put a medal in here.</small>");
     }
     else if (barSel === 'chalkboard') info.push('<b>Your bests</b>: ' + (Wl.bests.length ? Wl.bests.map(([m, v]) => `${EVENT_NAMES[m]} ${v}`).join(', ') : 'nothing yet') + '.' + (Wl.olds.length ? ` Old course: ${Wl.olds.map(([m, v]) => `${EVENT_NAMES[m]} ${v}`).join(', ')}.` : '') + (Wl.firsts.length ? `<br>Number one on this device in: ${Wl.firsts.map(ev => EVENT_NAMES[ev]).join(', ')}.` : ''));
+    else if (barSel === 'globes') info.push(wcGlobeText(b) + ' <small>Win a World Cup table at the end of a season and its globe goes up here, and in your Cabin.</small>');
     else if (barSel === 'trophies') info.push(Wl.trophies.length ? `Trophies for finishing every goal in: ${Wl.trophies.map(m => EVENT_NAMES[m]).join(', ')}.` : 'An empty trophy shelf. Finish every goal in an event to put a trophy here.');
     else if (barSel === 'eggs') { const n = Wl.eggs.filter(Boolean).length; info.push(n === 3 ? 'Three little egg cups, all full. You found every egg.' : n ? `Three little egg cups. ${n} of 3 ${n === 1 ? 'holds' : 'hold'} an egg.` : 'Three little egg cups, all empty.'); }
     else if (barSel === 'deed') info.push(`A framed deed: <b>${escHTML(barLabel())}</b>, owned by ${escHTML(barOwnerName(true).replace(/'s?$/, ''))} since ${fmtDay(Wl.deed)}.`);
@@ -10155,6 +10510,7 @@ function drawBarRoom() {
   P(70, 18, 42, 40, '#3a2414'); P(72, 20, 38, 36, '#1a2448');
   for (let i = 0; i < 14; i++) { const sx = 72 + ((i * 29) % 38), sy = 20 + ((i * 13 + t * 14 * (1 + (i % 3) * 0.3)) % 36); P(sx, sy, 1, 1, '#e8eef6'); }
   P(72, 52, 38, 4, '#f4f8fc'); P(90, 20, 2, 36, '#3a2414'); P(72, 37, 38, 2, '#3a2414');
+  if (b.wc && b.wc.won && b.wc.won.length) { P(68, 56, 46, 3, '#6a4024'); P(68, 56, 46, 1, '#8a5a30'); drawWcGlobes(g, P, b, 71, 56, 40); }   // the World Cup globes, on the sill
   if (has('carved')) {   // the lanterns out front, glowing warm through the window
     for (const lx of [77, 104]) { const fl = Math.sin(t * 9 + lx) > -0.7 ? '#ffcf60' : '#ffb040', gl = g.createRadialGradient(lx, 48, 1, lx, 48, 10); gl.addColorStop(0, 'rgba(255,190,90,0.55)'); gl.addColorStop(1, 'rgba(255,190,90,0)'); g.fillStyle = gl; g.fillRect(lx - 10, 38, 20, 18); P(lx - 1, 46, 3, 4, fl); P(lx - 1, 45, 3, 1, '#202020'); }
     P(81, 41, 20, 4, '#6a4020');   // the back of the carved sign
@@ -11725,6 +12081,7 @@ function cabinSpots(b) {
   const S = [dogOwned(b) ? { id: 'dog', name: 'Your dog', hit: [8, 172, 80, 40] } : { id: 'dogbed', name: 'The dog bed', hit: [8, 172, 80, 40] }, { id: 'hill', name: 'The sledding hill', hit: [56, 214, 44, 48] }, { id: 'awards', name: 'Trophy shelf', hit: [130, 8, 188, 40] }, { id: 'album', name: 'Photo album', hit: [252, 50, 60, 25] }];
   for (const id of CAB_ORDER) S.push({ id, name: cabSlot(id).name, hit: HIT[id] });
   if (truckOwns(b)) S.splice(2, 0, { id: 'truck', name: 'Your truck', hit: [128, 62, 14, 18] });   // the keys on their hook
+  if (b.wc && b.wc.won && b.wc.won.length) S.push({ id: 'globes', name: 'Crystal globes', hit: [74, 80, 52, 13] });   // on the window sill
   return S;
 }
 // sel: a spot whose pop-up opens straight away (coming back from the hill races, the Sno-Park)
@@ -11828,6 +12185,7 @@ function renderCabin() {
       return `<div class="pcard">${thumb(ph)}<small>${(PHOTO_KINDS[ph.kind] || {}).tab || ''}<br><b>${photoGradeName(ph)}</b><br>${photoDate(ph.d)}</small>${b1}${b2}${b3}</div>`;
     }).join('') + '</div>');
   }
+  else if (cabSel === 'globes') info.push(wcGlobeText(b) + ' <small>The same globes stand on the window sill at the Bar.</small>');
   else if (cabSel === 'awards') {
     const A = cabAwards(b), word = ['gold', 'silver', 'bronze'];
     info.push('<b>Your trophy shelf.</b> It fills itself in as you earn things: every medal hangs underneath, and trophies, plaques, race bibs and golden eggs go up top.');
@@ -12033,6 +12391,7 @@ function drawCabinRoom() {
       for (let x = 76; x < 124; x += 3) { const y = 34 + Math.round(Math.sin((x - 76) / 48 * Math.PI) * 5); P(x, y, 4, 3, '#2a6a3a'); }
       for (const [bx, by] of [[80, 90], [91, 89], [103, 90], [117, 89], [88, 38], [100, 40], [112, 38]]) P(bx, by, 2, 2, '#d42a2a');
     }
+    if (b.wc && b.wc.won && b.wc.won.length) drawWcGlobes(g, P, b, 76, 92, 48);   // the World Cup globes, on the sill
   }
   // the kitchen counter under the window
   P(72, 126, 58, 5, '#c8a878'); P(72, 126, 58, 1, '#e0c898');
@@ -12285,7 +12644,8 @@ const RESORT_SPOTS = [
   { id: 'tree', name: 'Tree Slalom', mode: 'tree', go: 'Race it', hit: [254, 102, 62, 46],
     desc: 'The slalom through the old-growth trees: tighter, and the forest is in the way.' },
   { id: 'olympics', name: 'Olympics', mode: 'olympics', go: 'Go to the Olympics', hit: [4, 148, 50, 44],
-    desc: 'Slalom, Terrain Park, Halfpipe and Big Air, one run each, against the field. Meet the standards on a qualifying day to get in.' },
+    desc: 'Slalom, Terrain Park, Halfpipe and Big Air, one run each, against the field, on day 14 of each World Cup season. Hit every Olympic mark in first-half World Cup races to get in.' },
+  { id: 'worldcup', name: 'World Cup', mode: 'worldcup', go: 'Go to the World Cup', hit: [244, 4, 72, 32], desc: '' },
   { id: 'cabin', name: 'Your Cabin', item: 'cabin', hit: [58, 146, 48, 40] },
   { id: 'bar', name: 'The Bar', item: 'bar', hit: [198, 148, 42, 34] },
   { id: 'truck', name: 'Truck & Camper', item: 'truck', hit: [248, 156, 68, 40] },
@@ -12376,7 +12736,7 @@ function renderResort() {
   if (it) {
     const price = resortPrice(b, it.id), have = owned.has(it.id), lost = it.id === 'bar' && !barFound(b);
     info = `<b>${have ? (it.id === 'bar' ? 'Yours' : 'Owned') : lost ? 'Not found yet' : `${it.id === 'bar' ? 'The deed: ' : ''}$${price.toLocaleString()}`}</b><br>${it.id === 'truck' && !have && owned.has('car') ? `${it.desc} <b>Your Car goes in as a trade-in: $${CFG.TRUCK.tradeIn.toLocaleString()} off.</b>` : lost ? `Nobody on this account has found the Bar yet. It's at the first ski lodge, ${CFG.LODGE_M.toLocaleString()} m down the Freestyle run: ski into its door to find it.` : it.desc}`;
-  } else info = S.desc;
+  } else info = S.id === 'worldcup' ? wcResortInfo(b) : S.desc;
   const ups = (S.ups || []).filter(id => !(it && id === it.id));
   if (ups.length) info += `<div class="rsups"><b>Upgrades here</b>` + ups.map(id => { const u = rsItem(id); return `<div><span><b>${u.name}</b>${owned.has(id) ? '' : `, $${resortPrice(b, id).toLocaleString()}`}<br><small>${u.desc}</small></span>${rsUpBtn(b, id)}</div>`; }).join('') + '</div>';
   $('rsInfo').innerHTML = info;
@@ -12580,6 +12940,13 @@ function drawResortMap() {
     slalom() { for (let k = 0; k < 5; k++) { const x = 218 + (k % 2) * 18, y = 106 + k * 8; P(x, y, 1, 6, '#404048'); P(x + 1, y, 4, 3, k % 2 ? '#2a5ad0' : '#d42a2a'); } T('SLALOM', 230, 100, lab, 5); },
     tree() { for (const [x, y] of [[258, 106], [270, 118], [262, 130], [290, 108], [302, 124], [282, 134]]) pine(x, y, 2);
       for (let k = 0; k < 4; k++) { const x = 274 + (k % 2) * 16, y = 108 + k * 9; P(x, y, 1, 6, '#404048'); P(x + 1, y, 4, 3, k % 2 ? '#2a5ad0' : '#d42a2a'); } T('TREE SLALOM', 285, 100, lab, 5); },
+    worldcup() {   // the World Cup finish arena: the arch, a little grandstand, the flags
+      P(250, 27, 62, 2, '#c8d4e4'); for (let x = 252; x < 310; x += 6) P(x, 25, 1, 3, '#2a5ad0');   // the finish fence
+      P(256, 10, 2, 17, '#2a5ad0'); P(286, 10, 2, 17, '#2a5ad0'); P(255, 7, 34, 6, '#c41e1e'); P(256, 8, 32, 1, '#e85050'); for (let k = 0; k < 5; k++) P(259 + k * 6, 10, 3, 1, '#ffffff');   // the arch
+      for (let k = 0; k < 3; k++) { P(292 + k * 3, 13 + k * 4, 20 - k * 3, 4, ['#7a8698', '#8a96a8', '#9aa6b8'][k]); for (let i = 0; i < 5 - k; i++) P(294 + k * 3 + i * 3, 12 + k * 4, 2, 2, ['#d42a2a', '#f0c020', '#2a5ad0', '#1a9a3a', '#ffffff'][(i + k) % 5]); }   // the grandstand and its crowd
+      const wave = Math.floor(t * 2) % 2; for (let k = 0; k < 4; k++) { P(246 + k * 2, 12 + k * 3, 1, 8, '#606870'); P(247 + k * 2, 12 + k * 3 + wave, 3, 2, ['#c41e1e', '#2a5ad0', '#f0c020', '#1a9a3a'][k]); }   // the flags
+      T('WORLD CUP', 280, 35, lab, 5);
+    },
     olympics() {   // the podium and the rings
       P(12, 176, 12, 8, '#c8ccd4'); P(24, 170, 12, 14, '#f0c020'); P(36, 178, 12, 6, '#c8803a'); T('2', 18, 180, '#404048', 5); T('1', 30, 177, '#404048', 5); T('3', 42, 181, '#404048', 5);
       g.lineWidth = 1; [['#2a5ad0', 16, 158], ['#202028', 24, 158], ['#d42a2a', 32, 158], ['#f0c020', 20, 162], ['#2a9a3a', 28, 162]].forEach(([c, x, y]) => { g.strokeStyle = c; g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.stroke(); });
@@ -12897,8 +13264,8 @@ function refreshBest() {
     if (own) $('cabinBtn').innerHTML = `${escHTML(`${barOwnerName(true)} cabin`)}${dogOwned(b) && !dogComes(b) ? '<small class="rbw">Your dog is home</small>' : ''}`; }
   $('bBC').textContent = (b.resort && (b.resort.owned || []).includes('backcountry')) ? (b.backcountry ? `Best ${b.backcountry.toFixed(1)}` : 'Judged freeride') : 'Unlock in the Resort';
   $('bcBtn').classList.toggle('locked', !(b.resort && (b.resort.owned || []).includes('backcountry')));
-  { const q = olyStatus(b); $('bOly').textContent = olyMenuLabel(b);
-    $('olyBtn').classList.toggle('locked', !q.qualified); }
+  { $('bOly').textContent = olyMenuLabel(b); $('olyBtn').classList.toggle('locked', !wcHasCard(b));
+    $('bWC').textContent = wcMenuLabel(b); $('wcBtn').classList.toggle('locked', !wcHasCard(b)); }
   $('musicChk').checked = ACCT.music; $('weatherSel').value = ACCT.weather; $('soundChk').checked = ACCT.sound; $('musicChk').disabled = !ACCT.sound;
 }
 
@@ -12908,7 +13275,7 @@ function overlays(which) {
 }
 function showMenu() {
   $('scout').classList.add('hidden'); G.dropCam = null; G.egg = null; G.vibes = false;
-  G.oly = null; applyVariantCfg(null); G.nightPark = false; G.variant = null;
+  G.oly = null; G.wc = null; applyVariantCfg(null); G.nightPark = false; G.variant = null;
   endDemo(); endPractice(); G.weather = 'clear'; G.ghost = null; G.rec = null;
   musicPlay('menu');
   resetWorld('freestyle');
@@ -12922,8 +13289,8 @@ function showMenu() {
 function startGame(mode, fromOly) {
   ensureAudio(); endDemo(); endPractice();
   $('scout').classList.add('hidden'); G.dropCam = null;
-  if (!fromOly) G.oly = null;
-  const v = fromOly ? null : (G.variantNext || null); G.variantNext = null;
+  if (!fromOly) { G.oly = null; G.wc = null; }
+  const v = fromOly ? (G.wc && G.wc.stop.variant) || null : (G.variantNext || null); G.variantNext = null;
   G.variant = v; applyVariantCfg(v);
   G.nightPark = v === 'night' && mode === 'park';
   G.rankKey = v === 'night' ? 'parkNight' : v === 'super' ? 'superpipe' : v === 'mega' ? 'megakicker' : mode;
@@ -12933,11 +13300,12 @@ function startGame(mode, fromOly) {
   G.vibes = false;
   G.rbLeft = 0;
   { const bb = loadBest(), n = rbWaiting(bb); if (n > 0) { if (n > 1) bb.rootbeer = n - 1; else delete bb.rootbeer; saveBest(bb); G.vibes = true; G.rbLeft = n - 1; } }   // each PNW RootBeer from Geep lasts one run; the rest wait their turn
-  if (mode === 'freestyle' && !G.oly) {   // bear spray in your pack, and your dog
+  wcBibApply(loadBest());   // the red bib, while you lead the World Cup
+  if (mode === 'freestyle' && !G.oly && !G.wc) {   // bear spray in your pack, and your dog
     const bb = loadBest(); G.sprayCans = sprayCans(bb);
     if (dogComes(bb)) G.dog = { x: -CFG.DOG.side, y: -6, z: 0, t: 0, sit: false, hist: [], face: 1, barkAt: -9, barkT: 0, hop: null, dh: [] };   // (t: his running animation; set before the first frame draws him)
   }
-  G.weather = WEATHER_MODES.includes(mode) ? pickWeather() : 'clear'; G.snow = [];
+  G.weather = WEATHER_MODES.includes(mode) ? (G.wc ? G.wc.stop.weather : pickWeather()) : 'clear'; G.snow = [];
   G.rec = null; G.ghost = null;
   if (mode === 'slalom' || mode === 'tree') {
     G.rec = { s: [], next: 0 };
@@ -12950,17 +13318,19 @@ function startGame(mode, fromOly) {
   setHudMode(mode); hudAcc = 1; $('hud').classList.remove('hidden');
   if (v) $('hudTitle').textContent = EVENT_NAMES[G.rankKey];
   if (G.oly) $('hudTitle').textContent = `${G.oly.official ? 'Olympics' : 'Heat'}: ${EVENT_NAMES[mode]}`;
+  if (G.wc) $('hudTitle').textContent = `World Cup: ${EVENT_NAMES[mode]}`;
   $('touch').classList.toggle('hidden', !isTouch); $('tuckBtn').classList.remove('hidden'); $('jumpBtn').classList.remove('hidden'); $('jumpBtn').textContent = 'Jump';
   G.pointer.active = false;
   if (document.activeElement) document.activeElement.blur();
   // hidden eggs: one in the Olympic Slalom, one in Freestyle (each found once per account)
   G.egg = null;
   const eggAt = G.oly && mode === 'slalom' && G.course ? { key: 'eggFound', E: CFG.EGG, x: courseX(G.course.startY), y0: G.course.startY }
-    : !G.oly && mode === 'freestyle' ? { key: 'eggFreestyle', E: CFG.EGG_FREESTYLE, x: 0, y0: 0 } : null;
+    : !G.oly && !G.wc && mode === 'freestyle' ? { key: 'eggFreestyle', E: CFG.EGG_FREESTYLE, x: 0, y0: 0 } : null;
   if (eggAt && !loadBest()[eggAt.key]) G.egg = { x: eggAt.x, y: eggAt.y0 - eggAt.E.m * CFG.PX_PER_M, got: false, key: eggAt.key, cash: eggAt.E.cash };
   if (mode === 'backcountry') $('toast').classList.add('hidden');
   else if (G.vibes) toast(`PNW RootBeer! A little faster, a lot looser. Sketchy landings score less.${G.rbLeft ? ` ${G.rbLeft} more waiting at the Bar.` : ''}`, 3);
   else if (G.oly) toast(`${G.oly.official ? 'Olympics' : 'Practice Heat'} ${G.oly.step + 1} of ${CFG.OLY_EVENTS.length}: ${EVENT_NAMES[mode]}. One run. Press ↓ to start.`, 3);
+  else if (G.wc) { const W = G.wc, n = CFG.WORLD_CUP.runs[mode] || 1; toast(`World Cup at ${W.stop.venue}${W.official ? '' : ' (practice)'}: ${EVENT_NAMES[mode]}${n > 1 ? `, run ${W.runs.length + 1} of ${n}` : ''}. ${isTouch ? 'Tap' : 'Press ↓'} to start.`, 3); }
   else if (mode === 'bigair') toast('Press ↓ to drop in. Tuck for speed. Land the biggest trick you can. Three attempts.', 3);
   else if (mode === 'pipe') toast('Press ↓ to drop in. Hold left/right toward the middle to build speed.', 3);
   else if (mode === 'park') toast('Press ↓ to drop in. Chain tricks into combos.', 2.4);
@@ -12992,6 +13362,7 @@ function showGameOver() {
   $('againBtn').textContent = G.mode === 'road' ? 'Drive again' : G.mode === 'snowmo' ? 'Ride again' : G.mode === 'climb' ? 'Climb again' : 'Ski again';
   const skiTop = G.mode === 'climb' && G.cl && G.cl.end === 'top'; $('oSkiBtn').classList.toggle('hidden', !skiTop);
   if (G.oly) { olyEventDone(); return; }   // Olympic runs go to the Olympic scorecard instead
+  if (G.wc) { wcRunDone(); return; }   // World Cup runs, to the World Cup card
   const b = loadBest(); let isBest = false;
   const bk = G.rankKey || G.mode;   // variants (Night Park, Superpipe, Mega Kicker) keep their own bests
   const rows = [];
@@ -13070,10 +13441,9 @@ function showGameOver() {
     rows.push(['Sponsor pay', `$${pay.amt}`], ['', `${pay.sp.name}. Wallet: $${st.cash.toLocaleString()}`, 'wide']);
     barTipAdd(b, pay.amt);
   }
-  { const oq = olyQualRecord(b);   // a qualifying day: your best toward the next Olympics
-    if (oq && olyStatus(b).qualified) { const N = CFG.OLY_EVENTS.length;
-      rows.push(['', oq.fresh ? `<b>Olympic standard met: ${EVENT_NAMES[oq.ev]}!</b> ${oq.n} of ${N}${oq.n === N ? `: you're in the Olympics on ${olyDayName(oq.cyc.games)}.` : ' for the Games.'}`
-        : oq.was ? `Olympic qualifying: ${EVENT_NAMES[oq.ev]} standard already met (${oq.n} of ${N}).` : `Olympic qualifying: ${EVENT_NAMES[oq.ev]} ${olyQualFmt(oq.ev, oq.v)}, the standard is ${olyStdText(oq.ev)} (${oq.n} of ${N} met).`, 'wide']); } }
+  { const cr = wcCardRecord(b);   // toward the World Cup start card
+    if (cr) rows.push(['', cr.card ? '<b>World Cup start card!</b> Every mark hit: the World Cup (and through it, the Olympics) is open. It\'s yours for good.'
+      : cr.fresh ? `<b>World Cup mark hit: ${EVENT_NAMES[cr.ev]}!</b> ${cr.n} of ${cr.N} for the start card.` : `World Cup start card: ${EVENT_NAMES[cr.ev]} ${wcFmt(cr.ev, cr.v)}, the mark is ${wcCardText(cr.ev)} (${cr.n} of ${cr.N} hit).`, 'wide']); }
   saveBest(b);
   // Top 5 for this event (device-wide)
   const rv = rankValue();
@@ -13158,9 +13528,9 @@ function finishCourse() {
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down',
   ArrowUp: 'up', KeyW: 'up', Space: 'jump', Enter: 'snap', NumpadEnter: 'snap', KeyF: 'tuck', KeyE: 'style', KeyN: 'music', KeyP: 'pause', KeyR: 'restart', KeyM: 'mute', Escape: 'menu', KeyB: 'spray',
-  Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', Digit5: 'm5', Digit6: 'm6', Digit7: 'm7', Digit8: 'm8',
+  Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', Digit5: 'm5', Digit6: 'm6', Digit7: 'm7', Digit8: 'm8', Digit9: 'm9',
 };
-const MODE_KEYS = { m1: 'freestyle', m2: 'slalom', m3: 'tree', m4: 'park', m5: 'pipe', m6: 'bigair', m7: 'olympics', m8: 'backcountry' };
+const MODE_KEYS = { m1: 'freestyle', m2: 'slalom', m3: 'tree', m4: 'park', m5: 'pipe', m6: 'bigair', m7: 'olympics', m8: 'backcountry', m9: 'worldcup' };
 addEventListener('keydown', e => {
   if (G.state === 'arcade') return;   // the arcade game handles its own keys
   if (G.state === 'camera') { if (['Space', 'Enter', 'NumpadEnter'].includes(e.code)) { e.preventDefault(); if (!e.repeat) camPress(); } return; }   // the camera: one shot, then on
@@ -13211,9 +13581,9 @@ addEventListener('keydown', e => {
   }
   e.preventDefault(); ensureAudio();
   if (k === 'pause') { if (!e.repeat) togglePause(); return; }
-  if (k === 'restart') { if (!e.repeat && !G.practice && !G.oly) { G.variantNext = G.variant; startGame(G.mode); } return; }
+  if (k === 'restart') { if (!e.repeat && !G.practice && !G.oly && !G.wc) { G.variantNext = G.variant; startGame(G.mode); } return; }
 
-  if (k === 'menu') { if (G.oly) olyQuitPress(); else showMenu(); return; }
+  if (k === 'menu') { if (G.oly || G.wc) olyQuitPress(); else showMenu(); return; }
   if (k in G.held) G.held[k] = true;
   G.pointer.active = false;
   action(k, e.repeat);
@@ -13288,7 +13658,8 @@ $('shopClose').addEventListener('click', closeShop);
 $('shopAct').addEventListener('click', shopAction);
 $('shopTabs').addEventListener('click', e => { const t = e.target.closest('[data-cat]'); if (t) { shopCat = t.dataset.cat; shopSel = null; renderShop(); } });
 $('shopItems').addEventListener('click', e => { const t = e.target.closest('[data-id]'); if (t) { shopSel = t.dataset.id; renderShop(); } });
-$('pMenuBtn').addEventListener('click', () => { if (G.oly) olyQuitPress(); else showMenu(); });
+$('pMenuBtn').addEventListener('click', () => { if (G.oly || G.wc) olyQuitPress(); else showMenu(); });
+$('olycard').addEventListener('click', e => { const t = e.target.closest('[data-wcv]'); if (t && G.wc) { G.wc.view = t.dataset.wcv; showWcCard(); } });
 $('ranksBtn').addEventListener('click', openRanks);
 $('resortBtn').addEventListener('click', () => openResort());
 $('cabinBtn').addEventListener('click', () => openCabin());
@@ -14895,7 +15266,7 @@ function auroraCamera(then) {
 
 /* ---- the park photographers: a big trick right in front of one, and they snap it (the best one of the run is kept) ---- */
 function parkPhotoCheck(grade, deg, flips, grabbed, pts) {
-  const s = G.sk; if (G.mode !== 'park' || G.demo || G.practice || G.oly || !s.photoNear) return;
+  const s = G.sk; if (G.mode !== 'park' || G.demo || G.practice || G.oly || G.wc || !s.photoNear) return;
   if (deg < 360 && flips < 1) return;
   const g = grade === 'Sketchy' ? 'sketchy' : grade === 'Perfect' && flips >= 1 && grabbed ? 'legendary' : 'good', rank = { legendary: 3, good: 2, sketchy: 1 }[g] * 1e6 + pts;
   floater(s.x, s.y - 60, 'Snap!', '#ffffff'); beep(1400, 0.04, 'square', 0.04); setTimeout(() => beep(900, 0.06, 'square', 0.035), 50); { const gc = $('game'); gc.style.filter = 'brightness(1.9)'; setTimeout(() => { gc.style.filter = ''; }, 140); }
