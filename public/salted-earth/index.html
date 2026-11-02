@@ -1110,8 +1110,8 @@
     <div class="config-row">
       <label>Theme:</label>
       <div class="config-buttons" id="theme-buttons">
-        <button data-theme="ega" class="selected">DOS / EGA</button>
-        <button data-theme="win31">Windows 3.1</button>
+        <button data-theme="ega">DOS / EGA</button>
+        <button data-theme="win31" class="selected">Windows 3.1</button>
       </div>
     </div>
     <div class="config-row">
@@ -1847,7 +1847,7 @@ const settings = {
   terrainStyle: 'hills',  // 'hills' | 'peaks' | 'valleys' | 'flat' | 'mountain'
   touchControls: 'auto',  // 'auto' | 'on' | 'off' — auto shows on touch devices
   fullscreen: false,      // remembered fullscreen preference
-  theme: 'ega'            // 'ega' | 'win31' — UI chrome style (canvas stays EGA)
+  theme: 'win31'          // 'win31' (default) | 'ega' — UI chrome style (canvas stays EGA)
 };
 
 function saveSettings() {
