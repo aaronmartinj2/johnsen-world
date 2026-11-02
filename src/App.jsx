@@ -58,6 +58,14 @@ const projects = [
   },
   {
     id: '008',
+    title: 'ECHO',
+    desc: 'You are a sound, sinking forever through black water. Pulse to see, steer to survive, and listen for what answers. Or sink into the deep, where nothing can touch you.',
+    tags: ['HTML5 Canvas', 'Sonar', 'Web Audio'],
+    href: '/echo/',
+    live: true,
+  },
+  {
+    id: '009',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],

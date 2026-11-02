@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0C1210">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ECHO">
+<meta name="format-detection" content="telephone=no">
+<title>ECHO</title>
+<style>
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    position: fixed; inset: 0; overflow: hidden;
+    background: #0C1210;
+    overscroll-behavior: none; touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  #game {
+    display: block; position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100vh; width: 100dvw; height: 100dvh;
+    touch-action: none;
+  }
+  #rotate {
+    display: none; position: fixed; inset: 0; z-index: 10;
+    background: #0C1210; color: #7E8A80;
+    font: 500 12px/2 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .26em; text-transform: uppercase;
+    align-items: center; justify-content: center; text-align: center;
+    padding: calc(var(--safe-top) + 16px) 28px calc(var(--safe-bottom) + 16px);
+  }
+  #rotate b { display: block; color: #E7E3D4; font-size: 14px; letter-spacing: .3em; margin-bottom: 8px; font-weight: 600; }
+  #rotate i { display: block; font-style: normal; color: #5E9C8A; font-size: 30px; letter-spacing: 0; margin-bottom: 14px; }
+  /* the descent is vertical: a short landscape window makes the type unreadable */
+  @media (orientation: landscape) and (max-height: 560px) {
+    #game { display: none; }
+    #rotate { display: flex; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="rotate"><div><i>&#10549;</i><b>Turn the device</b>Echo descends &mdash; hold it upright</div></div>
+<script>
+  // iOS: let the canvas own every gesture (no scroll, pinch-zoom, double-tap-zoom, callout)
+  document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+  document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+  document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+</script>
+<script>
+"use strict";
+(function () {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  let SAFE_TOP = 0, SAFE_BOTTOM = 0;
+
+  // ---- Display / scaling -------------------------------------------------
+  let DPR = 1, W = 0, H = 0, S = 1;
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    W = vpW(); H = vpH();
+    S = H / 800;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  function vpW(){ var v = window.visualViewport; return Math.round((v && v.width) || window['innerWidth']); }
+  function vpH(){ var v = window.visualViewport; return Math.round((v && v.height) || window['innerHeight']); }
+  function readSafeInsets(){ var cs = getComputedStyle(document.documentElement); function p(k){ var n = parseFloat(cs.getPropertyValue(k)); return isFinite(n) ? n : 0; } SAFE_TOP = p('--safe-top'); SAFE_BOTTOM = p('--safe-bottom'); }
+  function relayout(){ readSafeInsets(); resize(); }
+  window.addEventListener('resize', relayout);
+  window.addEventListener('orientationchange', relayout);
+  if (window.visualViewport) { window.visualViewport.addEventListener('resize', relayout); window.visualViewport.addEventListener('scroll', relayout); }
+  relayout();
+
+  // ---- Tunables ----------------------------------------------------------
+  const T = {
+    sink:        150,    // base descent speed (px/s)
+    sinkGain:    90,     // extra descent at max depth
+    swim:        12,     // horizontal steering stiffness (lower = looser)
+    swimDamp:    0.91,   // higher = more glide / float
+    maxSwim:     640,    // horizontal speed cap
+    cr:          11,     // creature radius
+    pingSpeed:   1500,   // how fast the sonar ring expands (px/s)
+    pingLife:    1.35,   // seconds a ping's reveal lingers
+    pingRange:   520,    // max reveal radius
+    pingBand:    70,     // width of the bright leading arc
+    cooldown:    0.42,   // min seconds between manual pings
+    selfGlow:    70,     // creature's always-on glow radius
+    step:        14,     // cave sampling resolution (px of depth)
+    pxPerM:      32,
+    jellyR:      11,     // jellyfish bell radius (base px)
+    jellyGlow:   44,     // faint always-on glow halo (px)
+    jellySway:   42,     // horizontal sway amplitude (px)
+    jellySwaySpd: 0.6    // sway speed (rad/s) -> ~25 px/s drift
+  };
+  function sc(v) { return v * S; }
+
+  // ---- Input -------------------------------------------------------------
+  let pointerDown = false, targetX = 0, pointerY = 0;
+  function px(e) {
+    const r = canvas.getBoundingClientRect();
+    return (e.clientX - r.left);
+  }
+  function py(e) {
+    const r = canvas.getBoundingClientRect();
+    return (e.clientY - r.top);
+  }
+  function onDown(e) {
+    if (e.cancelable) e.preventDefault();
+    pointerDown = true;
+    AUD.init();
+    if (state === 'PAUSE') { handlePauseTap(px(e), py(e)); return; }
+    if (state === 'GUIDE') { guideDownX = px(e); guideDownY = py(e); guideSwiped = false; return; }
+    if (state === 'MENU') {
+      const mx = px(e), my = py(e);
+      const hit = function (r) { return r && mx > r.x && mx < r.x + r.w && my > r.y && my < r.y + r.h; };
+      if (hit(MENU_DESCEND)) { AUD.resume(); start(); return; }
+      if (hit(MENU_SINK)) { AUD.resume(); start(true); return; }
+      if (hit(MENU_GUIDE)) { guidePage = 0; state = 'GUIDE'; return; }
+      if (hit(MENU_SETT)) { pausedFrom = 'MENU'; state = 'PAUSE'; return; }
+      return;                                       // the menu is a choice now, not a tap-anywhere
+    }
+    if (state === 'DEAD') {
+      if (now() - deadAt > (zen ? 1400 : 1000)) {
+        if (zen) { zen = false; state = 'MENU'; saveSink(); AUD.suspend(); return; }
+        const mx2 = px(e), my2 = py(e);
+        if (DEAD_MENU && mx2 > DEAD_MENU.x && mx2 < DEAD_MENU.x + DEAD_MENU.w && my2 > DEAD_MENU.y && my2 < DEAD_MENU.y + DEAD_MENU.h) { state = 'MENU'; return; }
+        AUD.resume(); start();
+      }
+      return;
+    }
+    // playing: pause pip?
+    const mx = px(e), my = py(e);
+    if (mx > W - sc(56) && my < SAFE_TOP + sc(56)) { pausedFrom = 'PLAY'; state = 'PAUSE'; AUD.suspend(); return; }
+    AUD.resume();
+    targetX = mx; pointerY = my;
+    tryPing();
+  }
+  function handlePauseTap(mx, my) {
+    for (const r of PAUSE_ROWS) {
+      if (mx < r.x || mx > r.x + r.w || my < r.y || my > r.y + r.h) continue;
+      if (r.act === 'resume') {
+        state = pausedFrom === 'MENU' ? 'MENU' : 'PLAY';
+        last = now(); acc = 0;
+        if (state === 'PLAY') AUD.resume();
+        return;
+      }
+      if (r.act === 'restart') { AUD.resume(); start(zen); return; }
+      if (r.act === 'mainmenu') { if (zen) saveSink(); zen = false; state = 'MENU'; AUD.suspend(); return; }
+      if (r.act === 'sink') { AUD.resume(); start(true); return; }
+      if (r.act === 'steer') { OPT.steer = (OPT.steer + 1) % 3; saveOpt(); return; }
+      if (r.act === 'sinktimer') { OPT.sinkTimer = (OPT.sinkTimer + 1) % SINK_TIMES.length; saveOpt(); return; }
+      if (r.act === 'soundopen') { soundOpen = !soundOpen; return; }
+      if (r.act in OPT) { OPT[r.act] = OPT[r.act] ? 0 : 1; saveOpt(); if (r.act === 'snd') AUD.master(); return; }
+      return;
+    }
+  }
+  function onMove(e) {
+    if (e.cancelable) e.preventDefault();
+    if (pointerDown && state === 'PLAY') { targetX = px(e); pointerY = py(e); }
+    if (pointerDown && state === 'GUIDE' && !guideSwiped) {   // swipe left = next page, right = previous
+      const dx = px(e) - guideDownX, dy = py(e) - guideDownY;
+      if (Math.abs(dx) > sc(46) && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) guidePage = Math.min(GUIDE_PAGES.length - 1, guidePage + 1);
+        else guidePage = Math.max(0, guidePage - 1);
+        guideSwiped = true;
+      }
+    }
+  }
+  function onUp(e) {
+    if (e.cancelable) e.preventDefault();
+    if (state === 'GUIDE' && pointerDown && !guideSwiped) handleGuideTap(guideDownX, guideDownY);
+    pointerDown = false;
+  }
+  canvas.addEventListener('pointerdown', onDown, { passive: false });
+  window.addEventListener('pointermove', onMove, { passive: false });
+  window.addEventListener('pointerup', onUp, { passive: false });
+  window.addEventListener('pointercancel', onUp, { passive: false });
+
+  // ---- State -------------------------------------------------------------
+  let state = 'MENU', deadAt = 0, best = 0;
+  try { best = parseInt(localStorage.getItem('echo_best') || '0', 10) || 0; } catch (e) {}
+  let sinkBest = 0, sinkDays = 0, sinkLastDay = '';
+  try { sinkBest = parseInt(localStorage.getItem('echo_sinkbest') || '0', 10) || 0; } catch (e) {}
+  try { sinkDays = parseInt(localStorage.getItem('echo_sinkdays') || '0', 10) || 0; } catch (e) {}
+  try { sinkLastDay = localStorage.getItem('echo_sinkday') || ''; } catch (e) {}
+  function saveSink() { try { localStorage.setItem('echo_sinkbest', String(sinkBest)); } catch (e) {} }
+  function markSinkDay() { try { const d = new Date().toDateString(); if (d !== sinkLastDay) { sinkLastDay = d; sinkDays++; localStorage.setItem('echo_sinkdays', String(sinkDays)); localStorage.setItem('echo_sinkday', d); } } catch (e) {} }
+
+  const me = { x: 0, y: 0, vx: 0, startY: 0 };
+  let camTop = 0, camX = 0;    // camTop follows depth; camX slides the open water past the echo
+  let genY = 0;                // depth cursor for spawning
+  let jellies = [];     // bioluminescent, faintly self-lit  {y,x,baseX,r,sway,t}
+  let vents = [];       // bubble vents that emit rising bubbles {x,y,emit}
+  let bubbles = [];     // rising bubbles (lethal)            {x,y,r,vy,ph,amp}
+  let anomalies = [];   // dark drifting anomalies (pulse-only, lethal) {x,y,r,drift,vy,t,pts,inr}
+  let anglers = [];     // dark body + glowing lure (lure telegraphed, body pulse-only, lethal)
+  let squids = [];      // abyss pursuer — lunges toward where you last pinged {x,y,vx,vy,state,...}
+  let eels = [];        // dark undulating serpents crossing laterally (pulse-only, lethal)
+  let siphos = [];      // hanging stinging-bead curtains (faintly lit, lethal)
+  let currents = [];    // non-lethal depth bands that shove you sideways
+  let nextJellyY = 0, nextVentY = 0, nextAnomalyY = 0, nextAnglerY = 0, nextEelY = 0, nextSiphoY = 0, nextCurrentY = 0, nextSquidY = 0;   // depth schedulers
+  let driftX = 0, sinkV = sc(150);   // smoothed horizontal drift + vertical speed, for leading spawns to where you're heading
+  let leviathan = null; // rare, vast, indifferent — cannot touch you
+  let nextLevY = 0;
+  let pings = [];       // {x,y,age,range}
+  let pingCD = 0;
+  let motes = [];       // plankton {x,y,s,p,z,d,tw}
+  let shake = 0, dangerGlow = 0, deathFlash = 0;
+  let coreFlare = 0;    // brief bloom when the echo calls out
+  let echoWake = [];    // recent world positions -> falling trail
+  const ECHO_LOOK = 'classic';   // <- 'resonance' for the alternate look
+
+  function now() { return performance.now(); }
+  // onboarding: 0 at the surface, ramps to 1 over the first ~5 screens of depth
+  function ob() { return Math.min(1, Math.max(0, me.y - me.startY) / (H * 5)); }
+  function cooldownNow() { return T.cooldown * (0.65 + 0.35 * ob()); }
+  function glowNow() { return sc(T.selfGlow) * (1.5 - 0.5 * ob()); }
+  // the deep closes in: each pulse reaches less far the lower you go (100% -> 70%)
+  function pingRangeNow() {
+    const depth = Math.max(0, me.y - me.startY);
+    const dd = Math.min(1, depth / (H * 16));
+    return sc(T.pingRange) * (1 - 0.30 * dd);
+  }
+
+  // ---- Open-world generation --------------------------------------------
+  // hazards spawn in a horizontal spread around the echo's current column, so the
+  // field stays populated no matter how far it steers across the open dark.
+  function leadX(y) {                                   // predicted horizontal offset by the time you reach depth y
+    const tt = Math.min(12, Math.max(0, y - me.y) / Math.max(sinkV, sc(30)));
+    let l = driftX * tt, cap = W * 14;
+    return l > cap ? cap : l < -cap ? -cap : l;
+  }
+  function spawnX(y) { const r = (Math.random() + Math.random()) - 1; return me.x + (y != null ? leadX(y) : 0) + r * (W * 0.5 + sc(120)); }
+
+  function spawnJelly(y) {
+    const r = sc(T.jellyR + Math.random() * 4);
+    const x = spawnX(y);
+    const sway = sc(T.jellySway) * (0.45 + Math.random() * 0.6);
+    jellies.push({ u: ++UID, y: y, x: x, baseX: x, r: r, sway: sway, t: Math.random() * 6.28 });
+  }
+
+  function addBubble(x, y) {
+    bubbles.push({ x: x, y: y, r: sc(4 + Math.random() * 5),
+      vy: -sc(95 + Math.random() * 70), ph: Math.random() * 6.28, amp: sc(10 + Math.random() * 14) });
+  }
+  function spawnVent(y) {
+    const vx = spawnX(y);
+    vents.push({ u: ++UID, x: vx, y: y, emit: 0 });
+    for (let i = 0; i < 9; i++) addBubble(vx + sc((Math.random() - 0.5) * 40), y - i * sc(34) - Math.random() * sc(20));
+  }
+
+  function spawnAnomaly(y) {
+    const r = sc(28 + Math.random() * 30);
+    const x = spawnX(y);
+    const N = 20, pts = [], inr = [], a0 = Math.random() * 6.28;
+    for (let i = 0; i < N; i++) {
+      const a = a0 + (i / N) * Math.PI * 2;
+      const wob = 0.72 + 0.34 * Math.sin(a * 3 + a0) * Math.sin(a * 2 - a0 * 1.7);
+      pts.push([Math.cos(a) * r * wob, Math.sin(a) * r * wob]);
+      inr.push([Math.cos(a) * r * wob * 0.52, Math.sin(a) * r * wob * 0.52]);
+    }
+    pts.push(pts[0]); inr.push(inr[0]);
+    anomalies.push({ u: ++UID, x: x, y: y, r: r, drift: (Math.random() * 2 - 1) * sc(11),
+      vy: (Math.random() * 2 - 1) * sc(7), t: Math.random() * 6.28, pts: pts, inr: inr });
+  }
+
+  function spawnLeviathan(y) {
+    const ly = y + H * 0.7;
+    const lx = me.x + sc((Math.random() - 0.5) * W * 0.45);
+    const levU = sc(280 + Math.random() * 70);
+    leviathan = { x: lx, y: ly, drift: (Math.random() < 0.5 ? -1 : 1) * sc(6 + Math.random() * 6), t: 0, U: levU, parts: buildLeviathan(levU) };
+  }
+
+  // anglerfish: a realistic deep-sea seadevil — bulbous body, gaping fanged jaw,
+  // illicium arcing over the head to the glowing esca (the lure)
+  function buildAngler(R, hy) {
+    const X = R, Y = hy, P = (x, y) => [x * X, y * Y];
+    const seg = (a, c, b, n) => qCurve(a, c, b, n || 8);
+    const headTop = P(0.30, -0.95), napeBack = P(-0.35, -0.98), backMid = P(-0.85, -0.55),
+      rearTop = P(-1.30, -0.16), rearBot = P(-1.30, 0.16), bellyMid = P(-0.80, 0.70),
+      bellyFront = P(-0.10, 0.98), lowerHinge = P(0.35, 0.78), lowerTip = P(1.18, 0.40),
+      upperTip = P(1.24, 0.06), snout = P(0.72, -0.30);
+    const outline = [], add = a => { for (const p of a) outline.push(p); };
+    add(seg(headTop, P(-0.02, -1.14), napeBack, 7));
+    add(seg(napeBack, P(-0.65, -0.92), backMid, 7));
+    add(seg(backMid, P(-1.18, -0.42), rearTop, 7));
+    add(seg(rearTop, P(-1.44, 0.0), rearBot, 5));
+    add(seg(rearBot, P(-1.18, 0.5), bellyMid, 7));
+    add(seg(bellyMid, P(-0.5, 1.06), bellyFront, 7));
+    add(seg(bellyFront, P(0.1, 1.02), lowerHinge, 6));
+    add(seg(lowerHinge, P(0.78, 0.74), lowerTip, 8));
+    add(seg(lowerTip, P(1.34, 0.24), upperTip, 6));
+    add(seg(upperTip, P(1.02, -0.14), snout, 7));
+    add(seg(snout, P(0.55, -0.72), headTop, 6));
+    // needle teeth into the gape
+    const teeth = [], upJaw = seg(snout, P(1.0, -0.05), upperTip, 6), loJaw = seg(lowerHinge, P(0.78, 0.62), lowerTip, 6);
+    for (let i = 1; i < upJaw.length - 1; i++) { const p = upJaw[i], L = (0.11 + 0.06 * (i % 2)) * Y; teeth.push([p, [p[0] + 0.03 * X, p[1] + L]]); }
+    for (let i = 1; i < loJaw.length - 1; i++) { const p = loJaw[i], L = (0.11 + 0.06 * ((i + 1) % 2)) * Y; teeth.push([p, [p[0] + 0.03 * X, p[1] - L]]); }
+    // fins as small fans of rays
+    const fan = (bx, by, ang, spread, len, k) => { const out = []; for (let i = 0; i < k; i++) { const tt = (k === 1 ? 0 : (i / (k - 1) - 0.5)) * spread; out.push([[bx * X, by * Y], [bx * X + Math.cos(ang + tt) * len * X, by * Y + Math.sin(ang + tt) * len * X]]); } return out; };
+    const finP = fan(-0.15, 0.55, 1.15, 0.9, 0.42, 4);   // pectoral
+    const finD = fan(-0.55, -0.62, -1.25, 0.7, 0.34, 3); // dorsal
+    const tail = fan(-1.28, 0.0, Math.PI, 1.1, 0.58, 5); // caudal
+    const gill = [P(0.18, -0.02), P(0.10, 0.30)];
+    const eye = [0.52 * X, -0.34 * Y, Math.max(sc(1.6), 0.06 * X)];
+    return { outline: outline, teeth: teeth, finP: finP, finD: finD, tail: tail, gill: gill, eye: eye };
+  }
+  function spawnAngler(y) {
+    const rx = sc(26 + Math.random() * 16), ry = rx * (0.62 + Math.random() * 0.12);
+    const drift = (Math.random() < 0.5 ? -1 : 1) * sc(9 + Math.random() * 10);
+    anglers.push({ u: ++UID, x: spawnX(y), y: y, rx: rx, ry: ry, dir: drift < 0 ? -1 : 1, drift: drift,
+      vy: (Math.random() * 2 - 1) * sc(6), t: Math.random() * 6.28,
+      lureLen: rx * (1.0 + Math.random() * 0.5), shape: buildAngler(rx, ry) });
+  }
+  function spawnSquid(y) {
+    squids.push({ u: ++UID, x: spawnX(y), y: y, vx: 0, vy: 0, r: sc(22),
+      state: 'hover', stateT: 0, cd: 1 + Math.random() * 1.5, ang: Math.PI / 2, targAng: Math.PI / 2,
+      t: Math.random() * 6.28, drift: (Math.random() * 2 - 1) * sc(9),
+      tx: 0, ty: 0, mLen: sc(46 + Math.random() * 14), w: sc(14 + Math.random() * 3) });
+  }
+  // eel: a serpent that swims with a meandering head; the body follows and curls
+  function spawnEel(y) {
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    const hx = me.x + leadX(y) - dir * (W * 0.55 + sc(60)), hy = y;
+    const heading = dir < 0 ? Math.PI : 0;
+    const n = 18 + (Math.random() * 8 | 0), seg = sc(12 + Math.random() * 4);
+    const pts = [];
+    for (let i = 0; i <= n; i++) pts.push({ x: hx - Math.cos(heading) * i * seg, y: hy - Math.sin(heading) * i * seg });
+    eels.push({ u: ++UID, pts: pts, x: hx, y: hy, heading: heading, n: n, seg: seg,
+      w: sc(6.5 + Math.random() * 2.5), speed: sc(74 + Math.random() * 44), t: Math.random() * 6.28,
+      tf1: 0.5 + Math.random() * 0.5, tf2: 1.3 + Math.random() * 0.9, ph1: Math.random() * 6.28, ph2: Math.random() * 6.28,
+      turn: 1.5 + Math.random() * 1.1, dir: dir, flourishCd: 4 + Math.random() * 8, spin: 0, spinDir: 1 });
+  }
+  // siphonophore: a hanging colony of stinging beads that curls, breathes, and wanders
+  function spawnSipho(y) {
+    siphos.push({ u: ++UID, x: spawnX(y), y: y, n: 16 + (Math.random() * 12 | 0), seg: sc(22 + Math.random() * 8),
+      br: sc(5 + Math.random() * 3),
+      sp1: 0.6 + Math.random() * 0.5, sp2: 1.3 + Math.random() * 0.8,
+      wl1: 0.22 + Math.random() * 0.18, wl2: 0.5 + Math.random() * 0.3,
+      amp1: sc(16 + Math.random() * 16), amp2: sc(8 + Math.random() * 12),
+      wander: sc(18 + Math.random() * 22), wph: Math.random() * 6.28, pulseSpd: 0.9 + Math.random() * 0.8,
+      drift: (Math.random() * 2 - 1) * sc(8), vy: sc(8 + Math.random() * 14), t: Math.random() * 6.28,
+      coil: 0, coilDir: 1, flourishCd: 5 + Math.random() * 9 });
+  }
+  // shared bead position so collision and drawing agree exactly
+  function siphoBead(s, k) {
+    const f = k / s.n;
+    const env = s.coil > 0 ? Math.min(1, s.coil) : 0;                 // 0..1 flourish envelope
+    const wander = Math.sin(s.t * 0.35 + s.wph) * s.wander;
+    let curl = Math.sin(s.t * s.sp1 + k * s.wl1) * s.amp1 * f + Math.sin(s.t * s.sp2 + k * s.wl2) * s.amp2 * Math.pow(f, 1.4);
+    curl *= (1 + env * 0.8);                                          // curls tighter during a flourish
+    const spin = env * s.coilDir * Math.sin(s.t * 2.4 + f * 6.283) * s.amp1 * f;   // a rotating twist travels the colony
+    const segNow = s.seg * (1 + 0.14 * Math.sin(s.t * s.pulseSpd + f * 2));
+    return [s.x + wander + curl + spin, s.y + k * segNow];
+  }
+  // current: a non-lethal depth band that carries the echo sideways
+  function spawnCurrent(y) {
+    const streaks = [];
+    for (let i = 0; i < 20; i++) streaks.push({ fx: Math.random(), fy: Math.random() * 2 - 1, len: sc(14 + Math.random() * 22), sp: 0.6 + Math.random() * 0.8 });
+    currents.push({ y: y, h: H * (0.34 + Math.random() * 0.24), dir: Math.random() < 0.5 ? -1 : 1,
+      speed: sc(80 + Math.random() * 55), t: Math.random() * 6.28, streaks: streaks });
+  }
+
+  function generate() {
+    const genStep = sc(26);
+    while (genY < camTop + H * 2.0) {
+      genY += genStep;
+      const d = genY - me.startY;
+      if (genY >= nextJellyY) {
+        spawnJelly(genY);
+        nextJellyY += (d < H * 4 ? H * (0.85 + Math.random() * 0.4) : H * (0.7 + Math.random() * 0.8));
+      }
+      if (genY >= nextVentY) {
+        if (d > H * 1.0) spawnVent(genY);
+        nextVentY += (d < H * 6 ? H * (1.8 + Math.random() * 0.9) : H * (1.2 + Math.random() * 0.9));
+      }
+      if (genY >= nextAnomalyY) {
+        if (d > H * 3.4) spawnAnomaly(genY);
+        nextAnomalyY += (d < H * 6 ? H * (1.6 + Math.random() * 0.9) : H * (1.0 + Math.random() * 0.9));
+      }
+      if (genY >= nextAnglerY) {
+        if (d > H * 7.0) spawnAngler(genY);
+        nextAnglerY += (d < H * 8 ? H * (2.2 + Math.random() * 1.0) : H * (1.6 + Math.random() * 1.0));
+      }
+      if (genY >= nextEelY) {
+        if (d > H * 4.0) spawnEel(genY);
+        nextEelY += (d < H * 8 ? H * (2.2 + Math.random() * 1.1) : H * (1.6 + Math.random() * 1.1));
+      }
+      if (genY >= nextSiphoY) {
+        if (d > H * 2.4) spawnSipho(genY);
+        nextSiphoY += (d < H * 7 ? H * (2.0 + Math.random() * 1.0) : H * (1.4 + Math.random() * 1.0));
+      }
+      if (genY >= nextCurrentY) {
+        if (d > H * 1.4) spawnCurrent(genY);
+        nextCurrentY += H * (3.5 + Math.random() * 2.0);
+      }
+      if (!leviathan && genY >= nextLevY && d > H * 9) {
+        spawnLeviathan(genY);
+        nextLevY += H * (10 + Math.random() * 7);
+      }
+      if (genY >= nextSquidY) {
+        if (d > H * 8) spawnSquid(genY);
+        nextSquidY += (d < H * 13 ? H * (3.4 + Math.random() * 1.6) : H * (2.4 + Math.random() * 1.4));
+      }
+    }
+    // cull anything well above the view or a full screen off to the side
+    const cullY = camTop - sc(90), farX = W + sc(220), farXe = W + sc(480);
+    if (jellies.length)   jellies   = jellies.filter(j => j.y > cullY - sc(160) && Math.abs(j.x - me.x) < farX);
+    if (bubbles.length)   bubbles   = bubbles.filter(b => b.y > cullY && Math.abs(b.x - me.x) < farX);
+    if (vents.length)     vents     = vents.filter(v => v.y > cullY - sc(40) && Math.abs(v.x - me.x) < farX);
+    if (anomalies.length) anomalies = anomalies.filter(an => an.y > cullY - sc(120) && Math.abs(an.x - me.x) < farX);
+    if (anglers.length)   anglers   = anglers.filter(an => an.y > cullY - sc(140) && Math.abs(an.x - me.x) < farX);
+    if (eels.length)      eels      = eels.filter(e => e.y > cullY - sc(320) && Math.abs(e.x - me.x) < farXe);
+    if (siphos.length)    siphos    = siphos.filter(s => (s.y + s.n * s.seg) > cullY && Math.abs(s.x - me.x) < farX);
+    if (currents.length)  currents  = currents.filter(c => (c.y + c.h) > cullY - sc(40));
+    if (squids.length)    squids    = squids.filter(sq => sq.y > cullY - sc(200) && Math.abs(sq.x - me.x) < farXe);
+  }
+
+  // ---- Motes (plankton) --------------------------------------------------
+  function buildMotes() {
+    motes = [];
+    const n = Math.round((W * H) / 22000);
+    for (let i = 0; i < n; i++) {
+      const d01 = Math.random();                          // 0 near .. 1 far
+      motes.push({ x: Math.random() * W, y: Math.random() * H,
+                   s: (1.7 - 1.2 * d01) * (0.55 + Math.random() * 0.5),
+                   p: 0.95 - 0.80 * d01,                  // near scrolls fast, far drifts slow
+                   z: d01 * sc(300),                       // far = the wave reaches it later & dimmer
+                   d: d01, tw: Math.random() * Math.PI * 2 });
+    }
+  }
+  buildMotes();
+  window.addEventListener('resize', buildMotes);
+
+  // ---- Lifecycle ---------------------------------------------------------
+  function start(zenMode) {
+    zen = !!zenMode;
+    if (zen) markSinkDay();
+    state = 'PLAY';
+    me.x = 0; me.y = 0; me.vx = 0; me.startY = 0;
+    targetX = W * 0.5;
+    camTop = me.y - H * 0.4; camX = me.x - W * 0.5;
+    jellies = []; bubbles = []; vents = []; anomalies = []; anglers = []; eels = []; siphos = []; currents = []; squids = []; pings = [];
+    genY = camTop - sc(30);
+    nextJellyY = me.startY + H * 1.2;
+    nextVentY = me.startY + H * 1.6;
+    nextAnomalyY = me.startY + H * 1.3;
+    nextAnglerY = me.startY + H * 2.0;
+    nextSquidY = me.startY + H * 8.5;
+    nextEelY = me.startY + H * 2.2;
+    nextSiphoY = me.startY + H * 1.7;
+    nextCurrentY = me.startY + H * 2.0;
+    leviathan = null; nextLevY = me.startY + H * (6 + Math.random() * 4);
+    pingCD = 0; shake = 0; dangerGlow = 0; deathFlash = 0;
+    coreFlare = 0; echoWake = [];
+    zenPulse = 0;
+    zenRemain = (zen && SINK_TIMES[OPT.sinkTimer] > 0) ? SINK_TIMES[OPT.sinkTimer] * 60 : 0;
+    generate();
+    ping(true);                 // reveal the opening
+  }
+
+  function die() {
+    if (state !== 'PLAY' || zen) return;   // in Sink mode you pass through everything
+    state = 'DEAD'; deadAt = now();
+    shake = OPT.rmotion ? 0 : sc(7); deathFlash = OPT.rmotion ? 0 : 1;
+    AUD.death();
+    ping(true);                 // one last reveal of where you came to rest
+    const s = scoreVal();
+    if (s > best) { best = s; try { localStorage.setItem('echo_best', String(best)); } catch (e) {} }
+  }
+
+  function scoreVal() { return Math.floor(Math.max(0, me.y - me.startY) / sc(T.pxPerM)); }
+
+  // ---- Ping --------------------------------------------------------------
+  function ping(force) {
+    pings.push({ x: me.x, y: me.y, age: 0, range: pingRangeNow(), life: T.pingLife * (OPT.hivis ? 1.35 : 1) });
+    if (pings.length > 7) pings.shift();
+    coreFlare = Math.min(1.2, coreFlare + 0.9);   // the echo flares as it calls
+    if (!force) pingCD = cooldownNow();
+    for (const sq of squids) {                        // your pulse gives you away
+      if (sq.state === 'hover' && sq.cd <= 0) {
+        const dx = me.x - sq.x, dy = me.y - sq.y;
+        if (dx * dx + dy * dy < sc(500) * sc(500)) { sq.state = 'wind'; sq.stateT = 0; sq.tx = me.x; sq.ty = me.y; sq.targAng = Math.atan2(dy, dx); }
+      }
+    }
+    if (OPT.call) {
+      const df = Math.min(1, Math.max(0, me.y - me.startY) / (H * 26));
+      const top = HZ * 2 * Math.pow(0.5, df);         // 272.2 shallow, 136.1 deep
+      AUD.tone(top, 0.95, 0.12, 'sine', 0, 0.5, 0.12, 6, 4.2);   // falls an octave, landing on the root
+    }
+  }
+  function tryPing() { if (pingCD <= 0) ping(false); }
+
+  // brightness 0..1 contributed by all pings at a world point
+  function lightAt(x, y, z) {
+    let b = 0;
+    const band = sc(T.pingBand), speed = sc(T.pingSpeed), z2 = z ? z * z : 0;
+    for (let i = 0; i < pings.length; i++) {
+      const p = pings[i];
+      const range = p.range || sc(T.pingRange);
+      const dx = x - p.x, dy = y - p.y;
+      const d = Math.sqrt(dx * dx + dy * dy + z2);
+      if (d > range) continue;
+      const ringR = p.age * speed;
+      if (d > ringR) continue;                              // ring hasn't arrived
+      const fade = Math.max(0, 1 - p.age / (p.life || T.pingLife));
+      const falloff = 1 - d / range;
+      const linger = fade * falloff * 0.7;
+      let spike = 0;
+      const behind = ringR - d;
+      if (behind < band) spike = (1 - behind / band) * fade * falloff;
+      const v = Math.max(linger, spike);
+      if (v > b) b = v;
+    }
+    return b > 1 ? 1 : b;
+  }
+
+  // ---- The leviathan -----------------------------------------------------
+  // draw a polyline where each tiny segment only shows where a pulse reaches it,
+  // so the sonar never gives you more than a passing sliver of something vast
+  function levStroke(pts, base, w, col) {
+    for (let i = 1; i < pts.length; i++) {
+      const x0 = pts[i - 1][0], y0 = pts[i - 1][1], x1 = pts[i][0], y1 = pts[i][1];
+      const lit = lightAt((x0 + x1) / 2, (y0 + y1) / 2);
+      if (lit < 0.06) continue;
+      ctx.globalAlpha = base * lit;
+      ctx.lineWidth = w; ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function arcPts(cx, cy, rx, ry, a0, a1, n) {
+    const out = [];
+    for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; out.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]); }
+    return out;
+  }
+  function qCurve(p0, c, p1, n) {
+    const out = [];
+    for (let i = 0; i <= n; i++) { const u = i / n, v = 1 - u; out.push([v * v * p0[0] + 2 * v * u * c[0] + u * u * p1[0], v * v * p0[1] + 2 * v * u * c[1] + u * u * p1[1]]); }
+    return out;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function tentacle(rx, ry, ang0, len, baseW, curl) {
+    const N = 40, step = len / N; let x = rx, y = ry, a = ang0; const cen = [];
+    for (let i = 0; i <= N; i++) { cen.push([x, y]); const u = i / N; const ss = step * (1 - 0.4 * u); x += Math.cos(a) * ss; y += Math.sin(a) * ss; a += (curl / N) * (0.35 + 1.9 * u); }
+    const top = [], bot = [];
+    for (let i = 0; i <= N; i++) { const u = i / N, p = cen[i], q = cen[Math.min(N, i + 1)], pr = cen[Math.max(0, i - 1)]; let tx = q[0] - pr[0], ty = q[1] - pr[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L; const nx = ty, ny = -tx; const w = baseW * Math.pow(1 - u, 1.3) + sc(4); top.push([p[0] + nx * w, p[1] + ny * w]); bot.push([p[0] - nx * w, p[1] - ny * w]); }
+    return { cen, top, bot, curl };
+  }
+  // Build a massive tentacled head once at spawn (local coords, eye at origin).
+  function buildLeviathan(U) {
+    const seg = [], fills = [], col = rgb(LEV), hot = rgb(LEV_HOT), R = U;
+    fills.push({ pts: arcPts(0, R * 0.2, R * 3.0, R * 3.3, 0, Math.PI * 2, 44), cx: 0, cy: 0, col: [0, 1, 4], a: 0.45 });
+    seg.push({ pts: arcPts(0, 0, R, R * 0.94, 0, Math.PI * 2, 72), base: 0.85, w: sc(2.4), col });
+    seg.push({ pts: qCurve([-R * 1.7, R * 0.15], [0, -R * 2.1], [R * 1.8, -R * 0.2], 40), base: 0.55, w: sc(2.4), col });
+    seg.push({ pts: qCurve([-R * 1.4, R * 1.4], [0, R * 2.0], [R * 1.6, R * 1.1], 32), base: 0.4, w: sc(1.8), col });
+    seg.push({ pts: arcPts(0, 0, R * 0.66, R * 0.66, 0, Math.PI * 2, 52), base: 0.62, w: sc(1.9), col });
+    for (let i = 0; i < 28; i++) { const a = (i / 28) * Math.PI * 2; seg.push({ pts: [[Math.cos(a) * R * 0.34, Math.sin(a) * R * 0.34], [Math.cos(a) * R * 0.62, Math.sin(a) * R * 0.62]], base: 0.4, w: sc(1.3), col }); }
+    seg.push({ pts: arcPts(0, 0, R * 0.16, R * 0.66, -Math.PI / 2, Math.PI / 2, 22).concat(arcPts(0, 0, R * 0.16, R * 0.66, Math.PI / 2, Math.PI * 1.5, 22)), base: 0.85, w: sc(2), col: hot });
+    fills.push({ pts: arcPts(0, 0, R * 0.15, R * 0.62, 0, Math.PI * 2, 30), cx: 0, cy: 0, col: [0, 1, 4], a: 0.9 });
+    fills.push({ pts: arcPts(-R * 0.2, -R * 0.24, R * 0.11, R * 0.11, 0, Math.PI * 2, 14), cx: -R * 0.2, cy: -R * 0.24, col: LEV_HOT, a: 0.95 });
+    for (let k = 0; k < 5; k++) {
+      const t = (k - 2) / 2, baseA = -Math.PI / 2 + t * 0.55;
+      const bx = Math.cos(baseA) * 1.15 * R, by = Math.sin(baseA) * 1.15 * R, dir = baseA - 0.1, len = (3.4 - Math.abs(t) * 0.7) * R;
+      const tip = [bx + Math.cos(dir) * len, by + Math.sin(dir) * len];
+      const c = [(bx + tip[0]) / 2 + Math.cos(dir + 1.4) * 0.4 * R, (by + tip[1]) / 2 + Math.sin(dir + 1.4) * 0.4 * R];
+      const e1 = qCurve([bx - 0.12 * R, by], c, tip, 16), e2 = qCurve([bx + 0.12 * R, by], [c[0] + 0.12 * R, c[1]], tip, 16);
+      fills.push({ pts: e1.concat(e2.slice().reverse()), cx: (bx + tip[0]) / 2, cy: (by + tip[1]) / 2, col: [8, 14, 22], a: 0.5 });
+      seg.push({ pts: e1, base: 0.4, w: sc(1.4), col }); seg.push({ pts: e2, base: 0.4, w: sc(1.4), col });
+    }
+    const arms = 9;
+    for (let k = 0; k < arms; k++) {
+      const ang = lerp(-0.22 * Math.PI, 1.22 * Math.PI, k / (arms - 1));
+      const bx = Math.cos(ang) * 1.3 * R, by = Math.sin(ang) * 1.3 * R;
+      const len = (4.4 + ((k * 3) % 4) * 0.6) * R, bw = 0.5 * R, curl = (k % 2 ? 1 : -1) * (1.7 + ((k * 2) % 3) * 0.25);
+      const Tn = tentacle(bx, by, ang, len, bw, curl);
+      seg.push({ pts: Tn.top, base: 0.5, w: sc(1.6), col });
+      seg.push({ pts: Tn.bot, base: 0.5, w: sc(1.6), col });
+      seg.push({ pts: Tn.cen, base: 0.15, w: sc(1), col });
+      const edge = curl < 0 ? Tn.top : Tn.bot;
+      for (let i = 3; i < Tn.cen.length - 2; i += 4) { const u = i / (Tn.cen.length - 1); const rr = (bw * Math.pow(1 - u, 1.3)) * 0.5; if (rr < sc(4)) continue; const p = edge[i]; seg.push({ pts: arcPts(p[0], p[1], rr, rr, 0, Math.PI * 2, 10), base: lerp(0.42, 0.12, u), w: sc(1), col }); }
+    }
+    const bky = 1.5 * R;
+    fills.push({ pts: [[0.5 * R, bky - 0.45 * R], [-0.45 * R, bky + 0.55 * R], [0.45 * R, bky + 0.35 * R]], cx: 0, cy: bky, col: [2, 6, 12], a: 0.9 });
+    seg.push({ pts: [[0.5 * R, bky - 0.45 * R], [-0.45 * R, bky + 0.55 * R]], base: 0.7, w: sc(1.7), col: hot });
+    return { seg, fills };
+  }
+  function drawLeviathan() {
+    const L = leviathan; if (!L || !L.parts) return;
+    const ox = L.x, oy = L.y, P = L.parts;
+    for (let f = 0; f < P.fills.length; f++) {
+      const q = P.fills[f], lit = lightAt(ox + q.cx, oy + q.cy);
+      if (lit < 0.05) continue;
+      ctx.fillStyle = rgb(q.col, (q.a || 0.7) * 0.72 * lit); ctx.beginPath();
+      const pts = q.pts;
+      for (let i = 0; i < pts.length; i++) { const px = ox + pts[i][0], py = oy + pts[i][1]; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); }
+      ctx.closePath(); ctx.fill();
+    }
+    for (let s = 0; s < P.seg.length; s++) {
+      const g = P.seg[s], pts = g.pts; ctx.lineWidth = g.w; ctx.strokeStyle = g.col;
+      for (let i = 1; i < pts.length; i++) {
+        const ax = ox + pts[i - 1][0], ay = oy + pts[i - 1][1], bx = ox + pts[i][0], by = oy + pts[i][1];
+        const lit = lightAt((ax + bx) / 2, (ay + by) / 2);
+        if (lit < 0.06) continue;
+        ctx.globalAlpha = g.base * 0.6 * lit; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- Physics -----------------------------------------------------------
+  const DT = 1 / 120;
+  function step() {
+    const depth = Math.max(0, me.y - me.startY);
+    const df = Math.min(1, depth / (H * 26));
+    const sink = sc(T.sink * (0.55 + 0.45 * ob()) + T.sinkGain * df);
+    me.y += sink * DT;
+    sinkV = sink;
+
+    // release the finger and the echo eases back to straight-down
+    if (!pointerDown) targetX += (W * 0.5 - targetX) * 0.08;
+    // steering authority scales with WHERE you hold: full up near mid-screen, fine near the bottom
+    const tyN = Math.min(1, Math.max(0, (pointerY / H - 0.45) / 0.55));
+    const steerGain = 1 - tyN * 0.72;                  // 1.0 near middle -> ~0.28 at the very bottom
+    // steer toward the tapped screen column (relative to the echo's on-screen position)
+    me.vx += (targetX - (me.x - camX)) * T.swim * steerGain * STEERK[OPT.steer] * DT;
+    me.vx *= T.swimDamp;
+    const mxs = sc(T.maxSwim);
+    if (me.vx > mxs) me.vx = mxs; if (me.vx < -mxs) me.vx = -mxs;
+    me.x += me.vx * DT;
+    driftX += (me.vx - driftX) * Math.min(1, DT * 2.5);   // steady sideways trend
+
+    const cr = sc(T.cr);
+    let nearest = 1e9;
+    const tsec = now() / 1000;
+
+    // jellyfish: gentle sway, lethal on contact
+    for (let i = 0; i < jellies.length; i++) {
+      const j = jellies[i];
+      j.t += DT;
+      j.x = j.baseX + j.sway * Math.sin(j.t * T.jellySwaySpd);
+      const dx = me.x - j.x, dy = me.y - j.y, rr = j.r + cr, dd = dx * dx + dy * dy;
+      if (dd < rr * rr) { if (!zen) { die(); return; } }
+      const gap = dd - rr * rr; if (gap < nearest) nearest = gap;
+    }
+    // rising bubbles: fast closing speed, lethal
+    for (let i = 0; i < bubbles.length; i++) {
+      const b = bubbles[i];
+      b.y += b.vy * DT;
+      b.x += Math.sin(b.ph + tsec * 2.2) * b.amp * DT;
+      const dx = me.x - b.x, dy = me.y - b.y, rr = b.r + cr, dd = dx * dx + dy * dy;
+      if (dd < rr * rr) { if (!zen) { die(); return; } }
+      const gap = dd - rr * rr; if (gap < nearest) nearest = gap;
+    }
+    // dark anomalies: drift, lethal
+    for (let i = 0; i < anomalies.length; i++) {
+      const an = anomalies[i];
+      an.t += DT; an.x += an.drift * DT; an.y += an.vy * DT;
+      const dx = me.x - an.x, dy = me.y - an.y, rr = an.r * 0.82 + cr, dd = dx * dx + dy * dy;
+      if (dd < rr * rr) { if (!zen) { die(); return; } }
+      const gap = dd - rr * rr; if (gap < nearest) nearest = gap;
+    }
+    // anglerfish: drifts; lethal along the dark body (elliptical hitbox), not the lure
+    for (let i = 0; i < anglers.length; i++) {
+      const an = anglers[i];
+      an.t += DT; an.x += an.drift * DT; an.y += an.vy * DT;
+      const bx = (me.x - an.x) * an.dir, by = me.y - an.y;
+      const ex = bx / (an.rx * 0.92 + cr), ey = by / (an.ry * 0.95 + cr);
+      if (ex * ex + ey * ey < 1) { if (!zen) { die(); return; } }
+      const gap = (bx * bx + by * by) - (an.rx + cr) * (an.rx + cr); if (gap < nearest) nearest = gap;
+    }
+    // colossal squid: hovers, then jets toward where you last pinged — lethal on contact
+    for (let i = 0; i < squids.length; i++) {
+      const sq = squids[i];
+      sq.t += DT;
+      if (sq.state === 'hover') {
+        sq.cd -= DT;
+        sq.x += sq.drift * DT + Math.sin(sq.t * 0.6) * sc(6) * DT;
+        sq.y += Math.sin(sq.t * 0.4) * sc(5) * DT;
+        sq.ang += (Math.sin(sq.t * 0.5) * 0.4 + (Math.PI / 2) - sq.ang) * 0.6 * DT;
+      } else if (sq.state === 'wind') {                // brief telegraph: it coils to strike
+        sq.stateT += DT;
+        sq.ang += (sq.targAng - sq.ang) * Math.min(1, 8 * DT);
+        if (sq.stateT > 0.32) { sq.state = 'jet'; sq.stateT = 0; const js = sc(700); sq.vx = Math.cos(sq.targAng) * js; sq.vy = Math.sin(sq.targAng) * js; }
+      } else if (sq.state === 'jet') {                 // the lunge — toward your afterimage, so move after you ping
+        sq.stateT += DT;
+        sq.x += sq.vx * DT; sq.y += sq.vy * DT;
+        sq.vx *= 0.965; sq.vy *= 0.965;
+        if (sq.stateT > 0.5) { sq.state = 'recover'; sq.stateT = 0; }
+      } else {                                         // recover, then rest before it can strike again
+        sq.stateT += DT;
+        sq.x += sq.vx * DT; sq.y += sq.vy * DT; sq.vx *= 0.9; sq.vy *= 0.9;
+        if (sq.stateT > 0.6) { sq.state = 'hover'; sq.cd = 2.2 + Math.random() * 1.5; }
+      }
+      const dx = me.x - sq.x, dy = me.y - sq.y, rr = sq.r + cr, dd = dx * dx + dy * dy;
+      if (dd < rr * rr) { if (!zen) { die(); return; } }
+      const gap = dd - rr * rr; if (gap < nearest) nearest = gap;
+    }
+    // eels: meandering head, the body follows and curls; lethal along the whole spine
+    for (let i = 0; i < eels.length; i++) {
+      const e = eels[i];
+      e.t += DT;
+      e.flourishCd -= DT;
+      if (e.flourishCd <= 0 && e.spin <= 0) { e.spin = 1.4 + Math.random() * 1.3; e.spinDir = Math.random() < 0.5 ? -1 : 1; e.flourishCd = 7 + Math.random() * 9; }
+      let turnRate = (Math.sin(e.t * e.tf1 + e.ph1) + 0.6 * Math.sin(e.t * e.tf2 + e.ph2)) * e.turn;
+      if (e.spin > 0) { e.spin -= DT; turnRate += e.spinDir * e.turn * 3.2; }   // a tight coiling flourish
+      e.heading += turnRate * DT;
+      const h = e.pts[0];
+      h.x += Math.cos(e.heading) * e.speed * DT;
+      h.y += Math.sin(e.heading) * e.speed * DT;
+      for (let k = 1; k <= e.n; k++) {
+        const p = e.pts[k], q = e.pts[k - 1];
+        let dx = p.x - q.x, dy = p.y - q.y; const L = Math.hypot(dx, dy) || 1;
+        p.x = q.x + dx / L * e.seg; p.y = q.y + dy / L * e.seg;
+      }
+      e.x = h.x; e.y = h.y;
+      const rr = e.w + cr;
+      for (let k = 0; k <= e.n; k += 2) {
+        const p = e.pts[k], dx = me.x - p.x, dy = me.y - p.y, dd = dx * dx + dy * dy;
+        if (dd < rr * rr) { if (!zen) { die(); return; } }
+        const gap = dd - rr * rr; if (gap < nearest) nearest = gap;
+      }
+    }
+    // siphonophores: a curling, breathing colony of stinging beads, lethal on contact
+    for (let i = 0; i < siphos.length; i++) {
+      const s = siphos[i];
+      s.t += DT; s.x += s.drift * DT; s.y += s.vy * DT;
+      s.flourishCd -= DT;
+      if (s.flourishCd <= 0 && s.coil <= 0) { s.coil = 2.0 + Math.random() * 1.6; s.coilDir = Math.random() < 0.5 ? -1 : 1; s.flourishCd = 8 + Math.random() * 10; }
+      if (s.coil > 0) s.coil -= DT;
+      const rr = s.br + cr;
+      for (let k = 0; k < s.n; k++) {
+        const b = siphoBead(s, k);
+        if (Math.abs(b[1] - me.y) > s.seg + rr) continue;
+        const dx = me.x - b[0], dy = me.y - b[1], dd = dx * dx + dy * dy;
+        if (dd < rr * rr) { if (!zen) { die(); return; } }
+        const gap = dd - rr * rr; if (gap < nearest) nearest = gap;
+      }
+    }
+    // currents: non-lethal, carry the echo sideways while it sinks through the band
+    for (let i = 0; i < currents.length; i++) {
+      const c = currents[i];
+      c.t += DT;
+      const dy = Math.abs(me.y - c.y);
+      if (dy < c.h) { const fall = 1 - dy / c.h; me.x += c.dir * c.speed * fall * fall * DT; }
+    }
+    // vents emit rising bubbles while near the view
+    for (let i = 0; i < vents.length; i++) {
+      const v = vents[i];
+      if (v.y > camTop - sc(40) && v.y < camTop + H * 1.5) {
+        v.emit -= DT;
+        if (v.emit <= 0) { v.emit = 0.11 + Math.random() * 0.13; addBubble(v.x + sc((Math.random() - 0.5) * 40), v.y); }
+      }
+    }
+    if (bubbles.length > 170) bubbles.splice(0, bubbles.length - 170);
+
+    // proximity danger feedback (nearest lethal thing; only seen when a pulse lights you)
+    const near = Math.sqrt(Math.max(0, nearest));
+    const dz = 1 - Math.min(1, near / sc(120));
+    dangerGlow += (Math.max(0, dz) - dangerGlow) * 0.2;
+
+    // the leviathan drifts, indifferent; it cannot touch you
+    if (leviathan) {
+      leviathan.t += DT;
+      leviathan.x += leviathan.drift * DT;
+      if (camTop > leviathan.y + H * 3.5) leviathan = null;
+    }
+
+    // cameras: depth follows the sink; the world slides sideways to keep the echo centred
+    camTop += (me.y - H * 0.4 - camTop) * 0.12;
+    camX += (me.x - W * 0.5 - camX) * 0.11;
+    const lean = W * 0.34;                                // never let the echo leave the centre band
+    const off = me.x - camX - W * 0.5;
+    if (off > lean) camX = me.x - W * 0.5 - lean;
+    else if (off < -lean) camX = me.x - W * 0.5 + lean;
+    generate();
+  }
+
+  // ---- Update ------------------------------------------------------------
+  let last = now(), acc = 0;
+  function update() {
+    const t = now(); let dt = (t - last) / 1000; last = t;
+    if (dt > 0.1) dt = 0.1;
+    if (state === 'PLAY') {
+      acc += dt;
+      while (acc >= DT) { step(); acc -= DT; if (state !== 'PLAY') break; }
+      if (pingCD > 0) pingCD -= dt;
+      if (zen) {
+        zenPulse -= dt;
+        if (zenPulse <= 0) { zenPulse = 2.6; ping(true); }   // a slow breath; the deep answers on its own
+        const cur = scoreVal(); if (cur > sinkBest) { sinkBest = cur; saveSink(); }
+        if (zenRemain > 0) { zenRemain -= dt; if (zenRemain <= 0) { state = 'DEAD'; deadAt = now(); saveSink(); } }   // the session closes, gently
+      }
+    }
+    if (state !== 'PAUSE') {
+      for (let i = pings.length - 1; i >= 0; i--) {
+        pings[i].age += dt;
+        if (pings[i].age > (pings[i].life || T.pingLife) + 0.2) pings.splice(i, 1);
+      }
+      if (shake > 0) shake = Math.max(0, shake - dt * sc(50));
+      if (coreFlare > 0) coreFlare = Math.max(0, coreFlare - dt * 2.2);
+      if (deathFlash > 0) deathFlash = Math.max(0, deathFlash - dt * 0.8);
+    }
+
+    // ---- returning echoes: the wavefront reports what it touches ---------
+    if (AUD.ctx && OPT.snd && OPT.echo && state !== 'PAUSE' && (state === 'PLAY' || state === 'DEAD')) {
+      let fired = 0;
+      const speed = sc(T.pingSpeed);
+      for (let pi = 0; pi < pings.length; pi++) {
+        const p = pings[pi];
+        const r0 = (p.prevAge || 0) * speed, r1 = p.age * speed;
+        const range = p.range || sc(T.pingRange);
+        if (!p.heard) p.heard = {};
+        const hear = function (u, x, y, base, fn) {
+          if (fired >= 2 || p.heard[u]) return;
+          const d = Math.hypot(x - p.x, y - p.y);
+          if (d > r0 && d <= r1 && d <= range) {
+            p.heard[u] = 1; fired++;
+            const v = base * (1 - d / range);
+            const pan = Math.max(-1, Math.min(1, (x - me.x) / (W * 0.6)));
+            if (v > 0.008) fn(v, pan);
+          }
+        };
+        for (const j of jellies) hear(j.u, j.x, j.y, 0.13, function (v, pn) { AUD.hiss(0.6, v * 0.5, HZ * 8, pn, 9, 0, 0.15); });
+        for (const an of anomalies) hear(an.u, an.x, an.y, 0.16, function (v, pn) { AUD.hiss(0.55, v * 0.6, HZ * 2, pn, 7, 0, 0.12); });
+        for (const an of anglers) hear(an.u, an.x, an.y, 0.13, function (v, pn) { AUD.hiss(0.6, v * 0.5, HZ * 4, pn, 8, 0, 0.15); });
+        for (const sq of squids) hear(sq.u, sq.x, sq.y, 0.18, function (v, pn) { AUD.hiss(0.45, v * 0.6, HZ * 3, pn, 5, 0.5, 0.05); });
+        for (const e2 of eels) hear(e2.u, e2.pts[0].x, e2.pts[0].y, 0.12, function (v, pn) { AUD.hiss(0.5, v * 0.5, HZ * 6, pn, 8, 0, 0.1); });
+        for (const s2 of siphos) hear(s2.u, s2.x, s2.y + s2.n * s2.seg * 0.4, 0.11, function (v, pn) { AUD.hiss(0.55, v * 0.5, HZ * 10, pn, 9, 0, 0.15); });
+        for (const v2 of vents) hear(v2.u, v2.x, v2.y, 0.10, function (v, pn) { AUD.hiss(0.6, v * 0.42, HZ, pn, 0.5, 0, 0.2, 'lowpass'); });
+        if (leviathan) hear(leviathan.u || (leviathan.u = ++UID), leviathan.x, leviathan.y, 0.32, function (v, pn) { AUD.hiss(2.4, Math.min(0.12, v * 0.9), HZ * 0.5, pn, 6, 0, 0.5); });
+      }
+      for (let pi = 0; pi < pings.length; pi++) pings[pi].prevAge = pings[pi].age;
+    }
+
+    // ---- continuous audio: pressure, heartbeat, fx ------------------------
+    if (AUD.ctx && state !== 'PAUSE') {
+      const c = AUD.ctx, ct = c.currentTime;
+      const df = Math.min(1, Math.max(0, me.y - me.startY) / (H * 26));
+      const playing = state === 'PLAY';
+      if (AUD.ambG) {
+        AUD.ambG.gain.setTargetAtTime(playing && OPT.snd && OPT.amb ? 0.055 : 0, ct, 0.4);
+        AUD.ambF.frequency.setTargetAtTime(560 - 380 * df, ct, 0.5);
+      }
+      // danger: rising water — a low swell that grows as something nears
+      if (AUD.dG) {
+        const on = playing && OPT.snd && OPT.danger && !zen && dangerGlow > 0.12;
+        const tgt = on ? 0.16 * Math.min(1, (dangerGlow - 0.12) / 0.7) : 0;
+        AUD.dG.gain.setTargetAtTime(tgt, ct, on ? 0.3 : 0.12);
+        AUD.dOsc.frequency.setTargetAtTime(HZ * 0.5 + 4 * dangerGlow, ct, 0.35);
+      }
+      // fx: bubble fizz nearby + current wash
+      if (AUD.fxCD > 0) AUD.fxCD -= dt;
+      let inCur = false;
+      if (playing && OPT.fx) {
+        for (const cu of currents) { if (Math.abs(me.y - cu.y) < cu.h) { inCur = true; break; } }
+        if (AUD.fxCD <= 0) {
+          for (const b of bubbles) {
+            const d = Math.hypot(b.x - me.x, b.y - me.y);
+            if (d < sc(85)) { AUD.hiss(0.16, 0.07, HZ * (1.5 + Math.random()), (b.x - me.x) / (W * 0.6), 3, 0.55, 0.02); AUD.fxCD = 0.18; break; }
+          }
+        }
+      }
+      if (AUD.washG) AUD.washG.gain.setTargetAtTime(playing && OPT.snd && OPT.fx && inCur ? 0.045 : 0, ct, 0.15);
+    }
+  }
+
+  // ---- Render ------------------------------------------------------------
+  function rgb(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + (a == null ? 1 : a) + ')'; }
+  // ---- Palette: FADED SIGNAL (deep pine · cream · marigold · jade · sienna)
+  const VOID = [12, 18, 16], ROCK = [21, 32, 28];
+  const CYAN = [231, 227, 212], CYAN_HOT = [246, 243, 231];          // the light of the pulse: warm cream
+  const JELLY = [110, 176, 155], JELLY_HOT = [168, 214, 196];        // jade bioluminescence
+  const LEV = [104, 120, 110], LEV_HOT = [148, 166, 152];
+  const CREA = [214, 206, 186], CREA_HOT = [240, 235, 220];
+  const BUBBLE = [172, 192, 180], ANOM = [128, 144, 132];
+  const ANGLER = [136, 148, 136], ANGLER_LURE = [216, 163, 74];      // dark body, marigold bait light
+  const EEL = [138, 152, 140];
+  const SIPHO = [212, 172, 102], CURRENT = [126, 138, 128];          // warm gold bead curtains
+  const DANGER = [228, 87, 46];                                      // sienna
+  const MARI = [216, 163, 74], DIMS = [126, 138, 128];               // HUD accent + dim text
+
+  function setTrack(p) { try { ctx.letterSpacing = p + 'px'; } catch (e) {} }
+  function clearTrack() { try { ctx.letterSpacing = '0px'; } catch (e) {} }
+
+  // ---- SOUNDING: bespoke display typeface, drawn as strokes -------------
+  const SND_GLYPHS={"A":[74,[[[37,4],[6,96]],[[37,4],[68,96]],[[21,52],[53,52]]]],"B":[68,[[[9,4],[9,96]],[[9,4],[38,4],[38.0,4.0],[40.2,4.1],[42.5,4.5],[44.6,5.1],[46.7,6.0],[48.6,7.1],[50.5,8.4],[52.1,9.9],[53.6,11.5],[54.9,13.4],[56.0,15.3],[56.9,17.4],[57.5,19.5],[57.9,21.8],[58.0,24.0],[57.9,26.2],[57.5,28.5],[56.9,30.6],[56.0,32.7],[54.9,34.6],[53.6,36.5],[52.1,38.1],[50.5,39.6],[48.6,40.9],[46.7,42.0],[44.6,42.9],[42.5,43.5],[40.2,43.9],[38.0,44.0],[38,44],[9,44]],[[9,44],[46,44],[46.0,44.0],[48.9,44.2],[51.8,44.7],[54.6,45.5],[57.3,46.6],[59.8,48.0],[62.2,49.7],[64.4,51.6],[66.3,53.8],[68.0,56.2],[69.4,58.7],[70.5,61.4],[71.3,64.2],[71.8,67.1],[72.0,70.0],[71.8,72.9],[71.3,75.8],[70.5,78.6],[69.4,81.3],[68.0,83.8],[66.3,86.2],[64.4,88.4],[62.2,90.3],[59.8,92.0],[57.3,93.4],[54.6,94.5],[51.8,95.3],[48.9,95.8],[46.0,96.0],[46,96],[9,96]]]],"C":[80,[[[66.3,85.6],[60.6,88.6],[54.6,90.6],[48.3,91.8],[41.9,91.9],[35.6,91.1],[29.4,89.4],[23.6,86.7],[18.3,83.2],[13.6,78.9],[9.5,74.0],[6.3,68.5],[3.9,62.6],[2.5,56.4],[2.0,50.0],[2.5,43.6],[3.9,37.4],[6.3,31.5],[9.5,26.0],[13.6,21.1],[18.3,16.8],[23.6,13.3],[29.4,10.6],[35.6,8.9],[41.9,8.1],[48.3,8.2],[54.6,9.4],[60.6,11.4],[66.3,14.4]]]],"D":[76,[[[9,4],[9,96]],[[9,4],[30,4],[39.6,5.0],[43.9,6.1],[48.1,7.7],[52.1,9.7],[55.9,12.0],[59.5,14.7],[62.8,17.7],[65.7,21.1],[68.4,24.7],[70.7,28.5],[72.6,32.6],[74.1,36.8],[75.1,41.1],[75.8,45.5],[76.0,50.0],[75.8,54.5],[75.1,58.9],[74.1,63.2],[72.6,67.4],[70.7,71.5],[68.4,75.3],[65.7,78.9],[62.8,82.3],[59.5,85.3],[55.9,88.0],[52.1,90.3],[48.1,92.3],[43.9,93.9],[39.6,95.0],[30,96],[9,96]]]],"E":[60,[[[9,4],[9,96]],[[9,4],[56,4]],[[9,38],[46,38]],[[9,96],[56,96]]]],"F":[58,[[[9,4],[9,96]],[[9,4],[56,4]],[[9,38],[46,38]]]],"G":[88,[[[66.3,85.6],[60.7,88.6],[54.7,90.6],[48.4,91.8],[42.1,92.0],[35.8,91.2],[29.7,89.5],[24.0,86.9],[18.6,83.5],[13.9,79.3],[9.8,74.4],[6.6,69.0],[4.1,63.2],[2.6,57.0],[2.0,50.7],[2.4,44.4],[3.7,38.2],[5.9,32.3],[9.0,26.8],[12.9,21.8],[17.5,17.4],[22.7,13.8],[28.4,11.0],[34.4,9.1],[40.7,8.1],[47.0,8.1],[53.2,9.0],[59.3,10.9],[65.0,13.6]],[[60,52],[84,52]],[[84,52],[84,84]]]],"H":[68,[[[9,4],[9,96]],[[59,4],[59,96]],[[9,40],[59,40]]]],"I":[20,[[[10,4],[10,96]]]],"J":[52,[[[42,4],[42,72],[42.0,72.0],[41.9,74.0],[41.5,76.0],[41.0,77.9],[40.2,79.8],[39.2,81.6],[38.1,83.2],[36.7,84.7],[35.2,86.1],[33.6,87.2],[31.8,88.2],[29.9,89.0],[28.0,89.5],[26.0,89.9],[24.0,90.0],[22.0,89.9],[20.0,89.5],[18.1,89.0],[16.2,88.2],[14.4,87.2],[12.8,86.1],[11.3,84.7],[9.9,83.2],[8.8,81.6],[7.8,79.8],[7.0,77.9],[6.5,76.0],[6.1,74.0],[6.0,72.0]]]],"K":[66,[[[9,4],[9,96]],[[58,6],[12,44]],[[12,44],[60,96]]]],"L":[56,[[[9,4],[9,96]],[[9,96],[52,96]]]],"M":[90,[[[9,96],[9,4]],[[9,4],[45,62]],[[45,62],[81,4]],[[81,4],[81,96]]]],"N":[72,[[[11,96],[11,4]],[[11,4],[61,96]],[[61,96],[61,4]]]],"O":[86,[[[83.0,50.0],[82.7,55.9],[81.6,61.6],[80.0,67.2],[77.6,72.5],[74.7,77.4],[71.3,81.8],[67.4,85.7],[63.0,89.0],[58.3,91.6],[53.4,93.5],[48.2,94.6],[43.0,95.0],[37.8,94.6],[32.6,93.5],[27.7,91.6],[23.0,89.0],[18.6,85.7],[14.7,81.8],[11.3,77.4],[8.4,72.5],[6.0,67.2],[4.4,61.6],[3.3,55.9],[3.0,50.0],[3.3,44.1],[4.4,38.4],[6.0,32.8],[8.4,27.5],[11.3,22.6],[14.7,18.2],[18.6,14.3],[23.0,11.0],[27.7,8.4],[32.6,6.5],[37.8,5.4],[43.0,5.0],[48.2,5.4],[53.4,6.5],[58.3,8.4],[63.0,11.0],[67.4,14.3],[71.3,18.2],[74.7,22.6],[77.6,27.5],[80.0,32.8],[81.6,38.4],[82.7,44.1],[83.0,50.0]]]],"P":[64,[[[9,4],[9,96]],[[9,4],[38,4],[38.0,4.0],[40.5,4.1],[42.9,4.6],[45.3,5.2],[47.5,6.2],[49.7,7.4],[51.7,8.8],[53.6,10.4],[55.2,12.3],[56.6,14.3],[57.8,16.5],[58.8,18.7],[59.4,21.1],[59.9,23.5],[60.0,26.0],[59.9,28.5],[59.4,30.9],[58.8,33.3],[57.8,35.5],[56.6,37.7],[55.2,39.7],[53.6,41.6],[51.7,43.2],[49.7,44.6],[47.5,45.8],[45.3,46.8],[42.9,47.4],[40.5,47.9],[38.0,48.0],[38,48],[9,48]]]],"Q":[88,[[[83.0,50.0],[82.7,55.9],[81.6,61.6],[80.0,67.2],[77.6,72.5],[74.7,77.4],[71.3,81.8],[67.4,85.7],[63.0,89.0],[58.3,91.6],[53.4,93.5],[48.2,94.6],[43.0,95.0],[37.8,94.6],[32.6,93.5],[27.7,91.6],[23.0,89.0],[18.6,85.7],[14.7,81.8],[11.3,77.4],[8.4,72.5],[6.0,67.2],[4.4,61.6],[3.3,55.9],[3.0,50.0],[3.3,44.1],[4.4,38.4],[6.0,32.8],[8.4,27.5],[11.3,22.6],[14.7,18.2],[18.6,14.3],[23.0,11.0],[27.7,8.4],[32.6,6.5],[37.8,5.4],[43.0,5.0],[48.2,5.4],[53.4,6.5],[58.3,8.4],[63.0,11.0],[67.4,14.3],[71.3,18.2],[74.7,22.6],[77.6,27.5],[80.0,32.8],[81.6,38.4],[82.7,44.1],[83.0,50.0]],[[52,66],[84,96]]]],"R":[68,[[[9,4],[9,96]],[[9,4],[38,4],[38.0,4.0],[40.5,4.1],[42.9,4.6],[45.3,5.2],[47.5,6.2],[49.7,7.4],[51.7,8.8],[53.6,10.4],[55.2,12.3],[56.6,14.3],[57.8,16.5],[58.8,18.7],[59.4,21.1],[59.9,23.5],[60.0,26.0],[59.9,28.5],[59.4,30.9],[58.8,33.3],[57.8,35.5],[56.6,37.7],[55.2,39.7],[53.6,41.6],[51.7,43.2],[49.7,44.6],[47.5,45.8],[45.3,46.8],[42.9,47.4],[40.5,47.9],[38.0,48.0],[38,48],[9,48]],[[38,48],[62,96]]]],"S":[66,[[[54.0,12.6],[52.7,11.3],[51.4,10.2],[49.9,9.1],[48.4,8.2],[46.8,7.4],[45.2,6.7],[43.4,6.2],[41.7,5.8],[39.9,5.6],[38.1,5.5],[36.4,5.6],[34.6,5.8],[32.8,6.1],[31.1,6.6],[29.5,7.3],[27.8,8.0],[26.3,9.0],[24.9,10.0],[23.5,11.1],[22.2,12.4],[21.1,13.8],[20.0,15.2],[19.1,16.7],[18.3,18.3],[17.7,20.0],[17.2,21.7],[16.8,23.5],[16.6,25.2],[16.5,27.0],[16.6,28.8],[16.8,30.6],[17.2,32.3],[17.7,34.0],[18.3,35.7],[19.1,37.3],[20.0,38.8],[21.1,40.3],[22.3,41.6],[23.5,42.9],[24.9,44.0],[26.4,45.1],[27.9,46.0],[29.5,46.7],[31.2,47.4],[32.9,47.9],[34.6,48.2],[36.7,48.6],[38.8,49.2],[40.8,50.0],[42.7,51.0],[44.5,52.1],[46.3,53.4],[47.9,54.8],[49.3,56.4],[50.7,58.1],[51.8,59.9],[52.9,61.8],[53.7,63.7],[54.4,65.8],[54.9,67.9],[55.2,70.0],[55.3,72.1],[55.2,74.3],[55.0,76.4],[54.5,78.5],[53.9,80.6],[53.1,82.5],[52.1,84.5],[51.0,86.3],[49.7,88.0],[48.3,89.6],[46.7,91.0],[45.0,92.4],[43.2,93.5],[41.3,94.5],[39.3,95.4],[37.3,96.0],[35.2,96.5],[33.1,96.8],[30.9,96.9],[28.8,96.8],[26.6,96.5],[24.5,96.1],[22.5,95.4],[20.5,94.6],[18.6,93.6],[16.8,92.5],[15.1,91.2],[13.5,89.7],[12.0,88.2],[10.7,86.5],[9.6,84.7]]]],"T":[64,[[[6,5],[58,5]],[[32,5],[32,96]]]],"U":[72,[[[10,4],[10,68],[10.0,68.0],[10.2,70.9],[10.7,73.8],[11.5,76.6],[12.6,79.3],[14.0,81.8],[15.7,84.2],[17.6,86.4],[19.8,88.3],[22.2,90.0],[24.7,91.4],[27.4,92.5],[30.2,93.3],[33.1,93.8],[36.0,94.0],[38.9,93.8],[41.8,93.3],[44.6,92.5],[47.3,91.4],[49.8,90.0],[52.2,88.3],[54.4,86.4],[56.3,84.2],[58.0,81.8],[59.4,79.3],[60.5,76.6],[61.3,73.8],[61.8,70.9],[62.0,68.0],[62,68],[62,4]]]],"V":[74,[[[6,4],[37,96]],[[37,96],[68,4]]]],"W":[104,[[[8,4],[28,96]],[[28,96],[52,30]],[[52,30],[76,96]],[[76,96],[96,4]]]],"X":[70,[[[9,4],[61,96]],[[61,4],[9,96]]]],"Y":[70,[[[9,4],[35,44]],[[61,4],[35,44]],[[35,44],[35,96]]]],"Z":[66,[[[8,5],[58,5]],[[58,5],[8,96]],[[8,96],[58,96]]]],"0":[60,[[[55.0,50.0],[54.8,55.9],[54.1,61.6],[53.1,67.2],[51.7,72.5],[49.8,77.4],[47.7,81.8],[45.2,85.7],[42.5,89.0],[39.6,91.6],[36.5,93.5],[33.3,94.6],[30.0,95.0],[26.7,94.6],[23.5,93.5],[20.4,91.6],[17.5,89.0],[14.8,85.7],[12.3,81.8],[10.2,77.4],[8.3,72.5],[6.9,67.2],[5.9,61.6],[5.2,55.9],[5.0,50.0],[5.2,44.1],[5.9,38.4],[6.9,32.8],[8.3,27.5],[10.2,22.6],[12.3,18.2],[14.8,14.3],[17.5,11.0],[20.4,8.4],[23.5,6.5],[26.7,5.4],[30.0,5.0],[33.3,5.4],[36.5,6.5],[39.6,8.4],[42.5,11.0],[45.2,14.3],[47.7,18.2],[49.8,22.6],[51.7,27.5],[53.1,32.8],[54.1,38.4],[54.8,44.1],[55.0,50.0]]]],"1":[60,[[[14,24],[32,6],[32,96]],[[14,96],[50,96]]]],"2":[60,[[[7.3,25.0],[8.0,22.5],[8.8,20.0],[10.0,17.6],[11.4,15.4],[13.1,13.4],[15.0,11.6],[17.0,10.0],[19.3,8.6],[21.7,7.6],[24.2,6.8],[26.7,6.2],[29.3,6.0],[32.0,6.1],[34.6,6.5],[37.1,7.1],[39.5,8.1],[41.8,9.3],[44.0,10.8],[46.0,12.5],[47.8,14.4],[49.3,16.5],[50.6,18.8],[51.6,21.2],[52.4,23.7],[52.8,26.3],[53.0,28.9],[52.9,31.5],[52.4,34.1],[51.7,36.6],[50.7,39.0],[49.4,41.3],[47.9,43.5],[46.1,45.4],[44.2,47.1],[43.2,47.9],[42.2,48.8],[41.2,49.7],[40.1,50.7],[39.0,51.8],[37.9,52.9],[36.8,54.1],[35.7,55.3],[34.5,56.6],[33.3,58.0],[32.1,59.4],[30.9,60.9],[29.7,62.4],[28.5,63.9],[27.3,65.5],[26.1,67.1],[24.8,68.7],[23.6,70.3],[22.4,72.0],[21.2,73.7],[20.0,75.4],[18.8,77.1],[17.6,78.9],[16.5,80.6],[15.3,82.4],[14.2,84.1],[13.1,85.8],[12.1,87.6],[11.0,89.3],[10.0,91.0]],[[10,91],[55,91]]]],"3":[60,[[[12.2,15.9],[13.7,13.8],[15.4,11.9],[17.4,10.2],[19.5,8.8],[21.8,7.7],[24.2,6.8],[26.7,6.3],[29.3,6.0],[31.8,6.1],[34.4,6.5],[36.8,7.1],[39.2,8.1],[41.4,9.4],[43.5,10.9],[45.4,12.7],[47.0,14.7],[48.4,16.8],[49.5,19.1],[50.3,21.6],[50.8,24.1],[51.0,26.6],[50.9,29.2],[50.5,31.7],[49.7,34.2],[48.7,36.5],[47.4,38.7],[45.8,40.8],[44.1,42.6],[42.0,44.2],[39.9,45.5],[37.5,46.6],[35.1,47.4],[32.6,47.8],[30.0,48.0]],[[30.0,47.0],[32.6,47.1],[35.1,47.6],[37.6,48.2],[40.0,49.2],[42.3,50.4],[44.4,51.8],[46.4,53.5],[48.2,55.3],[49.7,57.4],[51.1,59.5],[52.2,61.9],[53.0,64.3],[53.6,66.8],[53.9,69.4],[54.0,71.9],[53.7,74.5],[53.2,77.0],[52.5,79.5],[51.4,81.8],[50.1,84.1],[48.6,86.2],[46.9,88.1],[45.0,89.8],[42.9,91.3],[40.6,92.5],[38.2,93.5],[35.8,94.3],[33.3,94.8],[30.7,95.0],[28.1,94.9],[25.6,94.6],[23.1,94.0],[20.6,93.1],[18.3,92.0],[16.1,90.6],[14.1,89.0],[12.3,87.2],[10.7,85.2],[9.2,83.1],[8.1,80.8]]]],"4":[60,[[[44,6],[6,66],[58,66]],[[44,38],[44,96]]]],"5":[60,[[[50,7],[16,7],[14,41]],[[15.1,42.7],[17.5,41.2],[20.0,40.0],[22.7,39.1],[25.4,38.4],[28.2,38.1],[31.0,38.0],[33.8,38.3],[36.6,38.8],[39.2,39.7],[41.8,40.8],[44.2,42.2],[46.5,43.9],[48.6,45.8],[50.4,47.9],[52.0,50.2],[53.4,52.7],[54.5,55.3],[55.3,58.0],[55.8,60.7],[56.0,63.5],[55.9,66.4],[55.5,69.1],[54.8,71.9],[53.8,74.5],[52.5,77.0],[51.0,79.4],[49.2,81.5],[47.2,83.5],[45.0,85.2],[42.6,86.7],[40.1,88.0],[37.4,88.9],[34.7,89.6],[31.9,89.9],[29.1,90.0],[26.3,89.7],[23.5,89.2],[20.9,88.3],[18.3,87.2],[15.8,85.8]]]],"6":[60,[[[49.0,10.0],[46.9,9.6],[44.9,9.3],[42.8,9.3],[40.8,9.4],[38.9,9.6],[37.0,10.0],[35.1,10.6],[33.2,11.3],[31.4,12.1],[29.7,13.1],[28.0,14.2],[26.4,15.5],[24.8,16.9],[23.2,18.5],[21.8,20.1],[20.3,21.9],[19.0,23.8],[17.7,25.8],[16.5,28.0],[15.3,30.2],[14.2,32.6],[13.2,35.0],[12.3,37.6],[11.4,40.2],[10.6,43.0],[9.9,45.8],[9.3,48.7],[8.8,51.8],[8.3,54.8],[8.0,58.0],[8,66]],[[54.0,69.0],[53.8,72.3],[53.2,75.5],[52.2,78.6],[50.9,81.5],[49.2,84.2],[47.3,86.7],[45.0,88.8],[42.5,90.7],[39.8,92.1],[37.0,93.1],[34.0,93.8],[31.0,94.0],[28.0,93.8],[25.0,93.1],[22.2,92.1],[19.5,90.7],[17.0,88.8],[14.7,86.7],[12.8,84.2],[11.1,81.5],[9.8,78.6],[8.8,75.5],[8.2,72.3],[8.0,69.0],[8.2,65.7],[8.8,62.5],[9.8,59.4],[11.1,56.5],[12.8,53.8],[14.7,51.3],[17.0,49.2],[19.5,47.3],[22.2,45.9],[25.0,44.9],[28.0,44.2],[31.0,44.0],[34.0,44.2],[37.0,44.9],[39.8,45.9],[42.5,47.3],[45.0,49.2],[47.3,51.3],[49.2,53.8],[50.9,56.5],[52.2,59.4],[53.2,62.5],[53.8,65.7],[54.0,69.0]]]],"7":[60,[[[6,7],[58,7],[26,96]]]],"8":[60,[[[53.0,29.0],[52.8,32.0],[52.3,35.0],[51.3,37.8],[50.1,40.5],[48.5,43.0],[46.6,45.3],[44.4,47.2],[42.0,48.9],[39.4,50.2],[36.7,51.2],[33.9,51.8],[31.0,52.0],[28.1,51.8],[25.3,51.2],[22.6,50.2],[20.0,48.9],[17.6,47.2],[15.4,45.3],[13.5,43.0],[11.9,40.5],[10.7,37.8],[9.7,35.0],[9.2,32.0],[9.0,29.0],[9.2,26.0],[9.7,23.0],[10.7,20.2],[11.9,17.5],[13.5,15.0],[15.4,12.7],[17.6,10.8],[20.0,9.1],[22.6,7.8],[25.3,6.8],[28.1,6.2],[31.0,6.0],[33.9,6.2],[36.7,6.8],[39.4,7.8],[42.0,9.1],[44.4,10.8],[46.6,12.7],[48.5,15.0],[50.1,17.5],[51.3,20.2],[52.3,23.0],[52.8,26.0],[53.0,29.0]],[[57.0,71.0],[56.8,74.5],[56.1,78.0],[55.0,81.3],[53.5,84.5],[51.6,87.4],[49.4,90.1],[46.8,92.4],[44.0,94.4],[40.9,95.9],[37.7,97.1],[34.4,97.8],[31.0,98.0],[27.6,97.8],[24.3,97.1],[21.1,95.9],[18.0,94.4],[15.2,92.4],[12.6,90.1],[10.4,87.4],[8.5,84.5],[7.0,81.3],[5.9,78.0],[5.2,74.5],[5.0,71.0],[5.2,67.5],[5.9,64.0],[7.0,60.7],[8.5,57.5],[10.4,54.6],[12.6,51.9],[15.2,49.6],[18.0,47.6],[21.1,46.1],[24.3,44.9],[27.6,44.2],[31.0,44.0],[34.4,44.2],[37.7,44.9],[40.9,46.1],[44.0,47.6],[46.8,49.6],[49.4,51.9],[51.6,54.6],[53.5,57.5],[55.0,60.7],[56.1,64.0],[56.8,67.5],[57.0,71.0]]]],"9":[60,[[[53.0,30.0],[52.8,33.3],[52.2,36.5],[51.2,39.6],[49.9,42.5],[48.2,45.2],[46.3,47.7],[44.0,49.8],[41.5,51.7],[38.8,53.1],[36.0,54.1],[33.0,54.8],[30.0,55.0],[27.0,54.8],[24.0,54.1],[21.2,53.1],[18.5,51.7],[16.0,49.8],[13.7,47.7],[11.8,45.2],[10.1,42.5],[8.8,39.6],[7.8,36.5],[7.2,33.3],[7.0,30.0],[7.2,26.7],[7.8,23.5],[8.8,20.4],[10.1,17.5],[11.8,14.8],[13.7,12.3],[16.0,10.2],[18.5,8.3],[21.2,6.9],[24.0,5.9],[27.0,5.2],[30.0,5.0],[33.0,5.2],[36.0,5.9],[38.8,6.9],[41.5,8.3],[44.0,10.2],[46.3,12.3],[48.2,14.8],[49.9,17.5],[51.2,20.4],[52.2,23.5],[52.8,26.7],[53.0,30.0]],[[52.5,34.0],[52.3,36.8],[52.1,39.5],[51.8,42.2],[51.4,44.9],[51.0,47.5],[50.5,50.0],[49.9,52.5],[49.3,55.0],[48.6,57.4],[47.8,59.7],[47.0,62.0],[46.0,64.2],[45.0,66.4],[43.9,68.5],[42.7,70.5],[41.4,72.5],[40.0,74.4],[38.6,76.2],[37.0,77.9],[35.4,79.6],[33.6,81.2],[31.7,82.8],[29.8,84.2],[27.7,85.6],[25.5,86.9],[23.3,88.1],[20.9,89.2],[18.4,90.2],[15.7,91.2],[13.0,92.0]]]]," ":[40,[]],"/":[46,[[[6,98],[40,2]]]],"-":[48,[[[8,52],[40,52]]]],".":[24,[[[14.0,92.0],[14.0,92.7],[13.8,93.3],[13.6,93.9],[13.3,94.5],[13.0,95.0],[12.5,95.5],[12.0,96.0],[11.5,96.3],[10.9,96.6],[10.3,96.8],[9.7,97.0],[9.0,97.0],[8.3,97.0],[7.7,96.8],[7.1,96.6],[6.5,96.3],[6.0,96.0],[5.5,95.5],[5.0,95.0],[4.7,94.5],[4.4,93.9],[4.2,93.3],[4.0,92.7],[4.0,92.0],[4.0,91.3],[4.2,90.7],[4.4,90.1],[4.7,89.5],[5.0,89.0],[5.5,88.5],[6.0,88.0],[6.5,87.7],[7.1,87.4],[7.7,87.2],[8.3,87.0],[9.0,87.0],[9.7,87.0],[10.3,87.2],[10.9,87.4],[11.5,87.7],[12.0,88.0],[12.5,88.5],[13.0,89.0],[13.3,89.5],[13.6,90.1],[13.8,90.7],[14.0,91.3],[14.0,92.0]]]],"\u00b7":[26,[[[16.5,52.0],[16.5,52.7],[16.3,53.4],[16.1,54.1],[15.8,54.8],[15.4,55.3],[14.9,55.9],[14.3,56.4],[13.8,56.8],[13.1,57.1],[12.4,57.3],[11.7,57.5],[11.0,57.5],[10.3,57.5],[9.6,57.3],[8.9,57.1],[8.3,56.8],[7.7,56.4],[7.1,55.9],[6.6,55.3],[6.2,54.8],[5.9,54.1],[5.7,53.4],[5.5,52.7],[5.5,52.0],[5.5,51.3],[5.7,50.6],[5.9,49.9],[6.2,49.2],[6.6,48.7],[7.1,48.1],[7.7,47.6],[8.2,47.2],[8.9,46.9],[9.6,46.7],[10.3,46.5],[11.0,46.5],[11.7,46.5],[12.4,46.7],[13.1,46.9],[13.8,47.2],[14.3,47.6],[14.9,48.1],[15.4,48.7],[15.8,49.2],[16.1,49.9],[16.3,50.6],[16.5,51.3],[16.5,52.0]]]],"m":[84,[[[9,96],[9,60]],[[9,66],[9.0,66.0],[9.1,64.3],[9.4,62.7],[9.8,61.0],[10.5,59.5],[11.3,58.0],[12.3,56.6],[13.4,55.4],[14.6,54.3],[16.0,53.3],[17.5,52.5],[19.0,51.8],[20.7,51.4],[22.3,51.1],[24.0,51.0],[25.7,51.1],[27.3,51.4],[29.0,51.8],[30.5,52.5],[32.0,53.3],[33.4,54.3],[34.6,55.4],[35.7,56.6],[36.7,58.0],[37.5,59.5],[38.2,61.0],[38.6,62.7],[38.9,64.3],[39.0,66.0],[39,66],[39,96]],[[39,66],[39.0,66.0],[39.1,64.3],[39.4,62.7],[39.8,61.0],[40.5,59.5],[41.3,58.0],[42.3,56.6],[43.4,55.4],[44.6,54.3],[46.0,53.3],[47.5,52.5],[49.0,51.8],[50.7,51.4],[52.3,51.1],[54.0,51.0],[55.7,51.1],[57.3,51.4],[59.0,51.8],[60.5,52.5],[62.0,53.3],[63.4,54.3],[64.6,55.4],[65.7,56.6],[66.7,58.0],[67.5,59.5],[68.2,61.0],[68.6,62.7],[68.9,64.3],[69.0,66.0],[69,66],[69,96]]]],"!":[24,[[[12,4],[12,66]],[[17.0,90.0],[17.0,90.7],[16.8,91.3],[16.6,91.9],[16.3,92.5],[16.0,93.0],[15.5,93.5],[15.0,94.0],[14.5,94.3],[13.9,94.6],[13.3,94.8],[12.7,95.0],[12.0,95.0],[11.3,95.0],[10.7,94.8],[10.1,94.6],[9.5,94.3],[9.0,94.0],[8.5,93.5],[8.0,93.0],[7.7,92.5],[7.4,91.9],[7.2,91.3],[7.0,90.7],[7.0,90.0],[7.0,89.3],[7.2,88.7],[7.4,88.1],[7.7,87.5],[8.0,87.0],[8.5,86.5],[9.0,86.0],[9.5,85.7],[10.1,85.4],[10.7,85.2],[11.3,85.0],[12.0,85.0],[12.7,85.0],[13.3,85.2],[13.9,85.4],[14.5,85.7],[15.0,86.0],[15.5,86.5],[16.0,87.0],[16.3,87.5],[16.6,88.1],[16.8,88.7],[17.0,89.3],[17.0,90.0]]]]};
+  (function augmentGlyphs() {                            // Sounding lacked comma/colon/semicolon — add them, matching the period's stroked dot
+    function ring(cx, cy, r) { const p = []; for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI * 2; p.push([+(cx + Math.cos(a) * r).toFixed(1), +(cy + Math.sin(a) * r).toFixed(1)]); } return p; }
+    const r = 5.2;
+    const dotLow = ring(9, 90, r), dotBase = ring(9, 84, r), dotHigh = ring(9, 58, r);
+    const tail = [[9, 94], [7, 100], [4.5, 105]], tail2 = [[9, 88], [7, 94], [4.5, 99]];
+    SND_GLYPHS[','] = [26, [dotLow, tail]];
+    SND_GLYPHS[':'] = [26, [dotHigh, dotBase]];
+    SND_GLYPHS[';'] = [26, [dotHigh, dotBase, tail2]];
+  })();
+  const SND = {
+    w: function (s, size, track) {
+      track = track == null ? 0.11 : track;
+      let w = 0;
+      for (const ch of s) { const g = SND_GLYPHS[ch] || SND_GLYPHS[' ']; w += g[0] * size / 100 + size * track; }
+      return Math.max(0, w - size * track);
+    },
+    draw: function (c, s, x, y, size, style, align, track, wpx) {
+      track = track == null ? 0.11 : track;
+      let cx = x;
+      if (align === 'center') cx = x - SND.w(s, size, track) / 2;
+      else if (align === 'right') cx = x - SND.w(s, size, track);
+      c.strokeStyle = style;
+      c.lineWidth = wpx || Math.max(1.4, size * 0.095);
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      const k = size / 100;
+      for (const ch of s) {
+        const g = SND_GLYPHS[ch] || SND_GLYPHS[' '];
+        for (const pl of g[1]) {
+          c.beginPath();
+          for (let i = 0; i < pl.length; i++) {
+            const px = cx + pl[i][0] * k, py = y + (pl[i][1] - 96) * k;   // y = baseline
+            if (i) c.lineTo(px, py); else c.moveTo(px, py);
+          }
+          c.stroke();
+        }
+        cx += g[0] * k + size * track;
+      }
+    }
+  };
+
+  // ---- Options (persisted) ----------------------------------------------
+  let OPT = { snd: 1, call: 1, echo: 1, amb: 1, danger: 1, silence: 1, fx: 1, steer: 1, rmotion: 0, hivis: 0, sinkTimer: 0 };
+  try { const o = JSON.parse(localStorage.getItem('echo_opts') || '{}'); for (const k in OPT) if (k in o) OPT[k] = o[k]; } catch (e) {}
+  function saveOpt() { try { localStorage.setItem('echo_opts', JSON.stringify(OPT)); } catch (e) {} }
+  const STEERK = [0.65, 1.0, 1.35];
+  const HZ = 136.1;                     // every sound is 136.1 Hz (OM) or a pure octave / interval of it
+  let UID = 0;
+  let pausedFrom = 'PLAY';
+  let PAUSE_ROWS = [];
+  let MENU_SETT = null;
+  let DEAD_MENU = null, MENU_SINK = null, MENU_DESCEND = null, MENU_GUIDE = null;
+  let guidePage = 0, GUIDE_PREV = null, GUIDE_NEXT = null, GUIDE_BACK = null;
+  let guideDownX = 0, guideDownY = 0, guideSwiped = false;
+  let zen = false, zenRemain = 0, zenPulse = 0;   // zenRemain: seconds of *play* left; pauses stop the clock
+  let soundOpen = false;
+  const SINK_TIMES = [0, 5, 10, 15, 20];   // minutes; 0 = endless
+
+  // ---- Audio: everything synthesized, nothing loaded ---------------------
+  const AUD = {
+    ctx: null, mg: null, ambF: null, ambG: null, washG: null, noiseBuf: null, hb: 0, fxCD: 0,
+    init: function () {
+      if (AUD.ctx) return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const c = AUD.ctx = new AC();
+        AUD.mg = c.createGain(); AUD.mg.gain.value = OPT.snd ? 1 : 0; AUD.mg.connect(c.destination);
+        const nb = c.createBuffer(1, c.sampleRate, c.sampleRate);
+        const d = nb.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        AUD.noiseBuf = nb;
+        // pressure ambience: a deep choir — four detuned partials that beat slowly
+        const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 560;
+        const g = c.createGain(); g.gain.value = 0;
+        const partials = [[HZ, 0.4, 0, 0], [HZ * 1.5, 0.28, 0, 0], [HZ * 2, 0.16, 0.09, 1.4], [HZ * 3, 0.06, 0.07, 1.1]];
+        for (const p of partials) {
+          const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = p[0];
+          const og = c.createGain(); og.gain.value = p[1];
+          if (p[2]) { const l = c.createOscillator(); l.frequency.value = p[2]; const lg = c.createGain(); lg.gain.value = p[3]; l.connect(lg); lg.connect(o.frequency); l.start(); }
+          o.connect(og); og.connect(f); o.start();
+        }
+        f.connect(g); g.connect(AUD.mg);
+        AUD.ambF = f; AUD.ambG = g;
+        // danger: rising water — a low swell, no rhythm
+        const dO = c.createOscillator(); dO.type = 'sine'; dO.frequency.value = HZ * 0.5;
+        const dG = c.createGain(); dG.gain.value = 0;
+        dO.connect(dG); dG.connect(AUD.mg); dO.start();
+        AUD.dOsc = dO; AUD.dG = dG;
+        // current wash: low gurgling bed, gated
+        const ns = c.createBufferSource(); ns.buffer = nb; ns.loop = true;
+        const nf = c.createBiquadFilter(); nf.type = 'lowpass'; nf.frequency.value = HZ * 2; nf.Q.value = 0.8;
+        const ng = c.createGain(); ng.gain.value = 0;
+        ns.connect(nf); nf.connect(ng); ng.connect(AUD.mg); ns.start();
+        AUD.washG = ng;
+      } catch (e) {}
+    },
+    master: function () { if (AUD.ctx) AUD.mg.gain.setTargetAtTime(OPT.snd ? 1 : 0, AUD.ctx.currentTime, 0.03); },
+    resume: function () { try { if (AUD.ctx && AUD.ctx.state !== 'running') AUD.ctx.resume(); } catch (e) {} },   // iOS reports 'interrupted' after calls/Siri; resume from any non-running state
+    suspend: function () { try { if (AUD.ctx && AUD.ctx.state === 'running') AUD.ctx.suspend(); } catch (e) {} },
+    tone: function (freq, dur, vol, type, pan, glide, att, vib, vibHz, lp) {
+      if (!AUD.ctx || !OPT.snd) return;
+      const c = AUD.ctx, t = c.currentTime;
+      const o = c.createOscillator(); o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+      if (glide) o.frequency.exponentialRampToValueAtTime(Math.max(24, freq * glide), t + dur);
+      if (vib) { const l = c.createOscillator(); l.frequency.value = vibHz || 5; const lg = c.createGain(); lg.gain.value = vib; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + dur + 0.1); }
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + (att || 0.012));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      let head = o;
+      if (lp) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; f.Q.value = 0.45; o.connect(f); head = f; }
+      let n = g;
+      if (c.createStereoPanner && pan) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); n = p; }
+      head.connect(g); n.connect(AUD.mg); o.start(t); o.stop(t + dur + 0.05);
+    },
+    hiss: function (dur, vol, freq, pan, q, glide, att, ftype) {
+      if (!AUD.ctx || !OPT.snd) return;
+      const c = AUD.ctx, t = c.currentTime;
+      const s = c.createBufferSource(); s.buffer = AUD.noiseBuf;
+      const f = c.createBiquadFilter(); f.type = ftype || 'bandpass'; f.frequency.setValueAtTime(freq || 1800, t); f.Q.value = q || 1.2;
+      if (glide) f.frequency.exponentialRampToValueAtTime(Math.max(40, (freq || 1800) * glide), t + dur);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + (att || 0.01));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      let n = g;
+      if (c.createStereoPanner && pan != null) { const p = c.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); n = p; }
+      s.connect(f); f.connect(g); n.connect(AUD.mg); s.start(t); s.stop(t + dur + 0.05);
+    },
+    death: function () {
+      if (!AUD.ctx || !OPT.silence) return;
+      const c = AUD.ctx, t = c.currentTime;
+      AUD.mg.gain.cancelScheduledValues(t);
+      AUD.mg.gain.setTargetAtTime(0, t, 0.05);            // the water swallows everything
+      setTimeout(function () { AUD.master(); }, 1100);     // ...and nothing returns
+    }
+  };
+
+
+  function render() {
+    const t = now() / 1000;
+
+    // void background: deep pine, settling darker with depth
+    const depth = state === 'MENU' ? 0 : Math.max(0, me.y - me.startY);
+    const df = Math.min(1, depth / (H * 26));
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, rgb([12 - Math.round(df * 3), 18 - Math.round(df * 4), 16 - Math.round(df * 4)]));
+    g.addColorStop(1, rgb([7 - Math.round(df * 2), 11 - Math.round(df * 3), 9 - Math.round(df * 2)]));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
+    if (state === 'PLAY' || state === 'DEAD' || (state === 'PAUSE' && pausedFrom === 'PLAY')) {
+      ctx.translate(-camX, -camTop);
+      const top = camTop - sc(60), bot = camTop + H + sc(60);
+      const wl = me.x - W * 0.6, wr = me.x + W * 0.6;   // horizontal view bounds (+margin)
+
+      // the leviathan, vast in the deep
+      if (leviathan) drawLeviathan();
+
+      // background motes: parallax plankton, dark until the wave reaches them
+      for (const mo of motes) {
+        let sx = (mo.x - camX * mo.p) % W; if (sx < 0) sx += W;
+        let sy = (mo.y - camTop * mo.p) % H; if (sy < 0) sy += H;
+        const wx = sx + camX, wy = sy + camTop;
+        const lit = lightAt(wx, wy, mo.z);
+        const near = 1 - mo.d;
+        const a = lit * (0.55 + 0.8 * near);
+        if (a < 0.014) continue;
+        const r = mo.s * (1 + lit * 0.8 * near);
+        ctx.fillStyle = rgb(CYAN, a);
+        ctx.beginPath(); ctx.arc(wx, wy, r, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // currents — faint sideways-drifting streaks marking a band that carries you
+      for (const c of currents) {
+        if (c.y - c.h > bot || c.y + c.h < top) continue;
+        drawCurrent(c);
+      }
+
+      // dark anomalies — invisible until a pulse edge-lights them
+      for (const an of anomalies) {
+        if (an.y < top - an.r || an.y > bot + an.r || an.x < wl - an.r || an.x > wr + an.r) continue;
+        drawAnomaly(an);
+      }
+
+      // eels — dark undulating serpents, pulse-only
+      for (const e of eels) {
+        if (e.y < top - sc(300) || e.y > bot + sc(300)) continue;
+        drawEel(e);
+      }
+
+      // anglerfish — dark body (pulse-only) trailing a faintly-lit bobbing lure
+      for (const an of anglers) {
+        if (an.y < top - an.rx * 2 || an.y > bot + an.rx * 2 || an.x < wl - an.rx * 2 || an.x > wr + an.rx * 2) continue;
+        drawAngler(an);
+      }
+
+      // colossal squid — pulse-only pursuer
+      for (const sq of squids) {
+        if (sq.y < top - sc(200) || sq.y > bot + sc(200) || sq.x < wl - sc(200) || sq.x > wr + sc(200)) continue;
+        drawSquid(sq);
+      }
+
+      // rising bubbles — dark until a pulse finds them
+      for (const b of bubbles) {
+        if (b.y < top || b.y > bot || b.x < wl || b.x > wr) continue;
+        const lit = lightAt(b.x, b.y);
+        if (lit < 0.04) continue;                 // pulse-only, like the anomaly
+        const a = Math.min(1, lit * 1.5) * 0.95;
+        ctx.strokeStyle = rgb(BUBBLE, a); ctx.lineWidth = sc(1.5);
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = rgb(BUBBLE, a * 0.34);
+        ctx.beginPath(); ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.3, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // bioluminescent jellyfish (faintly self-lit even without a pulse)
+      for (const j of jellies) {
+        if (j.y < top - sc(140) || j.y > bot + sc(140) || j.x < wl - sc(80) || j.x > wr + sc(80)) continue;
+        drawJelly(j);
+      }
+
+      // siphonophore curtains (faintly lit stinging beads)
+      for (const s of siphos) {
+        const m = s.amp1 + s.amp2 + s.wander + sc(50);
+        if (s.y > bot || (s.y + s.n * s.seg) < top || s.x < wl - m || s.x > wr + m) continue;
+        drawSipho(s);
+      }
+
+      // expanding ping rings — the echo's only trace; flush red when near danger
+      const dgv = zen ? 0 : Math.min(1, dangerGlow);
+      const ringCol = [CYAN[0] + (DANGER[0] - CYAN[0]) * dgv, CYAN[1] + (DANGER[1] - CYAN[1]) * dgv, CYAN[2] + (DANGER[2] - CYAN[2]) * dgv];
+      for (const p of pings) {
+        const pr = p.range || sc(T.pingRange);
+        const ringR = p.age * sc(T.pingSpeed);
+        if (ringR > pr + sc(40)) continue;
+        const a = Math.max(0, 1 - p.age / (p.life || T.pingLife)) * 0.28;
+        if (a <= 0.01) continue;
+        ctx.lineWidth = sc(1.7); ctx.strokeStyle = rgb(ringCol, a);
+        ctx.beginPath(); ctx.arc(p.x, p.y, ringR, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      // creature
+      if (state === 'PLAY') drawCreature(t);
+
+      ctx.restore();
+    } else {
+      ctx.restore();
+      // menu ambient motes
+      for (const mo of motes) {
+        const tw = 0.4 + 0.4 * Math.sin(t * 1.5 + mo.tw);
+        ctx.fillStyle = rgb(CYAN, 0.06 + mo.p * 0.08 * tw);
+        ctx.beginPath(); ctx.arc(mo.x, mo.y, mo.s, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // death flash (full-screen reveal pulse)
+    if (deathFlash > 0) { ctx.fillStyle = rgb(CYAN, deathFlash * 0.12); ctx.fillRect(0, 0, W, H); }
+
+    // ---- HUD / overlays --------------------------------------------------
+    if (state === 'PLAY') {
+      SND.draw(ctx, String(scoreVal()), W / 2, SAFE_TOP + sc(74), sc(42), rgb(CYAN_HOT, 0.92), 'center', 0.08);
+      if (zen) {
+        SND.draw(ctx, 'METRES DEEP', W / 2, SAFE_TOP + sc(96), sc(9.5), rgb(DIMS, 0.85), 'center', 0.3);
+        if (zenRemain > 0) {
+          const rem = Math.max(0, zenRemain), mm = Math.floor(rem / 60), ss = Math.floor(rem % 60);
+          SND.draw(ctx, mm + (ss < 10 ? ':0' : ':') + ss, W / 2, SAFE_TOP + sc(116), sc(10), rgb(MARI, 0.7), 'center', 0.14);
+        }
+        SND.draw(ctx, 'SINK INTO THE DEEP', W / 2, H - SAFE_BOTTOM - sc(28), sc(9), rgb(DIMS, 0.5), 'center', 0.26);
+      } else {
+        SND.draw(ctx, 'METRES DEEP', W / 2, SAFE_TOP + sc(96), sc(9.5), rgb(DIMS, 0.85), 'center', 0.3);
+        const cdReady = pingCD <= 0;
+        ctx.fillStyle = cdReady ? rgb(MARI, 0.9) : rgb(DIMS, 0.35);
+        ctx.beginPath(); ctx.arc(W / 2, SAFE_TOP + sc(114), sc(3.5), 0, Math.PI * 2); ctx.fill();
+        SND.draw(ctx, 'TAP TO PULSE ' + '\u00b7' + ' HOLD LEFT / RIGHT TO STEER', W / 2, H - SAFE_BOTTOM - sc(28), sc(9), rgb(DIMS, 0.55), 'center', 0.22);
+      }
+
+      // pause pip (top-right)
+      ctx.fillStyle = rgb(DIMS, 0.65);
+      ctx.fillRect(W - sc(38), SAFE_TOP + sc(20), sc(4.5), sc(15));
+      ctx.fillRect(W - sc(29), SAFE_TOP + sc(20), sc(4.5), sc(15));
+    }
+    if (state === 'MENU') drawMenu(t);
+    if (state === 'DEAD') drawDead(t);
+    if (state === 'PAUSE') drawPause(t);
+    if (state === 'GUIDE') drawGuide(t);
+  }
+
+  function drawJelly(j) {                              // MEDUSA — translucent bell, canals, oral arms, fine tentacles
+    const x = j.x, y = j.y, r = j.r;
+    const lit = lightAt(x, y), L2 = Math.min(1, lit * 1.5);
+    const baseA = OPT.hivis ? 0.16 : 0.10;
+    const a = baseA + L2 * 0.75;
+    const pulse = 1 + 0.10 * Math.sin(j.t * 1.8);
+    const R = r * pulse;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // soft bell glow
+    const glowR = r + sc(T.jellyGlow);
+    const g = ctx.createRadialGradient(x, y, r * 0.2, x, y, glowR);
+    g.addColorStop(0, rgb(JELLY, (OPT.hivis ? 0.22 : 0.11) + L2 * 0.5));
+    g.addColorStop(1, rgb(JELLY, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, glowR, 0, Math.PI * 2); ctx.fill();
+    // translucent bell fill + dome with wavy margin
+    ctx.fillStyle = rgb(JELLY, a * 0.14);
+    ctx.beginPath(); ctx.arc(x, y, R, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = rgb(JELLY, a); ctx.lineWidth = sc(1.7);
+    ctx.beginPath();
+    for (let i = 0; i <= 18; i++) {
+      const ang = Math.PI + Math.PI * i / 18, rr = R * (1 + 0.045 * Math.sin(ang * 4));
+      const px = x + Math.cos(ang) * rr, py = y + Math.sin(ang) * rr * 0.9;
+      if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    }
+    ctx.stroke();
+    // radial canals
+    ctx.lineWidth = sc(1); ctx.strokeStyle = rgb(JELLY, a * 0.5);
+    for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x + k * R * 0.22, y - R * 0.5); ctx.lineTo(x + k * R * 0.26, y + R * 0.08); ctx.stroke(); }
+    // frilly oral arms
+    ctx.lineWidth = sc(1.4); ctx.strokeStyle = rgb(JELLY, a * 0.85);
+    for (let k = -2; k <= 2; k++) {
+      const bx = x + k * R * 0.3; ctx.beginPath(); ctx.moveTo(bx, y + R * 0.15);
+      for (let s = 1; s <= 6; s++) { const yy = y + R * 0.15 + s * r * 0.5; const xx = bx + Math.sin(j.t * 1.6 + k + s * 0.7) * (r * 0.35 + s * 1.4); ctx.lineTo(xx, yy); }
+      ctx.stroke();
+    }
+    // fine tentacles, varied length
+    ctx.lineWidth = sc(0.9); ctx.strokeStyle = rgb(JELLY, a * 0.55);
+    for (let m = -4; m <= 4; m++) {
+      const tx = x + m * R * 0.18; ctx.beginPath(); ctx.moveTo(tx, y + R * 0.08);
+      const len = 6 + (((m + 4) * 3) % 4);
+      for (let s = 1; s < len; s++) ctx.lineTo(tx + Math.sin(j.t * 2.4 + m + s * 0.4) * r * 0.32, y + R * 0.08 + s * r * 0.55);
+      ctx.stroke();
+    }
+  }
+
+  // a dark anomaly: a wrong, drifting shape you only find by pinging into it
+  function drawAnomaly(an) {                            // DECO APERTURE — counter-rotating faceted rings + dilating iris (pulse-only)
+    const ox = an.x, oy = an.y, r = an.r, t = an.t;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let ring = 0; ring < 4; ring++) {
+      const R = r * (1 - ring * 0.2), dir = ring % 2 ? 1 : -1, rot = t * 0.4 * dir, sides = 8 - ring;
+      ctx.lineWidth = ring === 0 ? sc(2) : sc(1.3);
+      for (let i = 1; i <= sides; i++) {
+        const a0 = rot + (i - 1) / sides * Math.PI * 2, a1 = rot + i / sides * Math.PI * 2;
+        const ax = ox + Math.cos(a0) * R, ay = oy + Math.sin(a0) * R * 0.92;
+        const bx = ox + Math.cos(a1) * R, by = oy + Math.sin(a1) * R * 0.92;
+        const lit = lightAt((ax + bx) / 2, (ay + by) / 2);
+        if (lit < 0.05) continue;
+        const L2 = Math.min(1, lit * 1.5);
+        ctx.strokeStyle = rgb(ANOM, (1 - ring * 0.16) * L2);
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      }
+    }
+    // dilating iris
+    const iris = r * 0.18 + r * 0.09 * Math.sin(t * 1.4), sd = 6;
+    ctx.lineWidth = sc(1.6);
+    for (let i = 1; i <= sd; i++) {
+      const a0 = -t * 0.6 + (i - 1) / sd * Math.PI * 2, a1 = -t * 0.6 + i / sd * Math.PI * 2;
+      const ax = ox + Math.cos(a0) * iris, ay = oy + Math.sin(a0) * iris;
+      const bx = ox + Math.cos(a1) * iris, by = oy + Math.sin(a1) * iris;
+      const lit = lightAt((ax + bx) / 2, (ay + by) / 2);
+      if (lit < 0.05) continue;
+      ctx.strokeStyle = rgb(ANOM, 0.9 * Math.min(1, lit * 1.5));
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    }
+    const litC = lightAt(ox, oy);
+    if (litC > 0.06) {
+      const gr = ctx.createRadialGradient(ox, oy, 0, ox, oy, r);
+      gr.addColorStop(0, rgb(ANOM, 0.11 * litC)); gr.addColorStop(1, rgb(ANOM, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(ox, oy, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // anglerfish: the lure is a lone warm light in the dark; a pulse reveals the body around it
+  function drawSquid(sq) {                              // pulse-only pursuer, edge-lit
+    const lit = lightAt(sq.x, sq.y);
+    if (lit < 0.04) return;
+    const a = Math.min(1, lit * 1.5);
+    const strike = sq.state === 'jet' ? 1 : sq.state === 'wind' ? (sq.stateT / 0.32) * 0.6 : sq.state === 'recover' ? Math.max(0, 1 - sq.stateT / 0.6) : 0;
+    const breathe = 1 + 0.10 * Math.sin(sq.t * 2.4) - strike * 0.12;   // stronger jet pulse
+    const undulate = Math.sin(sq.t * 1.6) * 0.14 * (1 - strike * 0.5); // whole-body sway
+    const w = sq.w * breathe, mLen = sq.mLen;
+    const BODY = [210, 214, 200];
+    ctx.save();
+    ctx.translate(sq.x, sq.y); ctx.rotate(sq.ang + undulate);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // mantle (tail points back, head/arms toward prey) — sides flex as it breathes
+    const flex = Math.sin(sq.t * 2.4) * w * 0.12;
+    const M = [[-mLen, 0], [-mLen * 0.5, -w - flex], [-mLen * 0.08, -w * 0.9], [w * 0.35, -w * 0.5], [w * 0.35, w * 0.5], [-mLen * 0.08, w * 0.9], [-mLen * 0.5, w + flex]];
+    ctx.beginPath(); ctx.moveTo(M[0][0], M[0][1]);
+    for (let i = 1; i < M.length; i++) { const p0 = M[i], p1 = M[(i + 1) % M.length], xc = (p0[0] + p1[0]) / 2, yc = (p0[1] + p1[1]) / 2; ctx.quadraticCurveTo(p0[0], p0[1], xc, yc); }
+    ctx.closePath();
+    ctx.fillStyle = rgb(BODY, a * 0.08); ctx.fill();
+    ctx.strokeStyle = rgb(BODY, a); ctx.lineWidth = sc(2); ctx.stroke();
+    // fins near the tail — travelling ripple along the edge
+    ctx.lineWidth = sc(1.5);
+    for (const sgn of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(-mLen * 0.3, sgn * w * 0.7);
+      for (let s = 0; s <= 6; s++) { const u = s / 6; ctx.lineTo(-mLen * (0.3 + u * 0.5), sgn * (w * 0.7 + Math.sin(u * 3.4 + sq.t * 5) * w * 0.5 * (0.4 + u))); }
+      ctx.stroke();
+    }
+    // photophores
+    for (let i = 0; i < 5; i++) { const px = -mLen * (0.12 + i * 0.16); ctx.fillStyle = rgb(MARI, a * (0.5 + 0.35 * Math.sin(sq.t * 3 + i))); ctx.beginPath(); ctx.arc(px, 0, sc(1.7), 0, Math.PI * 2); ctx.fill(); }
+    // eye
+    ctx.fillStyle = rgb(BODY, a); ctx.beginPath(); ctx.arc(w * 0.12, -w * 0.35, sc(3), 0, Math.PI * 2); ctx.fill();
+    // 8 arms fanning toward prey — curling with more life
+    ctx.strokeStyle = rgb(BODY, a * 0.9); ctx.lineWidth = sc(1.6);
+    for (let k = -3; k <= 3; k++) {
+      const spread = k * 0.16, len = mLen * 0.46 * (1 - strike * 0.3);
+      ctx.beginPath(); ctx.moveTo(w * 0.3, 0);
+      for (let s = 1; s <= 6; s++) { const u = s / 6, ang = spread + Math.sin(sq.t * 2.6 + k + u * 4) * 0.3 * (1 - strike * 0.5) + Math.sin(sq.t * 1.3 + u * 2) * 0.12; ctx.lineTo(w * 0.3 + Math.cos(ang) * len * u, Math.sin(ang) * len * u + k * sc(1.8)); }
+      ctx.stroke();
+    }
+    // two long hunting tentacles — writhe, then extend on the strike
+    ctx.lineWidth = sc(2);
+    for (const sgn of [-1, 1]) {
+      const reach = mLen * 0.55 + strike * sc(150);
+      const wob = Math.sin(sq.t * 3.2 + sgn) * sc(6) * (1 - strike * 0.7);
+      ctx.beginPath(); ctx.moveTo(w * 0.32, sgn * w * 0.2);
+      ctx.bezierCurveTo(reach * 0.4, sgn * (w * 0.6) + wob, reach * 0.75, sgn * (w * 0.3) - wob, reach, sgn * sc(3) + Math.sin(sq.t * 4 + sgn) * sc(3) * (1 - strike));
+      ctx.stroke();
+      ctx.fillStyle = rgb(BODY, a); ctx.beginPath(); ctx.arc(reach, sgn * sc(3) + Math.sin(sq.t * 4 + sgn) * sc(3) * (1 - strike), sc(3.2), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawAngler(an) {
+    const ox = an.x, oy = an.y, d = an.dir, S2 = an.shape;
+    const wx = x => ox + x * d, wy = y => oy + y;
+    const litHead = lightAt(ox + d * an.rx * 0.5, oy);
+    // solid dark mass when a pulse reaches it — reads as a body, not a wireframe
+    if (litHead > 0.04) {
+      ctx.fillStyle = rgb([5, 9, 14], 0.72 * litHead);
+      ctx.beginPath();
+      const O = S2.outline;
+      for (let i = 0; i < O.length; i++) { const X = wx(O[i][0]), Y = wy(O[i][1]); if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y); }
+      ctx.closePath(); ctx.fill();
+    }
+    const seg = (a, b, alpha, w, col) => {
+      const ax = wx(a[0]), ay = wy(a[1]), bx = wx(b[0]), by = wy(b[1]);
+      const lit = lightAt((ax + bx) / 2, (ay + by) / 2);
+      if (lit < 0.05) return;
+      ctx.strokeStyle = rgb(col, alpha * Math.min(1, lit * 1.5)); ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    };
+    const O = S2.outline;
+    for (let i = 1; i < O.length; i++) seg(O[i - 1], O[i], 0.9, sc(1.9), ANGLER);
+    for (const f of S2.tail) seg(f[0], f[1], 0.6, sc(1.4), ANGLER);
+    for (const f of S2.finP) seg(f[0], f[1], 0.5, sc(1.2), ANGLER);
+    for (const f of S2.finD) seg(f[0], f[1], 0.5, sc(1.2), ANGLER);
+    if (litHead > 0.05) {
+      for (const tt of S2.teeth) seg(tt[0], tt[1], 0.85, sc(1.2), [212, 226, 224]);
+      seg(S2.gill[0], S2.gill[1], 0.6, sc(1.2), ANGLER);
+      const ex = wx(S2.eye[0]), ey = wy(S2.eye[1]);
+      ctx.strokeStyle = rgb(ANGLER, 0.7 * litHead); ctx.lineWidth = sc(1.2);
+      ctx.beginPath(); ctx.arc(ex, ey, S2.eye[2], 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = rgb(ANGLER_LURE, 0.85 * litHead);
+      ctx.beginPath(); ctx.arc(ex, ey, S2.eye[2] * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+    // illicium rod arcing over the head to the esca (lure): faint always, bright on a pulse
+    const lx = ox + d * (an.rx * 0.95 + an.lureLen), ly = oy - an.ry * 0.78 + Math.sin(an.t * 1.6) * an.ry * 0.3;
+    const litL = lightAt(lx, ly);
+    ctx.strokeStyle = rgb(ANGLER, 0.12 + litL * 0.5); ctx.lineWidth = sc(1.3);
+    ctx.beginPath(); ctx.moveTo(ox + d * an.rx * 0.28, oy - an.ry * 0.9);
+    ctx.quadraticCurveTo(ox + d * an.rx * 0.7, oy - an.ry * 1.5, lx, ly); ctx.stroke();
+    const lr = sc(9) + sc(3) * Math.sin(an.t * 3);
+    const gl = ctx.createRadialGradient(lx, ly, 0, lx, ly, lr);
+    gl.addColorStop(0, rgb(ANGLER_LURE, (OPT.hivis ? 0.66 : 0.5) + litL * 0.4));
+    gl.addColorStop(1, rgb(ANGLER_LURE, 0));
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgb([255, 240, 208], 0.6 + litL * 0.4);
+    ctx.beginPath(); ctx.arc(lx, ly, sc(1.9), 0, Math.PI * 2); ctx.fill();
+  }
+
+  // eel: a dark ribbon of a body with a dorsal fin ridge, revealed sliver by sliver
+  function drawEel(e) {
+    const pts = e.pts;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const lit = lightAt(mx, my);
+      if (lit < 0.05) continue;
+      const L2 = Math.min(1, lit * 1.5);
+      const u = i / e.n, head = u < 0.08 ? u / 0.08 : 1;
+      const wd = e.w * (1 - 0.85 * u) * head;
+      let tx = b.x - a.x, ty = b.y - a.y; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L;
+      const nx = ty, ny = -tx;
+      ctx.lineWidth = sc(1.8); ctx.strokeStyle = rgb(EEL, L2);
+      ctx.beginPath(); ctx.moveTo(a.x + nx * wd, a.y + ny * wd); ctx.lineTo(b.x + nx * wd, b.y + ny * wd); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(a.x - nx * wd, a.y - ny * wd); ctx.lineTo(b.x - nx * wd, b.y - ny * wd); ctx.stroke();
+      ctx.lineWidth = sc(0.9); ctx.strokeStyle = rgb(EEL, 0.4 * L2);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      if (i % 2 === 0) {
+        const up = ny < 0 ? 1 : -1;
+        const bx0 = a.x + nx * wd * up, by0 = a.y + ny * wd * up;
+        const finH = e.w * (0.9 - 0.6 * u) * (0.5 + 0.5 * Math.sin(e.t * 5 + i));
+        ctx.lineWidth = sc(1); ctx.strokeStyle = rgb(EEL, 0.5 * L2);
+        ctx.beginPath(); ctx.moveTo(bx0, by0); ctx.lineTo(bx0 + nx * finH * up + tx * sc(2), by0 + ny * finH * up + ty * sc(2)); ctx.stroke();
+      }
+    }
+    // head: a wedge snout with a jaw line and eye, aimed along the heading
+    const h = pts[0], litH = lightAt(h.x, h.y);
+    if (litH > 0.05) {
+      const L2 = Math.min(1, litH * 1.5);
+      const tx = Math.cos(e.heading), ty = Math.sin(e.heading), nx = ty, ny = -tx, w = e.w;
+      const sx = h.x + tx * w * 2.0, sy = h.y + ty * w * 2.0;
+      ctx.fillStyle = rgb(EEL, 0.55 * litH);
+      ctx.beginPath();
+      ctx.moveTo(h.x + nx * w, h.y + ny * w);
+      ctx.quadraticCurveTo(sx + nx * w * 0.25, sy + ny * w * 0.25, sx, sy);
+      ctx.quadraticCurveTo(sx - nx * w * 0.25, sy - ny * w * 0.25, h.x - nx * w, h.y - ny * w);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = rgb(EEL, 0.75 * L2); ctx.lineWidth = sc(1.1);
+      ctx.beginPath(); ctx.moveTo(h.x + tx * w * 0.2, h.y + ty * w * 0.2); ctx.lineTo(sx, sy); ctx.stroke();
+      ctx.fillStyle = rgb([238, 240, 226], 0.9 * L2);
+      ctx.beginPath(); ctx.arc(h.x + tx * w * 0.5 + nx * w * 0.45, h.y + ty * w * 0.5 + ny * w * 0.45, sc(1.6), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // siphonophore: a swaying vertical string of faintly glowing stinging beads
+  function drawSipho(s) {                              // COLONY — fine curling stem, clustered bells up top, trailing tendrils
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const pts = [];
+    for (let k = 0; k < s.n; k++) pts.push(siphoBead(s, k));
+    // the stem (whole chain — this is the lethal length)
+    for (let k = 1; k < pts.length; k++) {
+      const a = pts[k - 1], b = pts[k];
+      const lit = lightAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), L2 = Math.min(1, lit * 1.5);
+      ctx.strokeStyle = rgb(SIPHO, ((OPT.hivis ? 0.12 : 0.07) + L2 * 0.55) * 0.7); ctx.lineWidth = sc(1.1);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+    }
+    // clustered translucent bells near the top
+    const nb = Math.min(5, s.n);
+    for (let k = 0; k < nb; k++) {
+      const b = pts[k], lit = lightAt(b[0], b[1]), L2 = Math.min(1, lit * 1.5);
+      const a = (OPT.hivis ? 0.18 : 0.11) + L2 * 0.8, br = s.br * (1.5 - k * 0.16);
+      const gr = ctx.createRadialGradient(b[0], b[1], 0, b[0], b[1], br * 2.6);
+      gr.addColorStop(0, rgb(SIPHO, a * 0.5)); gr.addColorStop(1, rgb(SIPHO, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b[0], b[1], br * 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = rgb(SIPHO, a); ctx.lineWidth = sc(1.3);
+      ctx.beginPath();
+      for (let i = 0; i <= 12; i++) { const ang = Math.PI + Math.PI * i / 12; const px = b[0] + Math.cos(ang) * br, py = b[1] + Math.sin(ang) * br * 0.8; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.stroke();
+      ctx.fillStyle = rgb([248, 238, 212], 0.35 + L2 * 0.5);
+      ctx.beginPath(); ctx.arc(b[0], b[1], s.br * 0.4, 0, Math.PI * 2); ctx.fill();
+    }
+    // trailing fine tendrils from the lower stem
+    ctx.lineWidth = sc(0.9);
+    for (let k = nb; k < pts.length; k += 2) {
+      const b = pts[k], lit = lightAt(b[0], b[1]), L2 = Math.min(1, lit * 1.5);
+      ctx.strokeStyle = rgb(SIPHO, (OPT.hivis ? 0.11 : 0.06) + L2 * 0.5);
+      const len = 4 + ((k * 5) % 5);
+      ctx.beginPath(); ctx.moveTo(b[0], b[1]);
+      for (let sJ = 1; sJ < len; sJ++) ctx.lineTo(b[0] + Math.sin(s.t * 2 + k + sJ * 0.5) * sc(4), b[1] + sJ * sc(6));
+      ctx.stroke();
+    }
+  }
+
+  // current: faint streaks flowing the way the water pushes; a band you sink through
+  function drawCurrent(cur) {
+    const flow = cur.t * cur.speed * 0.02;
+    for (let i = 0; i < cur.streaks.length; i++) {
+      const st = cur.streaks[i];
+      let f = (st.fx + cur.dir * flow * st.sp) % 1; if (f < 0) f += 1;
+      const wx = me.x + (f * 2 - 1) * W * 0.72;
+      const wy = cur.y + st.fy * cur.h * 0.9;
+      const edge = 1 - Math.abs(st.fy);           // fade toward band edges
+      const lit = lightAt(wx, wy);
+      const a = (0.05 + lit * 0.4) * edge;
+      if (a < 0.02) continue;
+      const grd = ctx.createLinearGradient(wx, wy, wx + cur.dir * st.len, wy);
+      grd.addColorStop(0, rgb(CURRENT, 0)); grd.addColorStop(1, rgb(CURRENT, a));
+      ctx.strokeStyle = grd; ctx.lineWidth = sc(1.4);
+      ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + cur.dir * st.len, wy); ctx.stroke();
+    }
+  }
+
+  function drawCreature(t) {
+    if (ECHO_LOOK === 'classic') return drawCreatureClassic(t);
+    return drawCreatureResonance(t);
+  }
+
+  // The echo as resonance: a white mote that is always faintly ringing outward,
+  // trailing itself as it falls, flaring softly each time it calls into the dark.
+  function drawCreatureResonance(t) {
+    const breath = 0.82 + 0.18 * Math.sin(t * 1.6);     // slow, calm
+    const flare = 1 + coreFlare * 0.7;
+    const glow = glowNow();
+    const cr0 = sc(T.cr);
+    const WHITE = [246, 243, 231];
+
+    // falling wake: a soft residue of where the sound has been
+    echoWake.push({ x: me.x, y: me.y });
+    if (echoWake.length > 16) echoWake.shift();
+    ctx.lineCap = 'round';
+    for (let i = 1; i < echoWake.length; i++) {
+      const f = i / echoWake.length;                    // 0 oldest .. 1 newest
+      ctx.strokeStyle = rgb(CYAN, 0.16 * f * f);
+      ctx.lineWidth = cr0 * (0.25 + 0.75 * f);
+      ctx.beginPath(); ctx.moveTo(echoWake[i - 1].x, echoWake[i - 1].y); ctx.lineTo(echoWake[i].x, echoWake[i].y); ctx.stroke();
+    }
+
+    // continuous resonance rings -> it always reads as an echo, even at rest
+    const RN = 3, ringMax = glow * 1.1;
+    for (let i = 0; i < RN; i++) {
+      const ph = ((t * 0.5) + i / RN) % 1;
+      const a = (1 - ph) * 0.16 * (0.7 + 0.3 * breath);
+      if (a < 0.012) continue;
+      ctx.strokeStyle = rgb(CYAN, a);
+      ctx.lineWidth = sc(1.4);
+      ctx.beginPath(); ctx.arc(me.x, me.y, ph * ringMax, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // outer self-glow (cyan halo)
+    const gr = ctx.createRadialGradient(me.x, me.y, 0, me.x, me.y, glow * flare);
+    gr.addColorStop(0, rgb(CYAN, 0.30 * breath * flare));
+    gr.addColorStop(1, rgb(CYAN, 0));
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(me.x, me.y, glow * flare, 0, Math.PI * 2); ctx.fill();
+
+    // danger tint
+    if (dangerGlow > 0.02) {
+      const dg = ctx.createRadialGradient(me.x, me.y, 0, me.x, me.y, glow);
+      dg.addColorStop(0, rgb(DANGER, 0.32 * dangerGlow));
+      dg.addColorStop(1, rgb(DANGER, 0));
+      ctx.fillStyle = dg;
+      ctx.beginPath(); ctx.arc(me.x, me.y, glow, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // inner bloom
+    const bl = ctx.createRadialGradient(me.x, me.y, 0, me.x, me.y, cr0 * 2.3 * flare);
+    bl.addColorStop(0, rgb(CYAN_HOT, 0.55 * flare));
+    bl.addColorStop(1, rgb(CYAN_HOT, 0));
+    ctx.fillStyle = bl;
+    ctx.beginPath(); ctx.arc(me.x, me.y, cr0 * 2.3 * flare, 0, Math.PI * 2); ctx.fill();
+
+    // luminous core + white center
+    ctx.fillStyle = rgb(CYAN_HOT, 0.95);
+    ctx.beginPath(); ctx.arc(me.x, me.y, (cr0 - sc(1)) * flare, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgb(WHITE, 1);
+    ctx.beginPath(); ctx.arc(me.x, me.y, Math.max(sc(2), (cr0 - sc(5))) * breath * flare, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawCreatureClassic(t) {
+    // the echo itself is never drawn. you are a sound in the dark — your only
+    // trace is the rings you send out, expanding from wherever you last called.
+  }
+
+  function drawMenu(t) {
+    const cx = W / 2, cy = H * 0.26;
+    // faint static rings + one live demo ping + core (the echo motif)
+    ctx.lineWidth = sc(1);
+    for (const rr of [sc(150), sc(110), sc(72)]) { ctx.strokeStyle = rgb(CYAN, 0.05); ctx.beginPath(); ctx.arc(cx, cy, rr, 0, Math.PI * 2); ctx.stroke(); }
+    const ringT = (t % 2.4) / 2.4;
+    if (ringT < 0.92) { ctx.strokeStyle = rgb(CYAN, (1 - ringT) * 0.45); ctx.lineWidth = sc(1.5); ctx.beginPath(); ctx.arc(cx, cy, ringT * sc(150), 0, Math.PI * 2); ctx.stroke(); }
+    const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, sc(52));
+    gr.addColorStop(0, rgb(CREA, 0.35)); gr.addColorStop(1, rgb(CREA, 0));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, sc(52), 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = rgb(CREA_HOT, 1); ctx.beginPath(); ctx.arc(cx, cy, sc(7), 0, Math.PI * 2); ctx.fill();
+
+    ctx.textAlign = 'center';
+    SND.draw(ctx, 'ECHO', cx, H * 0.29, sc(50), rgb(CYAN_HOT, 0.96), 'center', 0.2);
+    SND.draw(ctx, 'SEE WITH SOUND ' + '\u00b7' + ' SINK IN SILENCE', cx, H * 0.29 + sc(28), sc(9), rgb(DIMS, 0.85), 'center', 0.22);
+
+    const RW = Math.min(W - sc(52), sc(300)), bh = sc(50);
+    function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+    function pill(label, desc, stat, y, colArr, live) {
+      const bx = cx - RW / 2;
+      ctx.fillStyle = rgb(colArr, 0.05); rrect(bx, y, RW, bh, sc(13)); ctx.fill();
+      const bp = 0.6 + 0.25 * Math.sin(t * 2.2);
+      ctx.strokeStyle = rgb(colArr, live ? bp + 0.15 : 0.7); ctx.lineWidth = sc(1.6); rrect(bx, y, RW, bh, sc(13)); ctx.stroke();
+      SND.draw(ctx, label, cx, y + bh * 0.5 + sc(6), sc(16), rgb(colArr, 0.96), 'center', 0.16);
+      SND.draw(ctx, desc, cx, y + bh + sc(15), sc(7.5), rgb(DIMS, 0.72), 'center', 0.15);
+      if (stat) SND.draw(ctx, stat, cx, y + bh + sc(29), sc(9.5), rgb(JELLY, 0.72), 'center', 0.16);
+      return { x: bx, y: y, w: RW, h: bh };
+    }
+
+    MENU_DESCEND = pill('DESCEND', 'SEE WITH SOUND ' + '\u00b7' + ' SURVIVE THE DARK',
+      best > 0 ? 'DEEPEST ' + best + ' m' : '', H * 0.45, MARI, true);
+    const timerTxt = SINK_TIMES[OPT.sinkTimer] === 0 ? 'NO TIMER' : SINK_TIMES[OPT.sinkTimer] + ' MIN';
+    MENU_SINK = pill('SINK INTO THE DEEP', 'NO DANGER ' + '\u00b7' + ' ' + timerTxt,
+      (sinkBest > 0 || sinkDays > 0) ? ('DEEPEST ' + sinkBest + ' m  ' + '\u00b7' + '  ' + sinkDays + (sinkDays === 1 ? ' DAY' : ' DAYS')) : '', H * 0.65, JELLY, false);
+
+    const gw = SND.w('GUIDE', sc(10), 0.24), sw = SND.w('SETTINGS', sc(10), 0.24);
+    const gap = sc(26), totalW = gw + gap + sw, lx = cx - totalW / 2;
+    SND.draw(ctx, 'GUIDE', lx, H * 0.9, sc(10), rgb(DIMS, 0.8), 'left', 0.24);
+    SND.draw(ctx, '\u00b7', cx, H * 0.9, sc(10), rgb(DIMS, 0.4), 'center', 0);
+    SND.draw(ctx, 'SETTINGS', lx + gw + gap, H * 0.9, sc(10), rgb(DIMS, 0.8), 'left', 0.24);
+    MENU_GUIDE = { x: lx - sc(12), y: H * 0.9 - sc(20), w: gw + sc(20), h: sc(32) };
+    MENU_SETT = { x: lx + gw + gap - sc(8), y: H * 0.9 - sc(20), w: sw + sc(20), h: sc(32) };
+  }
+
+  // ---- Guide (paginated field notes) -------------------------------------
+  const GUIDE_PAGES = [
+    { title: 'THE ECHO', color: CYAN_HOT, rows: [
+      ['p', 'A SOUND LET GO'],
+      ['p', 'INTO THE BLACK,'],
+      ['p', 'AND FALLING STILL.'],
+      ['s'],
+      ['p', 'YOU ARE NOT SEEN.'],
+      ['p', 'YOU ARE ONLY HEARD.'],
+      ['s'],
+      ['p', 'PULSE,'],
+      ['p', 'AND THE DARK ANSWERS'],
+      ['p', 'IN LIGHT, AND IN SOUND.'],
+      ['s'],
+      ['p', 'THE DEEP KEEPS ONE MEASURE:'],
+      ['p', 'HOW FAR YOU FALL.'],
+      ['p', 'TO TOUCH A THING IS SILENCE.'],
+    ] },
+    { title: 'HOW TO DESCEND', color: MARI, rows: [
+      ['p', 'YOU SINK ON YOUR OWN.'],
+      ['p', 'YOU CANNOT STOP.'],
+      ['s'],
+      ['p', 'TAP TO PULSE. THE RING OF LIGHT'],
+      ['p', 'REVEALS WHATEVER IT CROSSES.'],
+      ['s'],
+      ['p', 'HOLD LEFT OR RIGHT OF CENTRE'],
+      ['p', 'TO STEER THAT WAY. HOLD HIGH'],
+      ['p', 'TO TURN HARD, LOW FOR CONTROL.'],
+      ['s'],
+      ['p', 'EACH PULSE MUST GATHER AGAIN.'],
+      ['p', 'WATCH THE PIP BELOW YOUR DEPTH.'],
+    ] },
+    { title: 'THE DEEP', color: CYAN_HOT, rows: [
+      ['p', 'THE WATER THICKENS AS YOU GO.'],
+      ['p', 'THREE DARKNESSES, EACH COLDER:'],
+      ['s'],
+      ['e', 'TWILIGHT', 'THE GENTLE DRIFT, SEEN EASILY.'],
+      ['e', 'MIDNIGHT', 'WHAT WAITS, AND IS ONLY HEARD.'],
+      ['e', 'ABYSS', 'WHAT HUNTS.'],
+      ['s'],
+      ['p', 'SOME THINGS GLOW, AND WARN YOU.'],
+      ['p', 'SOME STAY DARK'],
+      ['p', 'UNTIL YOUR PULSE FINDS THEM OUT.'],
+    ] },
+    { title: 'WHAT LIVES BELOW', color: JELLY, rows: [
+      ['e', 'MEDUSA', 'IT DRIFTS, IT GLOWS, IT STINGS.'],
+      ['e', 'COLONY', 'A CHAIN OF BELLS, ALL HUNGRY.'],
+      ['e', 'BUBBLE VENT', 'A RISING COLUMN. DARK TILL PULSED.'],
+      ['e', 'CURRENT', 'A HAND THAT PUSHES. IT DOES NOT KILL.'],
+      ['e', 'EEL', 'IT WINDS AND COILS. ALL OF IT STINGS.'],
+      ['e', 'ANOMALY', 'A DOOR IN THE DARK, UNSEEN TILL PULSED.'],
+      ['e', 'ANGLERFISH', 'THE LAMP IS A LIE; BELOW IT, THE MOUTH.'],
+      ['e', 'SQUID', 'IT LEAPS WHERE YOU LAST CRIED. THEN MOVE.'],
+      ['e', 'LEVIATHAN', 'OLD AND VAST AND INDIFFERENT. IT PASSES.'],
+    ] },
+    { title: 'SINK INTO THE DEEP', color: JELLY, rows: [
+      ['p', 'ANOTHER WAY DOWN,'],
+      ['p', 'WHERE NOTHING CAN REACH YOU.'],
+      ['s'],
+      ['p', 'THE ECHO BREATHES ON ITS OWN,'],
+      ['p', 'A SLOW TIDE, IN AND UNDER.'],
+      ['s'],
+      ['p', 'NO DEPTH TO WIN.'],
+      ['p', 'ONLY THE DEEP,'],
+      ['p', 'AND ITS ONE LONG NOTE, HELD.'],
+      ['s'],
+      ['p', 'SET A TIMER, OR SINK'],
+      ['p', 'UNTIL YOU CHOOSE TO RISE.'],
+    ] },
+    { title: 'LISTEN', color: MARI, rows: [
+      ['p', 'PLAY WITH SOUND.'],
+      ['p', 'THE DEEP HAS A VOICE.'],
+      ['s'],
+      ['p', 'EACH THING THAT LIVES DOWN HERE'],
+      ['p', 'ANSWERS FROM WHERE IT LIES,'],
+      ['p', 'FAINTER THE FARTHER IT IS.'],
+      ['s'],
+      ['p', 'ALL OF IT TUNED TO ONE NOTE,'],
+      ['p', 'SO THE WHOLE FALL HUMS IN KEY.'],
+      ['s'],
+      ['p', 'WEAR HEADPHONES.'],
+      ['p', 'THE DARK WILL SPEAK.'],
+    ] },
+  ];
+  function drawGuide(t) {
+    ctx.fillStyle = 'rgba(9,14,12,0.95)'; ctx.fillRect(0, 0, W, H);
+    const cx = W / 2, RW = Math.min(W - sc(52), sc(300)), marginX = cx - RW / 2;
+    const P = GUIDE_PAGES[guidePage];
+    ctx.textAlign = 'center';
+    let y = SAFE_TOP + sc(54);
+    SND.draw(ctx, P.title, cx, y, sc(18), rgb(P.color || CYAN_HOT, 0.96), 'center', 0.22);
+    ctx.strokeStyle = rgb(JELLY, 0.2); ctx.lineWidth = sc(1);
+    ctx.beginPath(); ctx.moveTo(marginX, y + sc(15)); ctx.lineTo(W - marginX, y + sc(15)); ctx.stroke();
+    y += sc(42);
+    for (const r of P.rows) {
+      if (r[0] === 's') { y += sc(10); continue; }
+      if (r[0] === 'p') { SND.draw(ctx, r[1], marginX, y, sc(9), rgb(CYAN, 0.82), 'left', 0.13); y += sc(18); continue; }
+      if (r[0] === 'e') {
+        SND.draw(ctx, r[1], marginX, y, sc(11.5), rgb(JELLY, 0.92), 'left', 0.14);
+        const desc = Array.isArray(r[2]) ? r[2] : [r[2]];
+        let dy = y + sc(14);
+        for (const dl of desc) { SND.draw(ctx, dl, marginX + sc(6), dy, sc(7.5), rgb(DIMS, 0.72), 'left', 0.12); dy += sc(11); }
+        y = dy + sc(7);
+      }
+    }
+    // ---- navigation ----
+    const n = GUIDE_PAGES.length, ny = H - SAFE_BOTTOM - sc(38);
+    const dotGap = sc(13), dx0 = cx - (n - 1) * dotGap / 2;
+    for (let i = 0; i < n; i++) { ctx.fillStyle = rgb(i === guidePage ? MARI : DIMS, i === guidePage ? 0.95 : 0.4); ctx.beginPath(); ctx.arc(dx0 + i * dotGap, ny, sc(2.6), 0, Math.PI * 2); ctx.fill(); }
+    if (guidePage > 0) {
+      const ax = marginX + sc(6); ctx.fillStyle = rgb(CYAN, 0.85);
+      ctx.beginPath(); ctx.moveTo(ax, ny); ctx.lineTo(ax + sc(10), ny - sc(8)); ctx.lineTo(ax + sc(10), ny + sc(8)); ctx.closePath(); ctx.fill();
+      GUIDE_PREV = { x: marginX - sc(18), y: ny - sc(24), w: sc(60), h: sc(48) };
+    } else GUIDE_PREV = null;
+    if (guidePage < n - 1) {
+      const ax = W - marginX - sc(6); ctx.fillStyle = rgb(CYAN, 0.85);
+      ctx.beginPath(); ctx.moveTo(ax, ny); ctx.lineTo(ax - sc(10), ny - sc(8)); ctx.lineTo(ax - sc(10), ny + sc(8)); ctx.closePath(); ctx.fill();
+      GUIDE_NEXT = { x: W - marginX - sc(42), y: ny - sc(24), w: sc(60), h: sc(48) };
+    } else GUIDE_NEXT = null;
+    SND.draw(ctx, 'BACK', cx, H - SAFE_BOTTOM - sc(4), sc(10), rgb(DIMS, 0.85), 'center', 0.2);
+    GUIDE_BACK = { x: cx - sc(44), y: H - SAFE_BOTTOM - sc(24), w: sc(88), h: sc(36) };
+  }
+  function handleGuideTap(mx, my) {
+    const hit = function (r) { return r && mx > r.x && mx < r.x + r.w && my > r.y && my < r.y + r.h; };
+    if (hit(GUIDE_BACK)) { state = 'MENU'; return; }
+    if (hit(GUIDE_PREV)) { guidePage = Math.max(0, guidePage - 1); return; }
+    if (hit(GUIDE_NEXT)) { guidePage = Math.min(GUIDE_PAGES.length - 1, guidePage + 1); return; }
+  }
+
+  // ---- Pause / settings panel --------------------------------------------
+  function drawPause(t) {
+    ctx.fillStyle = 'rgba(9,14,12,0.87)'; ctx.fillRect(0, 0, W, H);
+    PAUSE_ROWS = [];
+    const cx = W / 2, RW = Math.min(W - sc(44), sc(320));
+    const menu = pausedFrom === 'MENU';
+    let y = SAFE_TOP + sc(46);
+    ctx.textAlign = 'center';
+    SND.draw(ctx, menu ? 'SETTINGS' : 'PAUSED', cx, y, sc(19), rgb(CYAN_HOT, 0.95), 'center', 0.24);
+    y += sc(32);
+
+    function rrect(x, yy, w, h, r) {
+      ctx.beginPath(); ctx.moveTo(x + r, yy);
+      ctx.arcTo(x + w, yy, x + w, yy + h, r); ctx.arcTo(x + w, yy + h, x, yy + h, r);
+      ctx.arcTo(x, yy + h, x, yy, r); ctx.arcTo(x, yy, x + w, yy, r); ctx.closePath();
+    }
+    function action(label, color, alpha) {
+      const w = RW * 0.62, h = sc(30), bx = cx - w / 2, by = y;
+      ctx.globalAlpha = (alpha == null ? 0.5 : alpha); ctx.strokeStyle = color; ctx.lineWidth = sc(1.3);
+      rrect(bx, by, w, h, sc(9)); ctx.stroke(); ctx.globalAlpha = 1;
+      SND.draw(ctx, label, cx, by + h * 0.5 + sc(4.6), sc(13), color, 'center', 0.16);
+      PAUSE_ROWS.push({ x: bx - sc(6), y: by, w: w + sc(12), h: h, act: null });
+      const r = PAUSE_ROWS[PAUSE_ROWS.length - 1];
+      y += h + sc(11);
+      return r;
+    }
+    function header(label) {
+      y += sc(9);
+      SND.draw(ctx, label, cx - RW / 2, y, sc(8.5), rgb(JELLY, 0.72), 'left', 0.3);
+      ctx.strokeStyle = rgb(JELLY, 0.16); ctx.lineWidth = sc(1);
+      const lw = SND.w(label, sc(8.5), 0.3);
+      ctx.beginPath(); ctx.moveTo(cx - RW / 2 + lw + sc(12), y - sc(3)); ctx.lineTo(cx + RW / 2, y - sc(3)); ctx.stroke();
+      y += sc(15);
+    }
+    function row(label, desc, value, act, dim, indent) {
+      const lx = cx - RW / 2 + (indent ? sc(15) : 0);
+      const a = dim ? 0.32 : 0.9;
+      SND.draw(ctx, label, lx, y, sc(11), rgb(CYAN, a), 'left', 0.14);
+      const vcol = (value === 'OFF') ? rgb(DIMS, dim ? 0.3 : 0.8) : rgb(MARI, dim ? 0.4 : 0.95);
+      SND.draw(ctx, value, cx + RW / 2, y, sc(11), vcol, 'right', 0.14);
+      if (desc) SND.draw(ctx, desc, lx, y + sc(11.5), sc(6.8), rgb(DIMS, dim ? 0.28 : 0.55), 'left', 0.12);
+      if (indent) { ctx.strokeStyle = rgb(JELLY, dim ? 0.14 : 0.3); ctx.lineWidth = sc(1);
+        ctx.beginPath(); ctx.moveTo(cx - RW / 2 + sc(4), y - sc(9)); ctx.lineTo(cx - RW / 2 + sc(4), y + sc(5)); ctx.stroke(); }
+      PAUSE_ROWS.push({ x: cx - RW / 2 - sc(8), y: y - sc(13), w: RW + sc(16), h: desc ? sc(30) : sc(22), act: act });
+      y += desc ? sc(31) : sc(23);
+    }
+
+    // ---- commands ----
+    if (menu) {
+      action('BACK', rgb(MARI, 0.9)).act = 'resume';
+    } else {
+      action('RESUME', rgb(MARI, 0.6 + 0.4 * Math.sin(t * 2.5))).act = 'resume';
+      action('RESTART', rgb(CYAN, 0.75)).act = 'restart';
+      action('MAIN MENU', rgb(DIMS, 0.8)).act = 'mainmenu';
+    }
+
+    // ---- sink into the deep (menu only, promoted) ----
+    if (menu) {
+      header('SINK INTO THE DEEP');
+      row('SINK TIMER', 'AUTO-END SINK AFTER THIS LONG', SINK_TIMES[OPT.sinkTimer] === 0 ? 'NO TIMER' : SINK_TIMES[OPT.sinkTimer] + ' MIN', 'sinktimer');
+    }
+
+    // ---- sound (collapsible group) ----
+    const off = !OPT.snd;
+    header('SOUND');
+    {
+      SND.draw(ctx, 'ALL SOUND', cx - RW / 2 + sc(13), y, sc(11), rgb(CYAN, 0.9), 'left', 0.14);
+      const cxr = cx - RW / 2 + sc(4);
+      ctx.fillStyle = rgb(CYAN, 0.7); ctx.beginPath();
+      if (soundOpen) { ctx.moveTo(cxr - sc(3.2), y - sc(3)); ctx.lineTo(cxr + sc(3.2), y - sc(3)); ctx.lineTo(cxr, y - sc(7.2)); }
+      else { ctx.moveTo(cxr - sc(3.2), y - sc(6.5)); ctx.lineTo(cxr + sc(3.2), y - sc(6.5)); ctx.lineTo(cxr, y - sc(2.3)); }
+      ctx.closePath(); ctx.fill();
+      SND.draw(ctx, OPT.snd ? 'ON' : 'OFF', cx + RW / 2, y, sc(11), OPT.snd ? rgb(MARI, 0.95) : rgb(DIMS, 0.8), 'right', 0.14);
+      PAUSE_ROWS.push({ x: cx - RW / 2 - sc(8), y: y - sc(13), w: RW * 0.6, h: sc(23), act: 'soundopen' });
+      PAUSE_ROWS.push({ x: cx + RW * 0.14, y: y - sc(13), w: RW * 0.36 + sc(8), h: sc(23), act: 'snd' });
+      y += sc(23);
+    }
+    if (soundOpen) {
+      row('\u00b7 CALL', '', OPT.call ? 'ON' : 'OFF', 'call', off, true);
+      row('\u00b7 ECHOES', '', OPT.echo ? 'ON' : 'OFF', 'echo', off, true);
+      row('\u00b7 PRESSURE', '', OPT.amb ? 'ON' : 'OFF', 'amb', off, true);
+      row('\u00b7 DANGER', '', OPT.danger ? 'ON' : 'OFF', 'danger', off, true);
+      row('\u00b7 SILENCE', '', OPT.silence ? 'ON' : 'OFF', 'silence', off, true);
+      row('\u00b7 BUBBLES', '', OPT.fx ? 'ON' : 'OFF', 'fx', off, true);
+    }
+
+    // ---- gameplay ----
+    header('GAMEPLAY');
+    row('STEERING', 'HOW HARD THE ECHO PULLS', ['GENTLE', 'NORMAL', 'QUICK'][OPT.steer], 'steer');
+
+    // ---- accessibility ----
+    header('ACCESSIBILITY');
+    row('REDUCE MOTION', 'NO SHAKE OR FLASH ON IMPACT', OPT.rmotion ? 'ON' : 'OFF', 'rmotion');
+    row('HIGH VISIBILITY', 'BRIGHTER GLOW \u00b7 LONGER REVEAL', OPT.hivis ? 'ON' : 'OFF', 'hivis');
+  }
+
+  function drawDead(t) {
+    if (zen) {                                           // Sink mode closes gently — no silence, no red
+      const fade = Math.min(1, (now() - deadAt) / 1600);
+      ctx.fillStyle = 'rgba(9,14,12,' + (0.5 * fade) + ')'; ctx.fillRect(0, 0, W, H);
+      ctx.textAlign = 'center';
+      SND.draw(ctx, 'YOU SANK', W / 2, H * 0.42, sc(11), rgb(JELLY, 0.8 * fade), 'center', 0.32);
+      SND.draw(ctx, scoreVal() + ' m', W / 2, H * 0.52, sc(56), rgb(CYAN_HOT, 0.94 * fade), 'center', 0.08);
+      if (now() - deadAt > 1400) {
+        const p = 0.5 + 0.5 * Math.sin(t * 2);
+        SND.draw(ctx, 'TAP TO RETURN', W / 2, H * 0.66, sc(12), rgb(MARI, p), 'center', 0.2);
+      }
+      return;
+    }
+    const fade = Math.min(1, (now() - deadAt) / 1100);   // settle in slowly
+    ctx.fillStyle = 'rgba(9,14,12,' + (0.55 * fade) + ')'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    SND.draw(ctx, 'SILENCE', W / 2, H * 0.36, sc(13), rgb(DANGER, 0.85 * fade), 'center', 0.32);
+    const s = scoreVal();
+    SND.draw(ctx, s + ' m', W / 2, H * 0.48, sc(62), rgb(CYAN_HOT, 0.96 * fade), 'center', 0.08);
+    const isBest = s >= best && s > 0;
+    SND.draw(ctx, isBest ? 'NEW DEEPEST!' : 'DEEPEST ' + best + ' m', W / 2, H * 0.48 + sc(40), sc(12), isBest ? rgb(MARI, 0.95 * fade) : rgb(DIMS, 0.8 * fade), 'center', 0.2);
+    if (now() - deadAt > 1000) {
+      const p = 0.55 + 0.45 * Math.sin(t * 2.5);
+      SND.draw(ctx, 'TAP TO DESCEND AGAIN', W / 2, H * 0.66, sc(13), rgb(MARI, p), 'center', 0.18);
+      const mw = SND.w('MAIN MENU', sc(10), 0.24);
+      SND.draw(ctx, 'MAIN MENU', W / 2, H * 0.75, sc(10), rgb(DIMS, 0.8 * fade), 'center', 0.24);
+      DEAD_MENU = { x: W / 2 - mw / 2 - sc(16), y: H * 0.75 - sc(20), w: mw + sc(32), h: sc(32) };
+    } else DEAD_MENU = null;
+  }
+
+  // ---- Loop --------------------------------------------------------------
+  function frame() { update(); render(); requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { if (state === 'PLAY') { pausedFrom = 'PLAY'; state = 'PAUSE'; AUD.suspend(); } }
+    else { last = now(); acc = 0; }
+  });
+})();
+</script>
+</body>
+</html>
