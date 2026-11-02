@@ -1,135 +1,124 @@
 import './index.css'
-const projects = [
+
+const sections = [
   {
-    id: '001',
-    title: 'DEEP THOUGHT',
-    desc: 'A locally-running AI oracle. Powered by WebLLM — no server, no API key, no data leaving your machine. One question per consultation.',
-    tags: ['WebLLM', 'WebGPU', 'Local AI'],
-    href: '/deep-thought',
-    live: true,
+    label: 'Games',
+    projects: [
+      {
+        title: 'ECHO',
+        desc: 'You are a sound, sinking through black water. Pulse to see, steer to survive.',
+        status: 'Web',
+        href: '/echo/',
+      },
+      {
+        title: 'SALTED EARTH',
+        desc: 'Turn-based artillery in the spirit of the DOS classics. Up to four players.',
+        status: 'Web',
+        href: '/salted-earth/',
+      },
+      {
+        title: 'POWDER PANIC',
+        desc: 'SkiFree, dressed as Windows 3.1. Then spend your winnings at the Bar.',
+        status: 'Web',
+        href: '/powder-panic/',
+      },
+      {
+        title: 'MONKEY SHUTTLE',
+        desc: 'One-tap space arcade. A banana-powered rocket, the Moon to the edge of the solar system.',
+        status: 'Web · iOS soon',
+        href: '/monkey-shuttle/',
+      },
+    ],
   },
   {
-    id: '002',
-    title: 'NEWPLAN',
-    desc: 'A HOP-focused EHS platform for event learning and safety intelligence. Currently in development.',
-    tags: ['SaaS', 'EHS', 'HOP'],
-    href: 'https://heynewplan.com',
-    live: true,
+    label: 'Tools',
+    projects: [
+      {
+        title: 'LINEUP CARD',
+        desc: 'Youth baseball lineups. Drag-and-drop positions, batting orders, printable cards.',
+        status: 'Web',
+        href: '/lineup/',
+      },
+      {
+        title: 'DECISION WHEEL',
+        desc: 'Stop overthinking. Spin the wheel or race the horses and let something decide.',
+        status: 'Web',
+        href: '/decision-wheel/',
+      },
+      {
+        title: 'DEEP THOUGHT',
+        desc: 'An AI oracle that runs entirely in your browser. One question per consultation.',
+        status: 'Needs WebGPU',
+        href: '/deep-thought',
+      },
+    ],
   },
   {
-    id: '003',
-    title: 'LINEUP CARD',
-    desc: 'Youth baseball roster manager. Drag-and-drop fielding assignments, randomized batting orders, and printable lineup cards for game day.',
-    tags: ['Baseball', 'PWA', 'Drag & Drop'],
-    href: '/lineup/',
-    live: true,
-  },
-  {
-    id: '004',
-    title: 'MONKEY SHUTTLE',
-    desc: 'A one-tap space arcade game. Pilot a banana-powered rocket from the Moon to the edge of the solar system, dodging satellites and escaping black holes. Coming soon to the App Store.',
-    tags: ['HTML5 Canvas', 'Arcade', 'iOS'],
-    href: '/monkey-shuttle/',
-    live: true,
-  },
-  {
-    id: '005',
-    title: 'DECISION WHEEL',
-    desc: 'Two ways to stop overthinking. Spin the wheel or race the horses — either way, something decides for you. Tracks wins and handicaps past winners.',
-    tags: ['Game', 'Randomizer', 'Horse Race'],
-    href: '/decision-wheel/',
-    live: true,
-  },
-  {
-    id: '006',
-    title: 'POWDER PANIC',
-    desc: 'A SkiFree-style ski game dressed as Windows 3.1. Freestyle, slalom, terrain park, halfpipe and the Olympics, then spend your winnings at the Bar: bets with the regulars, darts, pool and a saloon piano.',
-    tags: ['HTML5 Canvas', 'Ski Game', 'Retro'],
-    href: '/powder-panic/',
-    live: true,
-  },
-  {
-    id: '007',
-    title: 'SALTED EARTH',
-    desc: 'Turn-based artillery in the spirit of the DOS classics. Nineteen weapons, destructible terrain, seven AI personalities and a tournament economy for up to four players. Plays in EGA or Windows 3.1, with touch controls on phones.',
-    tags: ['HTML5 Canvas', 'Artillery', 'Retro'],
-    href: '/salted-earth/',
-    live: true,
-  },
-  {
-    id: '008',
-    title: 'ECHO',
-    desc: 'You are a sound, sinking forever through black water. Pulse to see, steer to survive, and listen for what answers. Or sink into the deep, where nothing can touch you.',
-    tags: ['HTML5 Canvas', 'Sonar', 'Web Audio'],
-    href: '/echo/',
-    live: true,
-  },
-  {
-    id: '009',
-    title: 'MORE SOON',
-    desc: 'More projects are in progress. Check back.',
-    tags: [],
-    href: null,
-    live: false,
-    soon: true,
+    label: 'Work',
+    projects: [
+      {
+        title: 'NEWPLAN',
+        desc: 'Event learning and safety intelligence for EHS teams, built on HOP principles.',
+        status: 'In development',
+        href: 'https://heynewplan.com',
+        external: true,
+      },
+    ],
   },
 ]
 
-function ProjectCard({ project }) {
-  const isSoon = !project.live
-  const inner = (
-    <>
-      <div className="card-number">PROJECT — {project.id}</div>
+function ProjectCard({ project, index }) {
+  return (
+    <a
+      className="project-card"
+      href={project.href}
+      style={{ '--i': index }}
+      {...(project.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+    >
       <div className="card-title">{project.title}</div>
       <div className="card-desc">{project.desc}</div>
-      {isSoon ? (
-        <div className="card-soon-label">— coming soon —</div>
-      ) : (
-        <div className="card-footer">
-          <div className="card-tags">
-            {project.tags.map(t => (
-              <span className="card-tag" key={t}>{t}</span>
-            ))}
-          </div>
-          <span className="card-arrow">↗</span>
-        </div>
-      )}
-    </>
-  )
-  if (isSoon) {
-    return <div className="project-card card-soon">{inner}</div>
-  }
-  return (
-    <a className="project-card" href={project.href}>
-      {inner}
+      <div className="card-footer">
+        <span className="card-status">{project.status}</span>
+        <span className="card-arrow">↗</span>
+      </div>
     </a>
   )
 }
 
 export default function App() {
   const year = new Date().getFullYear()
+  let i = 0
   return (
     <>
       <header>
         <div className="masthead">
-          JOHN<span className="masthead-accent">SEN</span>
+          JOHNSEN
         </div>
         <div className="tagline-row">
           <span className="tagline">Aaron Johnsen &nbsp;·&nbsp; johnsen.world</span>
         </div>
       </header>
       <main>
-        <div className="section-label">Projects</div>
-        <div className="project-grid">
-          {projects.map(p => <ProjectCard key={p.id} project={p} />)}
-        </div>
+        {sections.map(section => (
+          <section className="project-section" key={section.label}>
+            <div className="section-label">
+              {section.label}
+              <span className="section-count">{String(section.projects.length).padStart(2, '0')}</span>
+            </div>
+            <div className="project-grid">
+              {section.projects.map(p => (
+                <ProjectCard key={p.title} project={p} index={i++} />
+              ))}
+            </div>
+          </section>
+        ))}
       </main>
       <footer>
         <span>© {year} Aaron Johnsen</span>
         <span>
           <a href="https://ajohnsen.com" target="_blank" rel="noreferrer">ajohnsen.com</a>
           &nbsp;·&nbsp;
-          <a href="https://github.com" target="_blank" rel="noreferrer">github</a>
+          <a href="https://github.com/aaronmartinj2" target="_blank" rel="noreferrer">github</a>
         </span>
       </footer>
     </>
