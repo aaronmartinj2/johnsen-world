@@ -50,6 +50,14 @@ const projects = [
   },
   {
     id: '007',
+    title: 'SALTED EARTH',
+    desc: 'Turn-based artillery in the spirit of the DOS classics. Nineteen weapons, destructible terrain, seven AI personalities and a tournament economy for up to four players. Plays in EGA or Windows 3.1, with touch controls on phones.',
+    tags: ['HTML5 Canvas', 'Artillery', 'Retro'],
+    href: '/salted-earth/',
+    live: true,
+  },
+  {
+    id: '008',
     title: 'MORE SOON',
     desc: 'More projects are in progress. Check back.',
     tags: [],

@@ -1,0 +1,5494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0000AA">
+<title>Salted Earth</title>
+<style>
+  /* ============================================================
+     SALTED EARTH — Slice 1
+     Authentic EGA 16-color palette, pixel-perfect rendering
+     ============================================================ */
+
+  :root {
+    /* EGA 16-color palette (canonical hex values) */
+    --ega-black:        #000000;
+    --ega-blue:         #0000AA;
+    --ega-green:        #00AA00;
+    --ega-cyan:         #00AAAA;
+    --ega-red:          #AA0000;
+    --ega-magenta:      #AA00AA;
+    --ega-brown:        #AA5500;
+    --ega-lightgray:    #AAAAAA;
+    --ega-darkgray:     #555555;
+    --ega-lightblue:    #5555FF;
+    --ega-lightgreen:   #55FF55;
+    --ega-lightcyan:    #55FFFF;
+    --ega-lightred:     #FF5555;
+    --ega-lightmagenta: #FF55FF;
+    --ega-yellow:       #FFFF55;
+    --ega-white:        #FFFFFF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: var(--ega-black);
+    color: var(--ega-lightgray);
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-weight: bold;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  #game-frame {
+    border: 2px solid var(--ega-darkgray);
+    background: var(--ega-black);
+    display: flex;
+    flex-direction: column;
+    width: 640px;
+    overflow: hidden;
+    /* Render at internal 640×400 but display at 2x (or auto-scale) for big
+       crisp EGA pixels. JS may set --game-scale to override the default.
+       image-rendering: pixelated keeps the canvas sharp regardless of scale. */
+    transform: scale(var(--game-scale, 2));
+    transform-origin: center center;
+  }
+
+  /* In-game pause button — sits in the top-left of the play area. Small so it
+     stays out of the way; scales with the frame. On touch devices the corner
+     ‖ button (.tc-pause) handles this instead, so hide this one there. */
+  #game-pause-btn {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.45);
+    color: var(--ega-lightgray);
+    border: 1px solid var(--ega-darkgray);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 11px;
+    letter-spacing: 1px;
+    line-height: 1;
+    padding: 4px 7px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+
+  #game-pause-btn:hover { opacity: 1; color: var(--ega-yellow); }
+
+  body.touch-mode #game-pause-btn { display: none; }
+
+  #game-fullscreen-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 20;
+    background: rgba(0, 0, 0, 0.45);
+    color: var(--ega-lightgray);
+    border: 1px solid var(--ega-darkgray);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 13px;
+    line-height: 1;
+    padding: 3px 6px;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+
+  #game-fullscreen-btn:hover { opacity: 1; color: var(--ega-yellow); }
+
+  /* On touch, the corner pause sits top-right; shift fullscreen left of it */
+  body.touch-mode #game-fullscreen-btn { right: 50px; }
+
+  #canvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: var(--ega-black);
+    cursor: crosshair;
+  }
+
+  #hud {
+    background: var(--ega-blue);
+    color: var(--ega-yellow);
+    padding: 4px 6px;
+    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-top: 2px solid var(--ega-darkgray);
+    width: 100%;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  /* Container for the player cards row. Distributes N cards evenly. */
+  #player-cards {
+    display: flex;
+    gap: 4px;
+    justify-content: space-between;
+  }
+
+  .player-card {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 2px 4px;
+    background: rgba(0, 0, 0, 0.25);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .player-card.active {
+    background: rgba(255, 255, 85, 0.18);
+    outline: 1px solid var(--ega-yellow);
+  }
+
+  .player-card.dead {
+    opacity: 0.45;
+  }
+
+  .player-card .pname {
+    font-weight: bold;
+  }
+
+  .player-card .ptype {
+    color: var(--ega-darkgray);
+    font-size: 9px;
+  }
+
+  /* Center info strip — wind/round/turn */
+  #center-info {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    padding-top: 2px;
+    border-top: 1px solid var(--ega-darkgray);
+  }
+
+  .label { color: var(--ega-lightcyan); }
+  .value { color: var(--ega-white); min-width: 18px; display: inline-block; }
+
+  #weapon-bar {
+    background: var(--ega-black);
+    color: var(--ega-yellow);
+    padding: 4px 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top: 1px solid var(--ega-darkgray);
+    width: 100%;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  #weapon-bar .value {
+    color: var(--ega-yellow);
+    font-weight: bold;
+    min-width: auto;
+  }
+
+  #weapon-bar .hint {
+    color: var(--ega-darkgray);
+    margin-left: auto;
+    font-size: 10px;
+  }
+
+  /* ============================================================
+     Overlays — start, shop, results
+     ============================================================ */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--ega-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .overlay-panel {
+    background: var(--ega-black);
+    border: 2px solid var(--ega-darkgray);
+    color: var(--ega-lightgray);
+    padding: 24px 32px;
+    min-width: 480px;
+    max-width: 720px;
+    max-height: 90vh;
+    overflow-y: auto;
+    text-align: center;
+    font-family: 'Courier New', 'Consolas', monospace;
+  }
+
+  .overlay-panel h1 {
+    color: var(--ega-yellow);
+    font-size: 32px;
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+  }
+
+  .overlay-panel h2 {
+    color: var(--ega-yellow);
+    font-size: 18px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: var(--ega-lightcyan);
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+
+  .config-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 16px 0;
+    gap: 16px;
+  }
+
+  .config-row label {
+    color: var(--ega-lightcyan);
+    font-size: 14px;
+  }
+
+  .config-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .config-buttons button {
+    background: var(--ega-darkgray);
+    color: var(--ega-lightgray);
+    border: 1px solid var(--ega-lightgray);
+    font-family: inherit;
+    font-weight: bold;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .config-buttons button:hover {
+    background: var(--ega-blue);
+    color: var(--ega-white);
+  }
+
+  .config-buttons button.selected {
+    background: var(--ega-yellow);
+    color: var(--ega-black);
+    border-color: var(--ega-yellow);
+  }
+
+  .big-btn {
+    background: var(--ega-yellow);
+    color: var(--ega-black);
+    border: 2px solid var(--ega-yellow);
+    font-family: inherit;
+    font-weight: bold;
+    padding: 10px 32px;
+    font-size: 16px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+
+  .big-btn:hover {
+    background: var(--ega-white);
+    border-color: var(--ega-white);
+  }
+
+  .medium-btn {
+    background: var(--ega-darkgray);
+    color: var(--ega-lightgray);
+    border: 1px solid var(--ega-lightgray);
+    font-family: inherit;
+    font-weight: bold;
+    padding: 6px 22px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  .medium-btn:hover {
+    background: var(--ega-blue);
+    color: var(--ega-white);
+  }
+
+  .footer-text {
+    color: var(--ega-darkgray);
+    font-size: 10px;
+    margin-top: 18px;
+  }
+
+  /* Shop */
+  .shop-panel {
+    min-width: 580px;
+    text-align: left;
+  }
+
+  .shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--ega-darkgray);
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+  }
+
+  .shop-subhead {
+    color: var(--ega-lightcyan);
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .cash-display {
+    color: var(--ega-lightgreen);
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  #shop-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .shop-cat-header {
+    color: var(--ega-yellow);
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin: 6px 0 2px 0;
+  }
+
+  .shop-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 8px;
+    background: var(--ega-black);
+    border: 1px solid var(--ega-darkgray);
+    font-size: 12px;
+  }
+
+  .shop-item:hover {
+    border-color: var(--ega-lightgray);
+  }
+
+  .shop-item .item-name {
+    color: var(--ega-white);
+  }
+
+  .shop-item .item-price {
+    color: var(--ega-yellow);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  .shop-item .item-owned {
+    color: var(--ega-lightcyan);
+    min-width: 70px;
+    text-align: right;
+  }
+
+  .shop-item .item-buy {
+    display: flex;
+    gap: 4px;
+  }
+
+  .shop-item .item-buy button {
+    background: var(--ega-darkgray);
+    color: var(--ega-lightgray);
+    border: 1px solid var(--ega-lightgray);
+    width: 26px;
+    height: 22px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+  }
+
+  .shop-item .item-buy button:hover {
+    background: var(--ega-blue);
+    color: var(--ega-white);
+  }
+
+  .shop-item .item-buy button:disabled {
+    background: var(--ega-black);
+    color: var(--ega-darkgray);
+    border-color: var(--ega-darkgray);
+    cursor: not-allowed;
+  }
+
+  .shop-footer {
+    margin-top: 16px;
+    text-align: center;
+    border-top: 1px solid var(--ega-darkgray);
+    padding-top: 12px;
+  }
+
+  /* Results */
+  #results-body {
+    text-align: left;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+
+  .player-result {
+    border: 1px solid var(--ega-darkgray);
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+
+  .player-result.champion {
+    border-color: var(--ega-yellow);
+  }
+
+  .player-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--ega-white);
+    font-weight: bold;
+    font-size: 14px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ega-darkgray);
+    margin-bottom: 6px;
+  }
+
+  .player-result.champion .player-result-header {
+    color: var(--ega-yellow);
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px 16px;
+    font-size: 11px;
+  }
+
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .stat-label {
+    color: var(--ega-lightcyan);
+  }
+
+  .stat-val {
+    color: var(--ega-white);
+  }
+
+  .favorite-weapons {
+    margin-top: 8px;
+    color: var(--ega-darkgray);
+    font-size: 10px;
+    font-style: italic;
+  }
+  .p1-color { color: var(--ega-lightred); }
+  .p2-color { color: var(--ega-lightgreen); }
+  .p3-color { color: var(--ega-lightcyan); }
+  .p4-color { color: var(--ega-yellow); }
+
+  #message {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ega-black);
+    color: var(--ega-yellow);
+    border: 2px solid var(--ega-yellow);
+    padding: 10px 20px;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    display: none;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  #message.show { display: block; }
+
+
+  .ai-thinking {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ega-black);
+    color: var(--ega-lightcyan);
+    border: 1px solid var(--ega-lightcyan);
+    padding: 4px 10px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    display: none;
+    pointer-events: none;
+    z-index: 8;
+  }
+
+  .ai-thinking.show { display: block; }
+
+  .quip {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ega-yellow);
+    color: var(--ega-black);
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    display: none;
+    pointer-events: none;
+    z-index: 9;
+    border: 1px solid var(--ega-black);
+  }
+
+  .quip.show { display: block; }
+  /* ============================================================
+     Instructions screen
+     ============================================================ */
+  .instructions-panel {
+    max-height: 86vh;
+    overflow-y: auto;
+    text-align: left;
+    max-width: 560px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .instructions-panel h2 { text-align: center; }
+
+  .instr-section { margin: 18px 0; }
+
+  /* Accordion headers. Native <details>/<summary> — no JS needed, and the
+     disclosure state is keyboard- and screen-reader-accessible for free. */
+  .instr-section > summary {
+    color: var(--ega-lightcyan);
+    font-size: 13px;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--ega-darkgray);
+    padding: 8px 4px 6px 22px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    position: relative;
+    list-style: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* Hide the browser's default triangle in both engines */
+  .instr-section > summary::-webkit-details-marker { display: none; }
+  .instr-section > summary::marker { content: ''; }
+
+  /* Custom indicator: + when closed, − when open */
+  .instr-section > summary::before {
+    content: '+';
+    position: absolute;
+    left: 4px;
+    top: 7px;
+    color: var(--ega-yellow);
+    font-size: 14px;
+    line-height: 1;
+    width: 12px;
+    text-align: center;
+  }
+
+  .instr-section[open] > summary::before { content: '\2212'; }
+
+  .instr-section > summary:hover,
+  .instr-section[open] > summary {
+    color: var(--ega-white);
+  }
+
+  .instr-section p {
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--ega-lightgray);
+    margin: 6px 0;
+  }
+
+  .instr-note {
+    color: var(--ega-darkgray) !important;
+    font-style: italic;
+  }
+
+  .instr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .instr-table th {
+    color: var(--ega-lightcyan);
+    text-align: left;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .instr-table td {
+    padding: 3px 6px;
+    border-bottom: 1px solid rgba(85, 85, 85, 0.35);
+    color: var(--ega-lightgray);
+  }
+
+  .instr-table td:first-child { color: var(--ega-white); white-space: nowrap; }
+
+  .instr-weapon-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(85, 85, 85, 0.35);
+  }
+
+  .instr-weapon-row .wname { color: var(--ega-white); min-width: 110px; }
+  .instr-weapon-row .wdesc { color: var(--ega-lightgray); flex: 1; }
+  .instr-weapon-row .wprice { color: var(--ega-yellow); white-space: nowrap; }
+
+  .instructions-panel .big-btn { display: block; margin: 18px auto 4px; }
+
+  /* ------------------------------------------------------------
+     Compact chrome in touch mode.
+     In landscape on a phone, vertical space is the binding constraint on
+     how large the canvas can scale. Shrinking the HUD and weapon bar
+     reclaims ~22px of frame height, which the canvas gets instead.
+     ------------------------------------------------------------ */
+  body.touch-mode #hud {
+    padding: 2px 4px;
+    font-size: 9px;
+    gap: 1px;
+    border-top-width: 1px;
+  }
+
+  body.touch-mode .player-card { padding: 1px 3px; gap: 3px; }
+  body.touch-mode .player-card .ptype { display: none; }
+
+  body.touch-mode #weapon-bar {
+    padding: 2px 6px;
+    font-size: 10px;
+    gap: 6px;
+  }
+
+  body.touch-mode #player-cards { gap: 2px; }
+
+  /* Keyboard-only hints are noise on a touch device */
+  body.touch-mode .kbd-only { display: none; }
+
+  /* ============================================================
+     Touch controls
+     Visible only when body has .touch-mode. Fixed clusters at the
+     left/right screen edges with iOS safe-area padding. All buttons
+     use touch-action:none so presses don't scroll/zoom the page.
+     ============================================================ */
+  #touch-controls { display: none; }
+
+  body.touch-mode #touch-controls { display: block; }
+
+  /* Menus (z-index 100) must not be covered by the controls (z-index 500) */
+  body.touch-mode.overlay-open #touch-controls { display: none; }
+
+  /* While touch mode is on, prevent accidental page scroll/zoom */
+  body.touch-mode {
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .tc-cluster {
+    position: fixed;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .tc-left  { left:  calc(8px + env(safe-area-inset-left, 0px)); }
+  .tc-right { right: calc(8px + env(safe-area-inset-right, 0px)); }
+
+  .tc-btn {
+    background: rgba(85, 85, 85, 0.55);
+    color: var(--ega-white);
+    border: 1px solid rgba(170, 170, 170, 0.6);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 17px;
+    width: 44px;
+    height: 44px;
+    border-radius: 7px;
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tc-btn:active, .tc-btn.tc-held {
+    background: rgba(255, 255, 85, 0.75);
+    color: var(--ega-black);
+  }
+
+  .tc-dpad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tc-dpad-mid {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .tc-dpad-label {
+    color: rgba(170, 170, 170, 0.7);
+    font-size: 8px;
+    text-align: center;
+    line-height: 1.1;
+    width: 26px;
+  }
+
+  .tc-drive {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .tc-fuel {
+    color: var(--ega-lightgreen);
+    font-size: 12px;
+    min-width: 22px;
+    text-align: center;
+  }
+
+  .tc-weapon-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .tc-fire {
+    background: rgba(170, 0, 0, 0.75);
+    color: var(--ega-white);
+    border: 2px solid rgba(255, 85, 85, 0.9);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 13px;
+    letter-spacing: 1px;
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tc-fire:active {
+    background: rgba(255, 85, 85, 0.95);
+  }
+
+  .tc-pause {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    z-index: 500;
+    background: rgba(85, 85, 85, 0.5);
+    color: var(--ega-lightgray);
+    border: 1px solid rgba(170, 170, 170, 0.5);
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 7px;
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Rotate prompt — fills screen in portrait on touch devices */
+  #rotate-prompt {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    background: var(--ega-black);
+    color: var(--ega-yellow);
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+
+  body.touch-mode.portrait #rotate-prompt { display: flex; }
+
+  .rotate-inner { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+
+  .rotate-icon {
+    font-size: 64px;
+    animation: rotateHint 2s ease-in-out infinite;
+  }
+
+  .rotate-sub {
+    color: var(--ega-darkgray);
+    font-size: 12px;
+  }
+
+  @keyframes rotateHint {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(-90deg); }
+  }
+  /* ============================================================
+     WINDOWS 3.1 THEME
+     Opt-in UI chrome, scoped entirely under body.theme-win31. The EGA game
+     canvas is never touched — only the surrounding menus, dialogs, buttons,
+     HUD and weapon bar change. Bevel convention: raised = light top/left +
+     dark bottom/right; sunken = the inverse.
+     ============================================================ */
+  body.theme-win31 {
+    --w-face:#C0C0C0; --w-shadow:#808080; --w-dark:#000000; --w-light:#FFFFFF;
+    --w-title:#000080; --w-titletext:#FFFFFF; --w-text:#000000; --w-desktop:#008080;
+    background: var(--w-desktop);
+  }
+
+  /* Overlays sit on the teal Program Manager desktop instead of black */
+  body.theme-win31 .overlay { background: var(--w-desktop); }
+
+  /* Each overlay panel becomes a 3.1 window: gray face, raised outer bevel */
+  body.theme-win31 .overlay-panel {
+    background: var(--w-face);
+    color: var(--w-text);
+    font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+    border: 2px solid;
+    border-color: var(--w-light) var(--w-dark) var(--w-dark) var(--w-light);
+    box-shadow: 1px 1px 0 var(--w-shadow);
+    padding: 0 16px 16px;
+    text-align: left;
+  }
+
+  /* The panel heading (h1 on start, h2 elsewhere) becomes the blue title bar.
+     Negative side margins bleed it to the window edges; top padding is 0 so it
+     sits flush, then an inset 2px strip reads as the title bar's own frame. */
+  body.theme-win31 .overlay-panel h1,
+  body.theme-win31 .overlay-panel h2 {
+    background: var(--w-title);
+    color: var(--w-titletext);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0;
+    text-align: left;
+    margin: 2px -14px 14px;
+    padding: 3px 8px;
+    text-transform: none;
+  }
+
+  body.theme-win31 .subtitle {
+    color: var(--w-text);
+    font-size: 12px;
+    margin-bottom: 16px;
+  }
+
+  body.theme-win31 .config-row label,
+  body.theme-win31 .footer-text {
+    color: var(--w-text);
+  }
+
+  /* Button groups keep their markup/JS; restyled as raised 3.1 buttons.
+     Selected = sunken (pressed-in), which reads as the active choice. */
+  body.theme-win31 .config-buttons button,
+  body.theme-win31 .big-btn,
+  body.theme-win31 .medium-btn {
+    background: var(--w-face);
+    color: var(--w-text);
+    font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+    font-weight: bold;
+    letter-spacing: 0;
+    border: 2px solid;
+    border-color: var(--w-light) var(--w-dark) var(--w-dark) var(--w-light);
+    border-radius: 0;
+  }
+
+  body.theme-win31 .config-buttons button:hover,
+  body.theme-win31 .big-btn:hover,
+  body.theme-win31 .medium-btn:hover {
+    background: var(--w-face);
+    color: var(--w-text);
+  }
+
+  body.theme-win31 .config-buttons button:active,
+  body.theme-win31 .big-btn:active,
+  body.theme-win31 .medium-btn:active,
+  body.theme-win31 .config-buttons button.selected {
+    border-color: var(--w-dark) var(--w-light) var(--w-light) var(--w-dark);
+    background: var(--w-face);
+    color: var(--w-text);
+  }
+
+  /* The default/primary button (START, BACK, DONE) gets the focus ring 3.1
+     gave default dialog buttons. */
+  body.theme-win31 .big-btn {
+    outline: 1px solid var(--w-dark);
+    outline-offset: 1px;
+  }
+
+  /* In-game chrome: HUD and weapon bar become gray beveled panels. The player
+     cards and center strip become sunken wells, matching dialog client areas. */
+  body.theme-win31 #hud,
+  body.theme-win31 #weapon-bar {
+    background: var(--w-face);
+    color: var(--w-text);
+    border-top: 2px solid var(--w-light);
+    font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  body.theme-win31 .player-card {
+    background: var(--w-light);
+    border: 1px solid;
+    border-color: var(--w-shadow) var(--w-light) var(--w-light) var(--w-shadow);
+  }
+
+  body.theme-win31 .player-card.active {
+    outline: 1px solid var(--w-title);
+    background: #fff;
+  }
+
+  body.theme-win31 #center-info { border-top-color: var(--w-shadow); }
+  body.theme-win31 .label { color: var(--w-title); }
+  body.theme-win31 .value { color: var(--w-text); }
+  /* #weapon-bar .value is an ID rule (yellow) — needs ID-level override here */
+  body.theme-win31 #weapon-bar .value { color: var(--w-text); }
+  body.theme-win31 #weapon-bar { color: var(--w-text); }
+
+  /* Shop header: let the h2 title bar span full width, cash drops below it */
+  body.theme-win31 .shop-header {
+    display: block;
+    border-bottom-color: var(--w-shadow);
+  }
+  body.theme-win31 .cash-display { color: #006000; }
+  body.theme-win31 .shop-subhead { color: var(--w-text); }
+  body.theme-win31 .shop-cat-header { color: var(--w-title); }
+
+  /* Shop/instructions rows read as entries in a sunken white list box */
+  body.theme-win31 .instr-weapon-row { border-color: var(--w-shadow); color: var(--w-text); }
+  body.theme-win31 .shop-item {
+    background: var(--w-light);
+    border-color: var(--w-shadow);
+    color: var(--w-text);
+  }
+  body.theme-win31 .shop-item .item-name { color: var(--w-text); }
+  body.theme-win31 .shop-item .item-price { color: #006000; }
+  body.theme-win31 .shop-item .item-owned { color: var(--w-title); }
+  body.theme-win31 .shop-item:hover { background: #e8e8e8; border-color: var(--w-title); }
+
+  /* Shop buy buttons get the same raised-bevel treatment */
+  body.theme-win31 .shop-item .item-buy button {
+    background: var(--w-face);
+    color: var(--w-text);
+    font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+    font-weight: bold;
+    border: 2px solid;
+    border-color: var(--w-light) var(--w-dark) var(--w-dark) var(--w-light);
+    border-radius: 0;
+  }
+  body.theme-win31 .shop-item .item-buy button:active {
+    border-color: var(--w-dark) var(--w-light) var(--w-light) var(--w-dark);
+  }
+  body.theme-win31 .shop-item .item-buy button:disabled {
+    background: var(--w-face);
+    color: var(--w-shadow);
+    border-color: var(--w-shadow) var(--w-light) var(--w-light) var(--w-shadow);
+  }
+
+  /* Instructions panel: dark text on the gray window instead of EGA cyan/gray */
+  body.theme-win31 .instr-section > summary {
+    color: var(--w-text);
+    border-bottom-color: var(--w-shadow);
+  }
+  body.theme-win31 .instr-section > summary::before { color: var(--w-title); }
+  body.theme-win31 .instr-section[open] > summary,
+  body.theme-win31 .instr-section > summary:hover { color: var(--w-title); }
+  body.theme-win31 .instr-section p,
+  body.theme-win31 .instr-table td,
+  body.theme-win31 .instr-note { color: var(--w-text); }
+  body.theme-win31 .instr-table th { color: var(--w-title); }
+
+  /* The in-canvas corner buttons stay legible on the gray chrome */
+  body.theme-win31 #game-pause-btn,
+  body.theme-win31 #game-fullscreen-btn {
+    background: var(--w-face);
+    color: var(--w-text);
+    border: 2px solid;
+    border-color: var(--w-light) var(--w-dark) var(--w-dark) var(--w-light);
+    opacity: 0.9;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- Start screen -->
+<div id="start-screen" class="overlay">
+  <div class="overlay-panel">
+    <h1>SALTED EARTH</h1>
+    <div class="subtitle">Classic turn-based artillery combat</div>
+
+    <div class="config-row">
+      <label>Players:</label>
+      <div class="config-buttons" id="player-count-buttons">
+        <button data-count="2" class="selected">2</button>
+        <button data-count="3">3</button>
+        <button data-count="4">4</button>
+      </div>
+    </div>
+
+    <div id="player-type-rows"></div>
+
+    <div class="config-row">
+      <label>Rounds in tournament:</label>
+      <div class="config-buttons" id="rounds-buttons">
+        <button data-rounds="1">1</button>
+        <button data-rounds="3" class="selected">3</button>
+        <button data-rounds="5">5</button>
+        <button data-rounds="10">10</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Starting cash:</label>
+      <div class="config-buttons" id="cash-buttons">
+        <button data-cash="5000">$5K</button>
+        <button data-cash="10000" class="selected">$10K</button>
+        <button data-cash="20000">$20K</button>
+        <button data-cash="50000">$50K</button>
+      </div>
+    </div>
+    <button id="start-btn" class="big-btn">START</button>
+    <button id="settings-btn" class="medium-btn">SETTINGS</button>
+    <button id="instructions-btn" class="medium-btn">INSTRUCTIONS</button>
+    <div class="footer-text kbd-only">
+      Controls: <b>←/→</b> aim · <b>↑/↓</b> power · <b>Z/X</b> weapon · <b>A/D</b> drive (battery) · <b>SPACE</b> fire · <b>ESC</b> pause
+    </div>
+  </div>
+</div>
+
+<!-- Settings overlay -->
+<div id="settings-screen" class="overlay" style="display:none;">
+  <div class="overlay-panel">
+    <h2>SETTINGS</h2>
+    <div class="config-row">
+      <label>Theme:</label>
+      <div class="config-buttons" id="theme-buttons">
+        <button data-theme="ega" class="selected">DOS / EGA</button>
+        <button data-theme="win31">Windows 3.1</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Sound:</label>
+      <div class="config-buttons" id="sound-buttons">
+        <button data-sound="on" class="selected">On</button>
+        <button data-sound="off">Off</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Palette:</label>
+      <div class="config-buttons" id="palette-buttons">
+        <button data-palette="EGA" class="selected">EGA</button>
+        <button data-palette="CGA_CYAN">CGA Cyan</button>
+        <button data-palette="CGA_MAGENTA">CGA Magenta</button>
+        <button data-palette="MODERN">Modern</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Wind:</label>
+      <div class="config-buttons" id="wind-mode-buttons">
+        <button data-wind="off">Off</button>
+        <button data-wind="constant" class="selected">Constant</button>
+        <button data-wind="per_turn">Per Turn</button>
+        <button data-wind="per_shot">Per Shot</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Gravity:</label>
+      <div class="config-buttons" id="gravity-buttons">
+        <button data-gravity="0.5">Low</button>
+        <button data-gravity="1.0" class="selected">Normal</button>
+        <button data-gravity="1.5">High</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Terrain:</label>
+      <div class="config-buttons" id="terrain-buttons">
+        <button data-terrain="hills" class="selected">Hills</button>
+        <button data-terrain="peaks">Peaks</button>
+        <button data-terrain="valleys">Valleys</button>
+        <button data-terrain="mountain">Mountain</button>
+        <button data-terrain="flat">Flat</button>
+      </div>
+    </div>
+    <div class="config-row">
+      <label>Touch:</label>
+      <div class="config-buttons" id="touch-buttons">
+        <button data-touch="auto" class="selected">Auto</button>
+        <button data-touch="on">On</button>
+        <button data-touch="off">Off</button>
+      </div>
+    </div>
+    <button id="settings-back-btn" class="big-btn">BACK</button>
+  </div>
+</div>
+
+<!-- Instructions overlay -->
+<div id="instructions-screen" class="overlay" style="display:none;">
+  <div class="overlay-panel instructions-panel">
+    <h2>INSTRUCTIONS</h2>
+
+    <details class="instr-section" open>
+      <summary>HOW TO PLAY</summary>
+      <p>Last tank standing wins the round. Aim your barrel, set your power,
+      pick a weapon, and fire. Shells arc under gravity and drift with the
+      wind — watch the WIND readout in the HUD and adjust. Terrain is fully
+      destructible: craters open up, dirt settles, and tanks fall if the
+      ground is blasted out from under them (falling hurts unless you have a
+      parachute).</p>
+      <p>Between rounds, spend your winnings in the shop on bigger weapons and
+      defensive gear. Cash earns 5% interest each round, and prizes are paid
+      for damage dealt, kills, and survival. The player with the most round
+      wins at the end of the tournament is champion.</p>
+    </details>
+
+    <details class="instr-section">
+      <summary>CONTROLS</summary>
+      <table class="instr-table">
+        <tr><th></th><th>KEYBOARD</th><th>TOUCH</th></tr>
+        <tr><td>Aim barrel</td><td>&#8592; / &#8594;</td><td>&#9664; &#9654; pad</td></tr>
+        <tr><td>Power</td><td>&#8593; / &#8595;</td><td>&#9650; &#9660; pad</td></tr>
+        <tr><td>Change weapon</td><td>Z / X</td><td>&#8722; / +</td></tr>
+        <tr><td>Fire</td><td>SPACE</td><td>FIRE button</td></tr>
+        <tr><td>Drive (battery)</td><td>A / D</td><td>&#10232; &#10233;</td></tr>
+        <tr><td>Pause</td><td>ESC</td><td>II button</td></tr>
+      </table>
+      <p class="instr-note">Hold a key or button to repeat — power ramps up fast when held.</p>
+    </details>
+
+    <details class="instr-section">
+      <summary>THE ARMORY</summary>
+      <p class="instr-note">Baby Missile is free and unlimited. Everything else is bought in the shop.</p>
+      <div id="instr-weapons"></div>
+    </details>
+
+    <details class="instr-section">
+      <summary>DEFENSIVE GEAR</summary>
+      <div id="instr-defense"></div>
+      <p><b>Batteries also power driving.</b> With a battery active, each turn
+      you can either heal or spend the charge driving your tank (A/D, up to 30
+      pixels). Drive off a cliff and you'll fall — bring a parachute. Shields
+      auto-deploy at round start (strongest first) and absorb damage until
+      depleted.</p>
+    </details>
+
+    <details class="instr-section">
+      <summary>OPPONENTS</summary>
+      <table class="instr-table">
+        <tr><td>Useless</td><td>Sometimes fires the wrong way entirely</td></tr>
+        <tr><td>Moron</td><td>Random aim, right general direction</td></tr>
+        <tr><td>Pooter</td><td>Random angle, sensible power</td></tr>
+        <tr><td>Shooter</td><td>Simulates its shots — a real threat</td></tr>
+        <tr><td>Cyborg</td><td>Fine-tuned aim, smart weapon choice, saves heavy weapons for the kill</td></tr>
+        <tr><td>Lunatic</td><td>Buys the biggest bombs it can afford and lets them fly</td></tr>
+        <tr><td>Sitting Duck</td><td>Barely fights back — target practice</td></tr>
+      </table>
+      <p class="instr-note">In 3-4 player games, AIs gang up on whoever is weakest. Don't be weakest.</p>
+    </details>
+
+    <details class="instr-section">
+      <summary>TIPS</summary>
+      <p>Fire a Tracer first to learn the wind. Dirt weapons are underrated —
+      burying an opponent is as good as hitting them. Rollers follow the
+      terrain downhill, so shoot uphill of a tank in a valley. And the Reaper's
+      skull means exactly what you think it means.</p>
+    </details>
+
+    <button id="instructions-back-btn" class="big-btn">BACK</button>
+  </div>
+</div>
+
+<!-- Pause overlay -->
+<div id="pause-screen" class="overlay" style="display:none;">
+  <div class="overlay-panel">
+    <h2>PAUSED</h2>
+    <div style="margin: 16px 0;">
+      <button id="resume-btn" class="big-btn" style="display:block; margin: 6px auto;">RESUME</button>
+      <button id="pause-settings-btn" class="medium-btn" style="display:block; margin: 6px auto;">SETTINGS</button>
+      <button id="quit-btn" class="medium-btn" style="display:block; margin: 6px auto;">QUIT TO START</button>
+    </div>
+    <div class="footer-text kbd-only">Press ESC to resume</div>
+  </div>
+</div>
+
+<!-- Touch controls (shown on touch devices / when enabled in settings) -->
+<div id="touch-controls">
+  <!-- Left cluster: aim + power d-pad, drive underneath -->
+  <div class="tc-cluster tc-left">
+    <div class="tc-dpad">
+      <button class="tc-btn tc-up"    data-action="powerUp">▲</button>
+      <div class="tc-dpad-mid">
+        <button class="tc-btn tc-aim-l" data-action="aimLeft">◀</button>
+        <span class="tc-dpad-label">AIM<br>PWR</span>
+        <button class="tc-btn tc-aim-r" data-action="aimRight">▶</button>
+      </div>
+      <button class="tc-btn tc-down"  data-action="powerDown">▼</button>
+    </div>
+    <div class="tc-drive" id="tc-drive" style="display:none;">
+      <button class="tc-btn tc-drive-l" data-action="driveLeft">⟸</button>
+      <span class="tc-fuel" id="tc-fuel">30</span>
+      <button class="tc-btn tc-drive-r" data-action="driveRight">⟹</button>
+    </div>
+  </div>
+
+  <!-- Right cluster: weapon prev/next + FIRE -->
+  <div class="tc-cluster tc-right">
+    <div class="tc-weapon-row">
+      <button class="tc-btn tc-wpn" data-action="weaponPrev">−</button>
+      <button class="tc-btn tc-wpn" data-action="weaponNext">+</button>
+    </div>
+    <button class="tc-fire" id="tc-fire" data-action="fire">FIRE</button>
+  </div>
+
+  <!-- Pause corner button -->
+  <button class="tc-pause" id="tc-pause" data-action="pause">II</button>
+</div>
+
+<!-- Rotate prompt (portrait on touch devices) -->
+<div id="rotate-prompt">
+  <div class="rotate-inner">
+    <div class="rotate-icon">⟳</div>
+    <div>ROTATE YOUR DEVICE</div>
+    <div class="rotate-sub">Salted Earth plays in landscape</div>
+  </div>
+</div>
+
+<!-- Shop screen -->
+<div id="shop-screen" class="overlay" style="display:none;">
+  <div class="overlay-panel shop-panel">
+    <div class="shop-header">
+      <h2>BATTLE SHOP — <span id="shop-player">P1</span></h2>
+      <div class="cash-display">Cash: $<span id="shop-cash">10000</span></div>
+    </div>
+    <div class="shop-subhead">Round <span id="shop-round">1</span> of <span id="shop-total-rounds">3</span></div>
+    <div id="shop-items"></div>
+    <div class="shop-footer">
+      <button id="shop-done-btn" class="big-btn">DONE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tournament results -->
+<div id="results-screen" class="overlay" style="display:none;">
+  <div class="overlay-panel">
+    <h1 id="results-title">TOURNAMENT OVER</h1>
+    <div id="results-body"></div>
+    <button id="results-restart-btn" class="big-btn">NEW TOURNAMENT</button>
+  </div>
+</div>
+
+<div id="game-frame">
+  <div style="position: relative;">
+    <canvas id="canvas" width="640" height="400"></canvas>
+    <button id="game-pause-btn" title="Pause (ESC)">II</button>
+    <button id="game-fullscreen-btn" title="Fullscreen (F)">⛶</button>
+    <div id="message"></div>
+    <div id="quip" class="quip"></div>
+    <div id="ai-thinking" class="ai-thinking">THINKING...</div>
+  </div>
+  <div id="hud">
+    <div id="player-cards"></div>
+    <div id="center-info">
+      <span id="wind-readout"><span class="label">WIND</span><span class="value" id="wind">0</span></span>
+      <span class="label">RND</span><span class="value" id="round-display">1/3</span>
+      <span class="label">TURN</span><span class="value" id="turn">P1</span>
+    </div>
+  </div>
+  <div id="weapon-bar">
+    <span class="label">WEAPON</span>
+    <span class="value" id="weapon-name">Baby Missile</span>
+    <span class="label">AMMO</span>
+    <span class="value" id="weapon-ammo">∞</span>
+    <span class="label" style="margin-left:8px;">ANGLE</span>
+    <span class="value" id="hud-angle">45°</span>
+    <span class="label">POWER</span>
+    <span class="value" id="hud-power">250</span>
+    <span class="hint" id="weapon-hint">Z/X to change</span>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SALTED EARTH — Slice 1
+   ============================================================ */
+
+const CANVAS_W = 640;
+const CANVAS_H = 400;
+
+const EGA = {
+  BLACK:        '#000000',
+  BLUE:         '#0000AA',
+  GREEN:        '#00AA00',
+  CYAN:         '#00AAAA',
+  RED:          '#AA0000',
+  MAGENTA:      '#AA00AA',
+  BROWN:        '#AA5500',
+  LIGHTGRAY:    '#AAAAAA',
+  DARKGRAY:     '#555555',
+  LIGHTBLUE:    '#5555FF',
+  LIGHTGREEN:   '#55FF55',
+  LIGHTCYAN:    '#55FFFF',
+  LIGHTRED:     '#FF5555',
+  LIGHTMAGENTA: '#FF55FF',
+  YELLOW:       '#FFFF55',
+  WHITE:        '#FFFFFF'
+};
+
+const SKY_BANDS = [
+  { y: 0.00, color: EGA.BLACK },
+  { y: 0.20, color: EGA.BLUE },
+  { y: 0.55, color: EGA.LIGHTBLUE },
+  { y: 0.75, color: EGA.LIGHTCYAN }
+];
+
+const TERRAIN_LAYERS = [
+  { depth: 0,   color: EGA.LIGHTGREEN },
+  { depth: 6,   color: EGA.GREEN },
+  { depth: 14,  color: EGA.BROWN },
+  { depth: 40,  color: EGA.RED },
+  { depth: 120, color: EGA.MAGENTA }
+];
+
+/* ------------------------------------------------------------
+   Weapons
+   Each weapon defines visual + impact behavior. All weapons share the same
+   physics (gravity, wind), so trajectories are determined entirely by angle,
+   power, and wind — regardless of which weapon is fired.
+   onImpact(x, y, owner) returns array of detonation events:
+     { x, y, radius, damage, kind }
+   where kind selects the explosion visual + terrain effect. Current kinds:
+     'normal' (default), 'plasma', 'deathshead', 'nuke', 'heavy-roller',
+     'baby-nuke', 'napalm-primary', 'dirt', 'dirt-wide', 'wall', 'tracer'
+   ------------------------------------------------------------ */
+const WEAPONS = {
+  BABY_MISSILE: {
+    id: 'BABY_MISSILE',
+    name: 'Baby Missile',
+    short: 'BabyMis',
+    color: EGA.YELLOW,
+    size: 2,
+    onImpact(x, y) {
+      return [{ x, y, radius: 14, damage: 35, kind: 'normal' }];
+    }
+  },
+  MISSILE: {
+    id: 'MISSILE',
+    name: 'Missile',
+    short: 'Missile',
+    color: EGA.LIGHTRED,
+    size: 2,
+    onImpact(x, y) {
+      return [{ x, y, radius: 22, damage: 60, kind: 'normal' }];
+    }
+  },
+  BABY_NUKE: {
+    id: 'BABY_NUKE',
+    name: 'Baby Nuke',
+    short: 'BabyNuke',
+    color: EGA.LIGHTMAGENTA,
+    size: 3,
+    trail: 'heavy', // leaves a dim flight trail
+    onImpact(x, y) {
+      return [{ x, y, radius: 35, damage: 90, kind: 'baby-nuke' }];
+    }
+  },
+  NUKE: {
+    id: 'NUKE',
+    name: 'Nuke',
+    short: 'Nuke',
+    color: EGA.WHITE,
+    size: 4,
+    trail: 'heavy',
+    onImpact(x, y) {
+      return [{ x, y, radius: 55, damage: 140, kind: 'nuke' }];
+    }
+  },
+  FUNKY_BOMB: {
+    id: 'FUNKY_BOMB',
+    name: 'Chaos Bomb',
+    short: 'Funky',
+    color: EGA.LIGHTGREEN,
+    size: 3,
+    // Scatters 5 sub-bomblets that explode where they land
+    scatter: true,
+    scatterCount: 5,
+    onImpact(x, y) {
+      // First impact is small; the scattered bomblets do the real damage
+      return [{ x, y, radius: 8, damage: 10, kind: 'normal' }];
+    }
+  },
+  MIRV: {
+    id: 'MIRV',
+    name: 'MIRV',
+    short: 'MIRV',
+    color: EGA.LIGHTCYAN,
+    size: 3,
+    trail: 'heavy',
+    // Airburst — splits at apex into 4 sub-warheads
+    airburst: true,
+    airburstCount: 4,
+    onImpact(x, y) {
+      // Each sub-warhead from MIRV calls back with this on its own impact
+      return [{ x, y, radius: 18, damage: 45, kind: 'normal' }];
+    }
+  },
+  NAPALM: {
+    id: 'NAPALM',
+    name: 'Napalm',
+    short: 'Napalm',
+    color: EGA.BROWN,
+    size: 3,
+    onImpact(x, y) {
+      // Lays down a wide, shallow burning patch
+      return [{ x, y, radius: 30, damage: 70, kind: 'napalm-primary' }];
+    }
+  },
+  DIRT_BALL: {
+    id: 'DIRT_BALL',
+    name: 'Dirt Ball',
+    short: 'DirtBall',
+    color: EGA.BROWN,
+    size: 3,
+    onImpact(x, y) {
+      // Adds dirt to the terrain instead of removing it
+      return [{ x, y, radius: 25, damage: 5, kind: 'dirt' }];
+    }
+  },
+  ROLLER: {
+    id: 'ROLLER',
+    name: 'Roller',
+    short: 'Roller',
+    color: EGA.DARKGRAY,
+    size: 3,
+    roller: true,
+    onImpact(x, y) {
+      return [{ x, y, radius: 24, damage: 55, kind: 'normal' }];
+    }
+  },
+  HEAVY_ROLLER: {
+    id: 'HEAVY_ROLLER',
+    name: 'Heavy Roller',
+    short: 'HvyRoll',
+    color: EGA.LIGHTGRAY,
+    size: 4,
+    roller: true,
+    onImpact(x, y) {
+      return [{ x, y, radius: 36, damage: 90, kind: 'heavy-roller' }];
+    }
+  },
+  DEATHS_HEAD: {
+    id: 'DEATHS_HEAD',
+    name: 'Reaper',
+    short: 'Reaper',
+    color: EGA.RED,
+    size: 4,
+    trail: 'heavy',
+    deathsHead: true, // triggers the skull-shaped detonation flash
+    onImpact(x, y) {
+      return [{ x, y, radius: 75, damage: 200, kind: 'deathshead' }];
+    }
+  },
+  DEATHS_SKULL: {
+    id: 'DEATHS_SKULL',
+    name: "Reaper's Dozen",
+    short: 'RprDozen',
+    color: EGA.LIGHTMAGENTA,
+    size: 4,
+    trail: 'heavy',
+    // MIRV-12: splits into 12 sub-warheads at apex
+    airburst: true,
+    airburstCount: 12,
+    onImpact(x, y) {
+      return [{ x, y, radius: 22, damage: 55, kind: 'normal' }];
+    }
+  },
+  PLASMA_BLAST: {
+    id: 'PLASMA_BLAST',
+    name: 'Plasma Blast',
+    short: 'Plasma',
+    color: EGA.LIGHTCYAN,
+    size: 3,
+    pulse: true, // alternates colors mid-flight
+    onImpact(x, y) {
+      // Wider radius, distinct color flash + electric arcs
+      return [{ x, y, radius: 40, damage: 100, kind: 'plasma' }];
+    }
+  },
+  LIQUID_DIRT: {
+    id: 'LIQUID_DIRT',
+    name: 'Liquid Dirt',
+    short: 'LqDirt',
+    color: EGA.BROWN,
+    size: 3,
+    onImpact(x, y) {
+      // Wider, flatter dirt deposit
+      return [{ x, y, radius: 40, damage: 3, kind: 'dirt-wide' }];
+    }
+  },
+  MAGIC_WALL: {
+    id: 'MAGIC_WALL',
+    name: 'Magic Wall',
+    short: 'MagWall',
+    color: EGA.LIGHTMAGENTA,
+    size: 3,
+    onImpact(x, y) {
+      // Builds a vertical dirt pillar at impact point
+      return [{ x, y, radius: 30, damage: 2, kind: 'wall' }];
+    }
+  },
+  HEAVENS_FURY: {
+    id: 'HEAVENS_FURY',
+    name: 'Sky Strike',
+    short: 'HvnFury',
+    color: EGA.YELLOW,
+    size: 3,
+    heavensFury: true, // special: doesn't fly normally, called from above
+    onImpact(x, y) {
+      return [{ x, y, radius: 25, damage: 55, kind: 'normal' }];
+    }
+  },
+  SANDBAG: {
+    id: 'SANDBAG',
+    name: 'Sandbag',
+    short: 'SandBag',
+    color: EGA.BROWN,
+    size: 2,
+    onImpact(x, y) {
+      // Small dirt pile, cheap
+      return [{ x, y, radius: 12, damage: 2, kind: 'dirt' }];
+    }
+  },
+  TRACER: {
+    id: 'TRACER',
+    name: 'Tracer',
+    short: 'Tracer',
+    color: EGA.WHITE,
+    size: 1,
+    tracer: true, // no damage, leaves trail
+    onImpact(x, y) {
+      return [{ x, y, radius: 2, damage: 0, kind: 'tracer' }];
+    }
+  }
+};
+
+// Weapon order for cycling (matches original-ish hierarchy)
+const WEAPON_ORDER = [
+  'BABY_MISSILE', 'MISSILE', 'BABY_NUKE', 'NUKE', 'DEATHS_HEAD',
+  'FUNKY_BOMB', 'MIRV', 'DEATHS_SKULL',
+  'NAPALM', 'PLASMA_BLAST', 'HEAVENS_FURY',
+  'DIRT_BALL', 'LIQUID_DIRT', 'SANDBAG', 'MAGIC_WALL',
+  'ROLLER', 'HEAVY_ROLLER', 'TRACER'
+];
+
+// Shop prices (per unit)
+const WEAPON_PRICES = {
+  BABY_MISSILE: 0,
+  MISSILE: 150,
+  BABY_NUKE: 600,
+  NUKE: 12000,
+  DEATHS_HEAD: 25000,
+  FUNKY_BOMB: 400,
+  MIRV: 800,
+  DEATHS_SKULL: 4000,
+  NAPALM: 500,
+  PLASMA_BLAST: 1800,
+  HEAVENS_FURY: 6000,
+  DIRT_BALL: 300,
+  LIQUID_DIRT: 700,
+  SANDBAG: 100,
+  MAGIC_WALL: 1200,
+  ROLLER: 350,
+  HEAVY_ROLLER: 1000,
+  TRACER: 50
+};
+
+const PARACHUTE_PRICE = 200;
+
+// Defensive items
+const SHIELDS = {
+  MAGNETIC: { id: 'MAGNETIC', name: 'Magnetic Shield', absorb: 50,  price: 800,  color: EGA.LIGHTBLUE },
+  HEAVY:    { id: 'HEAVY',    name: 'Heavy Shield',    absorb: 100, price: 1800, color: EGA.LIGHTCYAN },
+  SUPER:    { id: 'SUPER',    name: 'Super Mag Shield', absorb: 150, price: 3500, color: EGA.LIGHTMAGENTA }
+};
+
+const BATTERY_PRICE = 400;
+const BATTERY_HEAL  = 15;     // HP healed per turn
+const BATTERY_USES  = 5;      // turns of healing OR driving before depleted
+const DRIVE_FUEL_PER_TURN = 30; // pixels of drive available per turn (when battery active)
+const DRIVE_MAX_CLIMB = 3;    // can climb up to this many px per step
+const DRIVE_FALL_THRESHOLD = 4; // descend more than this and the tank starts falling
+
+/* ------------------------------------------------------------
+   Quips — trash-talk strings shown during the round
+   ------------------------------------------------------------ */
+const FIRE_QUIPS = [
+  "Eat this!",
+  "Bombs away!",
+  "Fire in the hole!",
+  "Hope you like it...",
+  "Got something for ya!",
+  "Take that!",
+  "Suck on this!",
+  "Heads up!",
+  "Special delivery!",
+  "How's the weather?",
+  "I'm gonna get you!",
+  "This one's for free!",
+  "Wanna trade?",
+  "Don't move!"
+];
+
+const KILL_QUIPS = [
+  "%n is no more!",
+  "%n has been vaporized!",
+  "%n bites the dust!",
+  "Goodbye, %n!",
+  "%n got salted!",
+  "%n is scattered to the winds!",
+  "Tough luck, %n!",
+  "%n joined the choir invisible!",
+  "%n hit the dirt — permanently!",
+  "Adios, %n!"
+];
+
+function randomQuip(arr, name) {
+  const s = arr[Math.floor(Math.random() * arr.length)];
+  return name ? s.replace('%n', name) : s;
+}
+
+// Tournament economics
+const PRIZE_PER_DAMAGE = 50;
+const SURVIVAL_BONUS   = 2000;
+const KILL_BONUS       = 5000;
+const INTEREST_RATE    = 0.05;  // 5% per round
+
+// Per-round game configuration (set on start screen)
+const gameConfig = {
+  totalRounds: 3,
+  startingCash: 10000,
+  playerCount: 2,
+  // Per-player types (only first `playerCount` entries are used)
+  playerTypes: ['HUMAN', 'SHOOTER', 'CYBORG', 'SHOOTER']
+};
+
+let roundNumber = 1;
+let shopBuyer  = 0;       // which tank is currently shopping (0..playerCount-1)
+let damageDealtThisRound = [0, 0]; // for prize calculation
+// Per-round kill counts: killsThisRound[i] = how many opponents tank i killed
+let killsThisRound = [0, 0];
+// Full per-tournament stats
+let tournamentStats = [
+  { shotsFired: 0, hits: 0, damageDealt: 0, damageReceived: 0, weaponsUsed: {} },
+  { shotsFired: 0, hits: 0, damageDealt: 0, damageReceived: 0, weaponsUsed: {} }
+];
+
+/* ------------------------------------------------------------
+   Game state
+   ------------------------------------------------------------ */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+let terrain = new Array(CANVAS_W);
+let groundPixels;
+
+function makeTank(id, name, x, color, angle) {
+  return {
+    id, name, x, y: 0, hp: 100, alive: true, color, angle, power: 250,
+    // Inventory: how many of each weapon. BABY_MISSILE is unlimited (-1).
+    // Other weapons must be purchased in the shop.
+    inventory: makeEmptyInventory(),
+    weaponIdx: 0,           // index into WEAPON_ORDER
+    parachutes: 0,
+    parachuteOpen: false,
+    falling: false,
+    fallVy: 0,
+    // Defensive consumables
+    shields: { MAGNETIC: 0, HEAVY: 0, SUPER: 0 },
+    activeShield: null,     // shield ID currently absorbing for this round
+    shieldHpLeft: 0,        // remaining absorbtion HP on active shield
+    batteries: 0,           // owned batteries
+    batteryChargesLeft: 0,  // turns of healing OR driving left on the active battery
+    // Drive state — only usable when batteryChargesLeft > 0
+    driveFuelLeft: 0,       // pixels of drive remaining this turn
+    droveThisTurn: false,   // if true, no heal this turn (chose drive instead)
+    // Visual damage — scorch marks accumulate on the tank body as it takes hits
+    scorches: [],           // [{ dx, dy }] relative to tank center
+    // Tournament economics
+    cash: 10000,
+    wins: 0
+  };
+}
+
+function makeEmptyInventory() {
+  const inv = { BABY_MISSILE: -1 };
+  for (const id of WEAPON_ORDER) {
+    if (id !== 'BABY_MISSILE') inv[id] = 0;
+  }
+  return inv;
+}
+
+// Tank colors for up to 4 players, in order. All EGA bright family for clarity.
+const TANK_COLORS = [EGA.LIGHTRED, EGA.LIGHTGREEN, EGA.LIGHTCYAN, EGA.YELLOW];
+
+// Tanks array — populated by buildTanks() to match gameConfig.playerCount.
+// Starts with 2 to keep init code happy until startTournament rebuilds it.
+let tanks = [
+  makeTank(0, 'P1', 100, TANK_COLORS[0],  45),
+  makeTank(1, 'P2', 540, TANK_COLORS[1], 135)
+];
+
+function buildTanks(playerCount) {
+  // Distribute starting X across the canvas width with equal zones.
+  // Tank n occupies the middle of zone n: x = (n + 0.5) / playerCount * CANVAS_W
+  // Default angles alternate inward (P1 right, P2 left, P3 right, P4 left).
+  tanks = [];
+  for (let i = 0; i < playerCount; i++) {
+    const x = Math.round(((i + 0.5) / playerCount) * CANVAS_W);
+    // Angle: outer tanks aim toward center, inner tanks alternate
+    const angle = (i % 2 === 0) ? 45 + (i * 10) : 135 - ((i - 1) * 10);
+    tanks.push(makeTank(i, `P${i + 1}`, x, TANK_COLORS[i] || EGA.WHITE, angle));
+  }
+}
+
+// Power: 1-500 range with velocity multiplier — 250 = medium arc, 500 = huge.
+const POWER_SCALE = 0.036;
+
+let currentTurn = 0;
+let wind = 0;
+let projectiles = [];
+// Counter (not boolean!) of currently-active detonation chains. Multi-projectile
+// weapons (Funky Bomb, MIRV, Death's Skull) can trigger several concurrent
+// runDetonationEvents chains; using a boolean would let one chain ending flip
+// the flag to false while another is still mid-async, breaking the turn-end
+// guard. Increment when a chain starts, decrement when it ends.
+let pendingDetonation = 0;
+let gameOver = false;
+let dirtSettling = false;
+let inputLocked = false;
+
+// True while flashExplosion is mid-sequence. The main loop's render() would
+// otherwise wipe the explosion/skull/world-flash overlays roughly every 16ms,
+// making the multi-frame skull and world-flash effects flicker invisibly.
+// Setting this true makes the main loop skip its render call so the overlay
+// drawing persists for the full per-frame duration.
+let explosionInProgress = false;
+
+// Heaven's Fury staggered spawning — when > 0, more strikes are scheduled to
+// appear via setTimeout, so the turn-end-on-empty-projectiles check should wait.
+let hfSpawnsPending = 0;
+
+// Screen shake (for large explosions). When shakeFramesLeft > 0 the canvas
+// is offset by a small random amount each frame.
+let shakeFramesLeft = 0;
+let shakeMagnitude = 0;
+
+function triggerShake(magnitude, frames) {
+  shakeMagnitude = Math.max(shakeMagnitude, magnitude);
+  shakeFramesLeft = Math.max(shakeFramesLeft, frames);
+}
+
+// Physics — adjustable via settings menu
+let GRAVITY = 0.12;
+let WIND_SCALE = 0.004;
+
+// User-adjustable settings (loaded from localStorage if available)
+const settings = {
+  sound: true,
+  palette: 'EGA',         // 'EGA' | 'CGA_CYAN' | 'CGA_MAGENTA' | 'MODERN'
+  windMode: 'constant',   // 'off' | 'constant' | 'per_turn' | 'per_shot'
+  gravity: 1.0,           // 0.5 (low), 1.0 (normal), 1.5 (high)
+  terrainStyle: 'hills',  // 'hills' | 'peaks' | 'valleys' | 'flat' | 'mountain'
+  touchControls: 'auto',  // 'auto' | 'on' | 'off' — auto shows on touch devices
+  fullscreen: false,      // remembered fullscreen preference
+  theme: 'ega'            // 'ega' | 'win31' — UI chrome style (canvas stays EGA)
+};
+
+function saveSettings() {
+  try { localStorage.setItem('saltedEarth.settings', JSON.stringify(settings)); } catch (e) {}
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('saltedEarth.settings');
+    if (raw) Object.assign(settings, JSON.parse(raw));
+  } catch (e) {}
+  applySettings();
+}
+
+function applySettings() {
+  // Apply gravity multiplier
+  GRAVITY = 0.12 * settings.gravity;
+  // Apply palette (mutates CSS variables on :root)
+  applyPalette(settings.palette);
+  // Apply UI chrome theme (EGA default vs Windows 3.1). Canvas is untouched.
+  applyTheme(settings.theme);
+}
+
+// Toggle the Windows 3.1 chrome. Everything is CSS scoped under
+// body.theme-win31, so this just flips the class — no markup/JS logic changes.
+function applyTheme(theme) {
+  document.body.classList.toggle('theme-win31', theme === 'win31');
+  // The HUD/chrome height differs slightly between themes; re-fit so the
+  // canvas scale stays correct.
+  if (typeof fitGameToViewport === 'function') fitGameToViewport();
+}
+
+/* Palette presets — override :root CSS vars. Canvas EGA constants stay the
+   same (they're inside the JS bitmap fill paths), so the canvas still draws
+   in EGA. Palette setting recolors the HUD/overlays only for now — except
+   MODERN which also brightens the canvas via the canvas filter. */
+const PALETTES = {
+  EGA: null, // use default :root vars
+  CGA_CYAN: {
+    '--ega-blue': '#000000', '--ega-darkgray': '#000000',
+    '--ega-cyan': '#55FFFF', '--ega-lightcyan': '#55FFFF',
+    '--ega-magenta': '#FF55FF', '--ega-lightmagenta': '#FF55FF',
+    '--ega-yellow': '#FFFFFF', '--ega-white': '#FFFFFF',
+    '--ega-lightgreen': '#55FFFF', '--ega-lightgray': '#FFFFFF',
+    '--ega-lightred': '#FF55FF', '--ega-red': '#FF55FF',
+    '--ega-lightblue': '#55FFFF', '--ega-green': '#000000'
+  },
+  CGA_MAGENTA: {
+    '--ega-blue': '#000000', '--ega-darkgray': '#000000',
+    '--ega-cyan': '#FF55FF', '--ega-lightcyan': '#FF55FF',
+    '--ega-magenta': '#FF55FF', '--ega-lightmagenta': '#FF55FF',
+    '--ega-yellow': '#FFFFFF', '--ega-white': '#FFFFFF',
+    '--ega-lightgreen': '#55FFFF', '--ega-lightgray': '#FFFFFF',
+    '--ega-lightred': '#FF55FF', '--ega-red': '#FF55FF',
+    '--ega-lightblue': '#55FFFF', '--ega-green': '#55FFFF'
+  },
+  MODERN: {
+    '--ega-blue': '#1e3a8a', '--ega-darkgray': '#475569',
+    '--ega-cyan': '#06b6d4', '--ega-lightcyan': '#22d3ee',
+    '--ega-magenta': '#c026d3', '--ega-lightmagenta': '#e879f9',
+    '--ega-yellow': '#fbbf24', '--ega-white': '#f8fafc',
+    '--ega-lightgreen': '#4ade80', '--ega-lightgray': '#cbd5e1',
+    '--ega-lightred': '#f87171', '--ega-red': '#dc2626',
+    '--ega-lightblue': '#60a5fa', '--ega-green': '#16a34a',
+    '--ega-brown': '#a16207', '--ega-black': '#0f172a'
+  }
+};
+
+function applyPalette(name) {
+  const root = document.documentElement;
+  // Reset any prior overrides
+  const allVars = ['--ega-black','--ega-blue','--ega-green','--ega-cyan','--ega-red',
+    '--ega-magenta','--ega-brown','--ega-lightgray','--ega-darkgray','--ega-lightblue',
+    '--ega-lightgreen','--ega-lightcyan','--ega-lightred','--ega-lightmagenta',
+    '--ega-yellow','--ega-white'];
+  for (const v of allVars) root.style.removeProperty(v);
+
+  const preset = PALETTES[name];
+  if (preset) {
+    for (const [k, v] of Object.entries(preset)) root.style.setProperty(k, v);
+  }
+}
+
+/* ------------------------------------------------------------
+   Sound (Web Audio synthesized — no audio files needed)
+   ------------------------------------------------------------ */
+let audioCtx = null;
+function getAudioCtx() {
+  if (!settings.sound) return null;
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  return audioCtx;
+}
+
+// One-off tone with envelope
+function playTone({ freq = 440, dur = 0.1, type = 'square', vol = 0.15, slide = 0 }) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, ctx.currentTime);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq + slide), ctx.currentTime + dur);
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  o.connect(g); g.connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + dur + 0.02);
+}
+
+// Filtered noise burst (explosions, dirt)
+function playNoise({ dur = 0.3, vol = 0.25, freq = 800, q = 1.0 }) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const bufferSize = Math.floor(ctx.sampleRate * dur);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(freq, ctx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + dur);
+  filter.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(vol, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+  src.connect(filter); filter.connect(g); g.connect(ctx.destination);
+  src.start();
+  src.stop(ctx.currentTime + dur);
+}
+
+const SOUNDS = {
+  fire(weapon) {
+    // Pitch depends on weapon size — bigger = lower
+    const baseFreq = weapon && weapon.size >= 4 ? 110 : weapon && weapon.size >= 3 ? 180 : 280;
+    playTone({ freq: baseFreq, dur: 0.18, type: 'sawtooth', vol: 0.20, slide: -100 });
+  },
+  explode(radius) {
+    // Bigger boom = lower frequency, longer
+    const dur = Math.min(0.6, 0.15 + radius * 0.008);
+    const freq = Math.max(180, 800 - radius * 9);
+    playNoise({ dur, vol: 0.3, freq, q: 0.7 });
+    // Add a low thump
+    setTimeout(() => playTone({ freq: 60, dur: 0.15, type: 'sine', vol: 0.25, slide: -30 }), 20);
+  },
+  plasma() {
+    playTone({ freq: 880, dur: 0.25, type: 'sine', vol: 0.15, slide: -700 });
+    setTimeout(() => playNoise({ dur: 0.2, vol: 0.15, freq: 1200, q: 2.0 }), 40);
+  },
+  dirt() {
+    playNoise({ dur: 0.2, vol: 0.15, freq: 400, q: 0.5 });
+  },
+  shield() {
+    playTone({ freq: 1200, dur: 0.12, type: 'sine', vol: 0.2 });
+    setTimeout(() => playTone({ freq: 800, dur: 0.1, type: 'sine', vol: 0.15 }), 30);
+  },
+  tank_fall() {
+    playTone({ freq: 200, dur: 0.18, type: 'triangle', vol: 0.12, slide: -120 });
+  },
+  parachute() {
+    playTone({ freq: 600, dur: 0.4, type: 'sine', vol: 0.08 });
+  },
+  click() {
+    playTone({ freq: 800, dur: 0.04, type: 'square', vol: 0.10 });
+  },
+  win() {
+    // Little fanfare: rising 3-note arpeggio
+    [523, 659, 784].forEach((f, i) => {
+      setTimeout(() => playTone({ freq: f, dur: 0.18, type: 'square', vol: 0.18 }), i * 120);
+    });
+    setTimeout(() => playTone({ freq: 1047, dur: 0.4, type: 'square', vol: 0.18 }), 360);
+  },
+  lose() {
+    [330, 277, 220].forEach((f, i) => {
+      setTimeout(() => playTone({ freq: f, dur: 0.22, type: 'sawtooth', vol: 0.15 }), i * 130);
+    });
+  },
+  battery() {
+    playTone({ freq: 1000, dur: 0.06, type: 'sine', vol: 0.1 });
+    setTimeout(() => playTone({ freq: 1500, dur: 0.06, type: 'sine', vol: 0.1 }), 50);
+  }
+};
+
+/* ------------------------------------------------------------
+   Terrain generation
+   ------------------------------------------------------------ */
+function generateTerrain() {
+  const style = settings.terrainStyle;
+  const baseY = CANVAS_H * 0.65;
+  const seed = Math.random() * 1000;
+
+  let waves;
+  if (style === 'peaks') {
+    // Sharp tall peaks
+    waves = [
+      { amp: 90, freq: 0.012, phase: seed },
+      { amp: 40, freq: 0.025, phase: seed * 1.7 },
+      { amp: 20, freq: 0.055, phase: seed * 2.4 }
+    ];
+  } else if (style === 'valleys') {
+    // Wide bowl-shaped depressions
+    waves = [
+      { amp: -70, freq: 0.006, phase: seed },
+      { amp: 20,  freq: 0.020, phase: seed * 1.4 },
+      { amp: 8,   freq: 0.050, phase: seed * 2.0 }
+    ];
+  } else if (style === 'flat') {
+    waves = [
+      { amp: 6,  freq: 0.030, phase: seed },
+      { amp: 3,  freq: 0.060, phase: seed * 1.2 }
+    ];
+  } else if (style === 'mountain') {
+    // One big central mountain
+    waves = [
+      { amp: 30, freq: 0.012, phase: seed },
+      { amp: 12, freq: 0.040, phase: seed * 1.5 }
+    ];
+  } else {
+    // 'hills' — default rolling
+    waves = [
+      { amp: 60, freq: 0.008, phase: seed },
+      { amp: 30, freq: 0.018, phase: seed * 1.3 },
+      { amp: 12, freq: 0.045, phase: seed * 2.1 }
+    ];
+  }
+
+  for (let x = 0; x < CANVAS_W; x++) {
+    let h = baseY;
+    for (const w of waves) {
+      h += Math.sin(x * w.freq + w.phase) * w.amp;
+    }
+    // Mountain mode adds a big gaussian bump in the center
+    if (style === 'mountain') {
+      const cx = CANVAS_W / 2;
+      const sigma = CANVAS_W * 0.18;
+      h -= 130 * Math.exp(-((x - cx) * (x - cx)) / (2 * sigma * sigma));
+    }
+    terrain[x] = Math.max(40, Math.min(CANVAS_H - 4, Math.round(h)));
+  }
+}
+
+function drawSkyToBuffer(buf) {
+  for (let y = 0; y < CANVAS_H; y++) {
+    const frac = y / CANVAS_H;
+    let color = SKY_BANDS[0].color;
+    for (const band of SKY_BANDS) {
+      if (frac >= band.y) color = band.color;
+    }
+    const [r, g, b] = hexToRgb(color);
+    for (let x = 0; x < CANVAS_W; x++) {
+      const idx = (y * CANVAS_W + x) * 4;
+      buf.data[idx]   = r;
+      buf.data[idx+1] = g;
+      buf.data[idx+2] = b;
+      buf.data[idx+3] = 255;
+    }
+  }
+}
+
+function paintTerrainToBuffer(buf) {
+  for (let x = 0; x < CANVAS_W; x++) {
+    const top = terrain[x];
+    for (let y = top; y < CANVAS_H; y++) {
+      const depth = y - top;
+      let color = TERRAIN_LAYERS[TERRAIN_LAYERS.length - 1].color;
+      for (let i = TERRAIN_LAYERS.length - 1; i >= 0; i--) {
+        if (depth >= TERRAIN_LAYERS[i].depth) {
+          color = TERRAIN_LAYERS[i].color;
+          break;
+        }
+      }
+      const [r, g, b] = hexToRgb(color);
+      const idx = (y * CANVAS_W + x) * 4;
+      buf.data[idx]   = r;
+      buf.data[idx+1] = g;
+      buf.data[idx+2] = b;
+      buf.data[idx+3] = 255;
+    }
+  }
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/* ------------------------------------------------------------
+   Destructible terrain
+   ------------------------------------------------------------ */
+function carveCrater(cx, cy, radius) {
+  for (let y = Math.max(0, cy - radius); y <= Math.min(CANVAS_H - 1, cy + radius); y++) {
+    for (let x = Math.max(0, cx - radius); x <= Math.min(CANVAS_W - 1, cx + radius); x++) {
+      const dx = x - cx, dy = y - cy;
+      if (dx*dx + dy*dy <= radius*radius) {
+        const frac = y / CANVAS_H;
+        let color = SKY_BANDS[0].color;
+        for (const band of SKY_BANDS) if (frac >= band.y) color = band.color;
+        const [r, g, b] = hexToRgb(color);
+        const idx = (y * CANVAS_W + x) * 4;
+        groundPixels.data[idx]   = r;
+        groundPixels.data[idx+1] = g;
+        groundPixels.data[idx+2] = b;
+        groundPixels.data[idx+3] = 255;
+      }
+    }
+  }
+  const x0 = Math.max(0, cx - radius);
+  const x1 = Math.min(CANVAS_W - 1, cx + radius);
+  for (let x = x0; x <= x1; x++) {
+    recomputeColumnHeight(x);
+  }
+}
+
+function recomputeColumnHeight(x) {
+  for (let y = 0; y < CANVAS_H; y++) {
+    if (isPixelGround(x, y)) {
+      terrain[x] = y;
+      return;
+    }
+  }
+  terrain[x] = CANVAS_H;
+}
+
+function isPixelGround(x, y) {
+  const idx = (y * CANVAS_W + x) * 4;
+  const r = groundPixels.data[idx];
+  const g = groundPixels.data[idx+1];
+  const b = groundPixels.data[idx+2];
+  const skyR = [0, 0, 85, 85];
+  const skyG = [0, 0, 85, 255];
+  const skyB = [0, 170, 255, 255];
+  for (let i = 0; i < 4; i++) {
+    if (r === skyR[i] && g === skyG[i] && b === skyB[i]) return false;
+  }
+  return true;
+}
+
+/* ------------------------------------------------------------
+   Dirt settling
+   ------------------------------------------------------------ */
+function settleDirt(callback) {
+  dirtSettling = true;
+  let steps = 0;
+  const maxSteps = 60;
+
+  function step() {
+    let moved = false;
+    for (let x = 0; x < CANVAS_W; x++) {
+      for (let y = CANVAS_H - 2; y >= 0; y--) {
+        if (isPixelGround(x, y) && !isPixelGround(x, y + 1) && y + 1 < CANVAS_H) {
+          copyPixel(x, y, x, y + 1);
+          clearPixelToSky(x, y);
+          moved = true;
+        }
+      }
+    }
+    for (let x = 0; x < CANVAS_W; x++) recomputeColumnHeight(x);
+
+    steps++;
+    if (moved && steps < maxSteps) {
+      requestAnimationFrame(step);
+      render();
+    } else {
+      dirtSettling = false;
+      render();
+      if (callback) callback();
+    }
+  }
+  step();
+}
+
+function copyPixel(sx, sy, dx, dy) {
+  const sIdx = (sy * CANVAS_W + sx) * 4;
+  const dIdx = (dy * CANVAS_W + dx) * 4;
+  groundPixels.data[dIdx]   = groundPixels.data[sIdx];
+  groundPixels.data[dIdx+1] = groundPixels.data[sIdx+1];
+  groundPixels.data[dIdx+2] = groundPixels.data[sIdx+2];
+  groundPixels.data[dIdx+3] = 255;
+}
+
+function clearPixelToSky(x, y) {
+  const frac = y / CANVAS_H;
+  let color = SKY_BANDS[0].color;
+  for (const band of SKY_BANDS) if (frac >= band.y) color = band.color;
+  const [r, g, b] = hexToRgb(color);
+  const idx = (y * CANVAS_W + x) * 4;
+  groundPixels.data[idx]   = r;
+  groundPixels.data[idx+1] = g;
+  groundPixels.data[idx+2] = b;
+  groundPixels.data[idx+3] = 255;
+}
+
+/* ------------------------------------------------------------
+   Tank placement
+   ------------------------------------------------------------ */
+function placeTanksOnTerrain() {
+  for (const t of tanks) {
+    t.y = terrain[Math.round(t.x)] - 1;
+  }
+}
+
+function applyTankFalls(callback) {
+  // For each alive tank: if terrain has dropped beneath it, fall animatedly.
+  // If fall distance is large, take damage unless a parachute opens.
+  const fallers = [];
+  for (const t of tanks) {
+    if (!t.alive) continue;
+    const targetY = terrain[Math.round(t.x)] - 1;
+    if (targetY > t.y + 1) {
+      const distance = targetY - t.y;
+      t.falling = true;
+      t.fallStartY = t.y;
+      t.fallTargetY = targetY;
+      t.fallDistance = distance;
+      t.fallVy = 0;
+      // Parachute decision: open if available and fall distance > 25
+      if (distance > 25 && t.parachutes > 0) {
+        t.parachuteOpen = true;
+        t.parachutes--;
+        SOUNDS.parachute();
+      } else {
+        t.parachuteOpen = false;
+      }
+      fallers.push(t);
+    }
+  }
+
+  if (fallers.length === 0) { if (callback) callback(); return; }
+
+  function fallStep() {
+    let anyFalling = false;
+    for (const t of fallers) {
+      if (!t.falling) continue;
+      // Parachuted = slow constant velocity. Otherwise = gravity.
+      if (t.parachuteOpen) {
+        t.fallVy = Math.min(t.fallVy + 0.05, 1.5);
+      } else {
+        t.fallVy += GRAVITY;
+      }
+      t.y += t.fallVy;
+      if (t.y >= t.fallTargetY) {
+        t.y = t.fallTargetY;
+        t.falling = false;
+        SOUNDS.tank_fall();
+        // Fall damage: only if no parachute and distance was significant
+        if (!t.parachuteOpen && t.fallDistance > 30) {
+          const dmg = Math.min(60, Math.floor((t.fallDistance - 30) * 1.2));
+          t.hp -= dmg;
+          if (t.hp <= 0) {
+            t.hp = 0;
+            t.alive = false;
+            triggerTankDeath(t);
+            showQuip(randomQuip(KILL_QUIPS, t.name), 2500);
+          }
+        }
+        t.parachuteOpen = false;
+      } else {
+        anyFalling = true;
+      }
+    }
+    render();
+    if (anyFalling) {
+      requestAnimationFrame(fallStep);
+    } else {
+      if (callback) callback();
+    }
+  }
+  fallStep();
+}
+
+/* ------------------------------------------------------------
+   Drawing
+   ------------------------------------------------------------ */
+// Buffer of recent tracer positions to draw trails
+let tracerTrail = [];
+
+// Buffer of recent heavy-weapon flight trail dots. Each has its own age/maxAge
+// so the trail fades behind a flying Nuke or Death's Head.
+let flightTrail = [];   // { x, y, color, age, maxAge }
+
+// Short-lived visual effects: airburst flashes, debris particles
+let burstFlashes = [];   // { x, y, radius, age, maxAge, color }
+let debrisParticles = []; // { x, y, vx, vy, age, maxAge, color }
+// Surface effects: napalm flames, smoke puffs, roller dust. These mostly
+// stay near where they were spawned and use color cycles rather than physics.
+let surfaceParticles = []; // { x, y, age, maxAge, kind, vx, vy, colorCycle, size }
+
+function render() {
+  // Compute shake offset for this frame (decays each call)
+  let shakeX = 0, shakeY = 0;
+  if (shakeFramesLeft > 0) {
+    const decay = shakeFramesLeft / 10; // fades over ~10 frames
+    const m = shakeMagnitude * Math.min(1, decay);
+    shakeX = (Math.random() - 0.5) * m * 2;
+    shakeY = (Math.random() - 0.5) * m * 2;
+    shakeFramesLeft--;
+    if (shakeFramesLeft <= 0) shakeMagnitude = 0;
+  }
+
+  // Putting image data ignores ctx transforms, so we need to clear and re-blit
+  // with an offset. Simpler: putImageData at the shake offset.
+  if (shakeX !== 0 || shakeY !== 0) {
+    // Clear with sky color first (avoid garbage at edges)
+    ctx.fillStyle = EGA.BLACK;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  }
+  ctx.putImageData(groundPixels, Math.round(shakeX), Math.round(shakeY));
+
+  ctx.save();
+  ctx.translate(Math.round(shakeX), Math.round(shakeY));
+
+  // Tracer trail (drawn behind tanks)
+  for (const dot of tracerTrail) {
+    ctx.fillStyle = dot.color;
+    ctx.fillRect(dot.x, dot.y, 1, 1);
+  }
+
+  for (const t of tanks) {
+    if (!t.alive) continue;
+    drawTank(t);
+  }
+
+  // Death debris particles (still drawn after a tank is destroyed)
+  drawDebris();
+
+  // Surface effects: napalm flames, smoke, roller dust
+  drawSurfaceParticles();
+
+  // Airburst flashes (MIRV / Death's Skull splits)
+  drawBursts();
+
+  // Render & age the heavy-weapon flight trail (drawn behind projectiles)
+  for (const dot of flightTrail) {
+    if (dot.age >= dot.maxAge) continue;
+    const lifeT = 1 - (dot.age / dot.maxAge);
+    // Cycle through fade colors: light → dim → almost-gone
+    let c;
+    if (lifeT > 0.66)      c = dot.color;
+    else if (lifeT > 0.33) c = EGA.DARKGRAY;
+    else                   c = EGA.BLUE;
+    ctx.fillStyle = c;
+    ctx.fillRect(dot.x, dot.y, 1, 1);
+    dot.age++;
+  }
+  flightTrail = flightTrail.filter(d => d.age < d.maxAge);
+
+  // Draw all in-flight projectiles
+  for (const p of projectiles) {
+    const w = p.weapon;
+
+    // Determine display color (handles pulse/spin variants)
+    let displayColor = w.color;
+    if (w.pulse) {
+      // Plasma Blast — cycle WHITE → LIGHTCYAN → LIGHTBLUE → BLUE → LIGHTCYAN…
+      const cycle = [EGA.WHITE, EGA.LIGHTCYAN, EGA.LIGHTBLUE, EGA.LIGHTCYAN];
+      // Use position as time so the pulse advances per-frame
+      const idx = Math.floor(((p.x * 0.5 + p.y * 0.5) / 4)) % cycle.length;
+      displayColor = cycle[(idx + cycle.length) % cycle.length];
+    } else if (w.scatter) {
+      // Funky Bomb — tumble through bright EGA colors
+      const cycle = [EGA.LIGHTGREEN, EGA.LIGHTMAGENTA, EGA.YELLOW, EGA.LIGHTCYAN];
+      const idx = Math.floor(((p.x * 0.5 + p.y * 0.5) / 3)) % cycle.length;
+      displayColor = cycle[(idx + cycle.length) % cycle.length];
+    }
+
+    ctx.fillStyle = displayColor;
+    const s = w.size;
+    ctx.fillRect(Math.round(p.x) - Math.floor(s/2), Math.round(p.y) - Math.floor(s/2), s, s);
+
+    // Tracer leaves a permanent trail until round end
+    if (w.tracer) {
+      tracerTrail.push({ x: Math.round(p.x), y: Math.round(p.y), color: EGA.LIGHTGRAY });
+      if (tracerTrail.length > 800) tracerTrail.shift();
+    }
+
+    // Heavy weapons leave a fading trail
+    if (w.trail === 'heavy') {
+      flightTrail.push({
+        x: Math.round(p.x),
+        y: Math.round(p.y),
+        color: w.color,
+        age: 0,
+        maxAge: 20
+      });
+      if (flightTrail.length > 400) flightTrail.shift();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawTank(t) {
+  const tx = Math.round(t.x);
+  const ty = Math.round(t.y);
+
+  // Active shield aura (behind tank)
+  if (t.activeShield) {
+    const sh = SHIELDS[t.activeShield];
+    const intensity = t.shieldHpLeft / sh.absorb;
+    ctx.strokeStyle = sh.color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.5 + 0.5 * intensity;
+    ctx.beginPath();
+    ctx.arc(tx, ty - 3, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(tx, ty - 3, 16, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.fillStyle = t.color;
+  ctx.fillRect(tx - 7, ty - 4, 14, 4);
+
+  ctx.fillStyle = EGA.DARKGRAY;
+  ctx.fillRect(tx - 8, ty, 16, 2);
+
+  ctx.fillStyle = t.color;
+  ctx.fillRect(tx - 3, ty - 6, 6, 2);
+
+  // Scorch marks from damage taken — drawn on top of the body so they
+  // persist visibly through the round.
+  if (t.scorches && t.scorches.length > 0) {
+    ctx.fillStyle = EGA.BLACK;
+    for (const s of t.scorches) {
+      ctx.fillRect(tx + s.dx, ty + s.dy, 1, 1);
+    }
+  }
+
+  const rad = (t.angle * Math.PI) / 180;
+  const bx = tx;
+  const by = ty - 6;
+  const barLen = 10;
+  const ex = bx + Math.cos(rad) * barLen;
+  const ey = by - Math.sin(rad) * barLen;
+
+  ctx.strokeStyle = EGA.WHITE;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bx, by);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+
+  // Parachute (deployed during fall)
+  if (t.parachuteOpen) {
+    ctx.fillStyle = EGA.LIGHTGRAY;
+    ctx.fillRect(tx - 10, ty - 18, 20, 2);
+    ctx.fillRect(tx - 8, ty - 20, 16, 2);
+    ctx.fillRect(tx - 6, ty - 16, 1, 8);
+    ctx.fillRect(tx + 5, ty - 16, 1, 8);
+  }
+
+  // Battery indicator (small green dot)
+  if (t.batteryChargesLeft > 0) {
+    ctx.fillStyle = EGA.LIGHTGREEN;
+    ctx.fillRect(tx - 1, ty - 9, 2, 2);
+  }
+
+  if (t.id === currentTurn && projectiles.length === 0 && !gameOver && !dirtSettling) {
+    drawTrajectoryPreview(t);
+  }
+}
+
+function drawTrajectoryPreview(t) {
+  const w = currentWeapon(t);
+
+  // Sky Strike (Heaven's Fury): this weapon falls straight down on a target
+  // rather than arcing, so there's no trajectory to read — it needs a target
+  // marker to be aimable at all. Keep the crosshair for this weapon only.
+  if (w.heavensFury) {
+    const rad = (t.angle * Math.PI) / 180;
+    const reach = t.power * 1.0;
+    const targetX = Math.max(20, Math.min(CANVAS_W - 20, t.x + Math.cos(rad) * reach));
+    ctx.fillStyle = EGA.YELLOW;
+    const tgY = terrain[Math.round(targetX)] || (CANVAS_H - 20);
+    for (let y = 0; y < tgY; y += 6) ctx.fillRect(Math.round(targetX), y, 1, 2);
+    ctx.fillRect(Math.round(targetX) - 6, tgY - 1, 13, 1);
+    return;
+  }
+
+  // No aim guide for normal weapons — the barrel indicator on the tank shows
+  // facing; judging the arc from angle, power, and wind is the game.
+}
+
+/* ------------------------------------------------------------
+   Weapon selection helpers
+   ------------------------------------------------------------ */
+function currentWeapon(t) {
+  return WEAPONS[WEAPON_ORDER[t.weaponIdx]];
+}
+
+function tankHasAmmo(t, weaponId) {
+  return t.inventory[weaponId] === -1 || t.inventory[weaponId] > 0;
+}
+
+function cycleWeapon(t, dir) {
+  // dir: +1 or -1. Skip weapons with no ammo.
+  let idx = t.weaponIdx;
+  for (let tries = 0; tries < WEAPON_ORDER.length; tries++) {
+    idx = (idx + dir + WEAPON_ORDER.length) % WEAPON_ORDER.length;
+    if (tankHasAmmo(t, WEAPON_ORDER[idx])) {
+      t.weaponIdx = idx;
+      return;
+    }
+  }
+}
+
+function consumeAmmo(t, weaponId) {
+  if (t.inventory[weaponId] > 0) t.inventory[weaponId]--;
+  // If current weapon is now empty and not baby missile, switch to next available
+  if (!tankHasAmmo(t, WEAPON_ORDER[t.weaponIdx])) {
+    cycleWeapon(t, 1);
+  }
+}
+
+/* ------------------------------------------------------------
+   Firing & projectile physics
+   ------------------------------------------------------------ */
+function fire() {
+  if (projectiles.length > 0 || gameOver || dirtSettling || inputLocked) return;
+  // Stop driving the moment we fire
+  heldKeys.a = false;
+  heldKeys.d = false;
+  stopDriveSound();
+  const t = tanks[currentTurn];
+  if (!t.alive) return;
+  const w = currentWeapon(t);
+  if (!tankHasAmmo(t, w.id)) return;
+
+  // Per-shot wind variability
+  if (settings.windMode === 'per_shot') {
+    wind = Math.round((Math.random() * 2 - 1) * 10);
+    updateHUD();
+  }
+
+  // Heaven's Fury: target X is determined by aim direction × power scaled distance
+  if (w.heavensFury) {
+    const rad = (t.angle * Math.PI) / 180;
+    const reach = t.power * 1.0;
+    const targetX = Math.max(20, Math.min(CANVAS_W - 20, t.x + Math.cos(rad) * reach));
+    projectiles = [];
+    consumeAmmo(t, w.id);
+    inputLocked = true;
+    turnInFlight = true;
+    SOUNDS.fire(w);
+    tournamentStats[t.id].shotsFired++;
+    tournamentStats[t.id].weaponsUsed[w.id] = (tournamentStats[t.id].weaponsUsed[w.id] || 0) + 1;
+    if (Math.random() < 0.7) showQuip(randomQuip(FIRE_QUIPS), 1500);
+
+    const tOwner = t.id;
+    hfSpawnsPending = 5;
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        hfSpawnsPending--;
+        if (gameOver) return;
+        const offX = (i - 2) * 14 + (Math.random() - 0.5) * 6;
+        projectiles.push({
+          x: targetX + offX,
+          y: -10,
+          vx: 0,
+          vy: 5 + Math.random() * 1.5,
+          weapon: w,
+          owner: tOwner,
+          cleared: true
+        });
+        playTone({ freq: 800, dur: 0.18, type: 'sawtooth', vol: 0.08, slide: -700 });
+      }, i * 280);
+    }
+    return;
+  }
+
+  const rad = (t.angle * Math.PI) / 180;
+  const speed = t.power * POWER_SCALE;
+  projectiles = [{
+    x: t.x + Math.cos(rad) * 12,
+    y: t.y - 6 - Math.sin(rad) * 12,
+    vx: Math.cos(rad) * speed,
+    vy: -Math.sin(rad) * speed,
+    weapon: w,
+    owner: t.id,
+    cleared: false,
+    airburstDone: false
+  }];
+
+  consumeAmmo(t, w.id);
+  inputLocked = true;
+  turnInFlight = true;
+  SOUNDS.fire(w);
+
+  // Stats tracking
+  tournamentStats[t.id].shotsFired++;
+  tournamentStats[t.id].weaponsUsed[w.id] = (tournamentStats[t.id].weaponsUsed[w.id] || 0) + 1;
+
+  // Trash-talk quip (skip tracer — it's just rangefinding)
+  if (!w.tracer && Math.random() < 0.7) {
+    showQuip(randomQuip(FIRE_QUIPS), 1500);
+  }
+}
+
+// Test collisions at a single point along a projectile's path. Returns true
+// if the projectile impacted (and was consumed by impactProjectile).
+function checkProjectileHitAt(p, px, py) {
+  // Tank hit (or shield deflection)?
+  for (const t of tanks) {
+    if (!t.alive) continue;
+    const cx = t.x;
+    const cy = t.y - 3;
+    const dx = px - cx;
+    const dy = py - cy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    // Shield deflection — if target has active shield, detonate at shield surface
+    const shieldR = t.activeShield ? 16 : 0;
+    if (t.id !== p.owner && shieldR > 0 && dist < shieldR) {
+      impactProjectile(p, px, py);
+      return true;
+    }
+
+    if (t.id === p.owner) {
+      if (Math.abs(dx) < 14 && Math.abs(dy) < 8 && p.cleared) {
+        impactProjectile(p, px, py);
+        return true;
+      }
+      if (Math.abs(dx) > 14 || Math.abs(dy) > 8) {
+        p.cleared = true;
+      }
+    } else {
+      if (Math.abs(dx) < 9 && Math.abs(dy) < 7) {
+        impactProjectile(p, px, py);
+        return true;
+      }
+    }
+  }
+
+  // Terrain hit?
+  if (px >= 0 && px < CANVAS_W && py >= 0 && py < CANVAS_H && isPixelGround(px, py)) {
+    impactProjectile(p, px, py);
+    return true;
+  }
+  return false;
+}
+
+function stepProjectile(p) {
+  const prevX = p.x;
+  const prevY = p.y;
+
+  p.vy += GRAVITY;
+  p.vx += wind * WIND_SCALE;
+  p.x += p.vx;
+  p.y += p.vy;
+
+  // Off side / bottom = vanish
+  if (p.x < -50 || p.x > CANVAS_W + 50 || p.y > CANVAS_H) {
+    p.dead = true;
+    return;
+  }
+  if (p.y < 0) return; // above screen, keep flying
+
+  // MIRV airburst: when shell starts coming back down past a threshold, split
+  if (p.weapon.airburst && !p.airburstDone && p.vy > 0 && p.y < CANVAS_H * 0.4) {
+    p.airburstDone = true;
+    p.dead = true;
+    // Visual: brief white burst at the split point so the player sees it happen
+    burstFlashes.push({
+      x: p.x, y: p.y,
+      radius: 8, age: 0, maxAge: 8,
+      color: EGA.WHITE
+    });
+    SOUNDS.click(); // brief audio cue for the split
+    // Spawn N sub-warheads in a fan
+    for (let i = 0; i < p.weapon.airburstCount; i++) {
+      const spread = (i - (p.weapon.airburstCount - 1) / 2) * 0.4;
+      projectiles.push({
+        x: p.x, y: p.y,
+        vx: p.vx + spread,
+        vy: p.vy + 0.5,
+        weapon: WEAPONS.MISSILE, // each sub is a missile-strength explosion
+        owner: p.owner,
+        cleared: true
+      });
+    }
+    return;
+  }
+
+  // Swept collision. A shell at max power covers ~18px per physics step, so
+  // testing only the step's endpoint let it tunnel clean through thin terrain
+  // — which is how a buried tank could fire out through the dirt on top of it.
+  // Walk the segment from the previous position to the new one roughly one
+  // pixel at a time and stop at the first thing we hit.
+  const dx = p.x - prevX;
+  const dy = p.y - prevY;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)));
+  for (let s = 1; s <= steps; s++) {
+    const sx = prevX + (dx * s) / steps;
+    const sy = prevY + (dy * s) / steps;
+    if (sy < 0) continue; // above the screen — nothing to collide with
+    if (checkProjectileHitAt(p, Math.round(sx), Math.round(sy))) return;
+  }
+}
+
+function impactProjectile(p, x, y) {
+  p.dead = true;
+  pendingDetonation++;
+
+  // Funky Bomb: scatter bomblets on impact
+  if (p.weapon.scatter) {
+    for (let i = 0; i < p.weapon.scatterCount; i++) {
+      const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 0.8;
+      const v = 3 + Math.random() * 2;
+      projectiles.push({
+        x: x, y: y - 4,
+        vx: Math.cos(angle) * v,
+        vy: Math.sin(angle) * v,
+        weapon: WEAPONS.BABY_MISSILE,
+        owner: p.owner,
+        cleared: true
+      });
+    }
+  }
+
+  // Roller: roll downhill before detonating
+  if (p.weapon.roller && !p.hasRolled) {
+    rollDownhill(p, x, y, () => {
+      const events = p.weapon.onImpact(Math.round(p.rollX), Math.round(p.rollY));
+      for (const e of events) e.owner = p.owner;
+      runDetonationEvents(events);
+    });
+    return;
+  }
+
+  const events = p.weapon.onImpact(x, y);
+  for (const e of events) e.owner = p.owner;
+  runDetonationEvents(events);
+}
+
+function rollDownhill(p, startX, startY, done) {
+  // Simple iterative downhill walk along terrain surface
+  let rx = startX;
+  let direction = 0; // 0 = unknown yet
+  let steps = 0;
+  const maxSteps = 200;
+
+  function rollStep() {
+    if (steps++ > maxSteps) { p.rollX = rx; p.rollY = terrain[rx] - 1; done(); return; }
+    const leftH  = rx > 0 ? terrain[rx - 1] : terrain[rx];
+    const rightH = rx < CANVAS_W - 1 ? terrain[rx + 1] : terrain[rx];
+    const myH   = terrain[rx];
+    // Pick the lower neighbor (higher y value)
+    if (leftH > myH && leftH >= rightH) {
+      rx--;
+    } else if (rightH > myH) {
+      rx++;
+    } else {
+      // Settled at local minimum
+      p.rollX = rx;
+      p.rollY = terrain[rx] - 1;
+      done();
+      return;
+    }
+    // Spawn a dust particle behind the roller every few steps
+    if (steps % 2 === 0) {
+      surfaceParticles.push({
+        x: rx + (Math.random() - 0.5) * 3,
+        y: terrain[rx] - 1 - Math.floor(Math.random() * 2),
+        kind: 'dust',
+        age: 0,
+        maxAge: 18 + Math.floor(Math.random() * 8)
+      });
+    }
+    // Render the roller mid-roll
+    render();
+    ctx.fillStyle = p.weapon.color;
+    ctx.fillRect(rx - 1, terrain[rx] - 3, 3, 3);
+    setTimeout(rollStep, 20);
+  }
+  rollStep();
+}
+
+function runDetonationEvents(events) {
+  // Animate each detonation in sequence
+  let i = 0;
+  function next() {
+    if (i >= events.length) {
+      // After all events, settle dirt + drop tanks once
+      settleDirt(() => {
+        applyTankFalls(() => {
+          updateHUD();
+          // Decrement this chain's contribution to the counter.
+          pendingDetonation = Math.max(0, pendingDetonation - 1);
+
+          if (checkWin()) return;
+
+          // If another detonation chain is still in progress, OR projectiles
+          // are still in flight, OR Heaven's Fury still has strikes to spawn —
+          // let one of those resolve the turn. Only the last chain to finish
+          // (pendingDetonation === 0 AND no more projectiles AND no HF queue)
+          // is responsible for calling endTurn.
+          if (pendingDetonation > 0) return;
+          if (projectiles.some(p => !p.dead)) return;
+          if (hfSpawnsPending > 0) return;
+
+          // We're the last one out — fully clear state and end the turn.
+          projectiles = [];
+          inputLocked = false;
+          endTurn();
+        });
+      });
+      return;
+    }
+    const e = events[i++];
+    detonateAt(e, next);
+  }
+  next();
+}
+
+function detonateAt(event, done) {
+  const { x, y, radius, damage, kind, owner } = event;
+
+  // Play explosion sound matched to weapon kind
+  if (kind === 'plasma') SOUNDS.plasma();
+  else if (kind === 'dirt' || kind === 'dirt-wide' || kind === 'wall') SOUNDS.dirt();
+  else if (kind === 'tracer') SOUNDS.click();
+  else if (kind === 'deathshead') {
+    // Layered audio for max impact: low boom + high screech
+    SOUNDS.explode(radius);
+    setTimeout(() => playTone({ freq: 80, dur: 0.45, type: 'sawtooth', vol: 0.20, slide: -50 }), 80);
+  }
+  else if (kind === 'nuke') {
+    // Big sustained boom — main thump + secondary rumble
+    SOUNDS.explode(radius);
+    setTimeout(() => playTone({ freq: 50, dur: 0.6, type: 'sine', vol: 0.25, slide: -20 }), 100);
+  }
+  else if (kind === 'heavy-roller') {
+    // Ground-pound: heavy thump + low rumble
+    SOUNDS.explode(radius);
+    setTimeout(() => playTone({ freq: 45, dur: 0.5, type: 'sawtooth', vol: 0.22, slide: -10 }), 60);
+  }
+  else SOUNDS.explode(radius);
+
+  flashExplosion(x, y, radius, kind, () => {
+    // Damage to tanks — but tracer and dirt-only kinds skip damage
+    const skipDamage = kind === 'dirt' || kind === 'dirt-wide' || kind === 'wall' || kind === 'tracer';
+    if (!skipDamage) {
+      for (const t of tanks) {
+        if (!t.alive) continue;
+        const dx = t.x - x;
+        const dy = (t.y - 3) - y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < radius + 6) {
+          let dmg = Math.round(Math.max(0, (radius + 6 - dist) / (radius + 6)) * damage);
+
+          // Shield absorption
+          if (t.activeShield && dmg > 0) {
+            const absorbed = Math.min(dmg, t.shieldHpLeft);
+            if (absorbed > 0) {
+              SOUNDS.shield();
+              // Visual: bright spark on the shield surface at the impact angle
+              const angle = Math.atan2((t.y - 3) - y, t.x - x);
+              const sparkX = t.x - Math.cos(angle) * 15;
+              const sparkY = (t.y - 3) - Math.sin(angle) * 15;
+              const sh = SHIELDS[t.activeShield];
+              burstFlashes.push({ x: sparkX, y: sparkY, radius: 5, age: 0, maxAge: 10, color: EGA.WHITE });
+              burstFlashes.push({ x: sparkX, y: sparkY, radius: 8, age: 0, maxAge: 14, color: sh.color });
+              // Quick crackle particles around the spark
+              for (let s = 0; s < 6; s++) {
+                const spreadAngle = angle + Math.PI + (Math.random() - 0.5) * 1.2;
+                debrisParticles.push({
+                  x: sparkX, y: sparkY,
+                  vx: Math.cos(spreadAngle) * (1 + Math.random()),
+                  vy: Math.sin(spreadAngle) * (1 + Math.random()),
+                  age: 0, maxAge: 12 + Math.floor(Math.random() * 8),
+                  color: Math.random() < 0.5 ? EGA.WHITE : sh.color
+                });
+              }
+            }
+            dmg -= absorbed;
+            t.shieldHpLeft -= absorbed;
+            if (t.shieldHpLeft <= 0) {
+              t.activeShield = null;
+              t.shieldHpLeft = 0;
+            }
+          }
+
+          const actualDmg = Math.min(dmg, t.hp);
+          t.hp -= dmg;
+          if (owner !== undefined && owner !== t.id) {
+            damageDealtThisRound[owner] += actualDmg;
+            // Tournament stats — count this as a hit and credit damage both ways
+            if (actualDmg > 0) {
+              tournamentStats[owner].hits++;
+              tournamentStats[owner].damageDealt += actualDmg;
+              tournamentStats[t.id].damageReceived += actualDmg;
+            }
+          }
+          // Visual scorch — add 1-3 marks per actual damage event so the tank
+          // visibly accumulates scars. Positions are relative to tank center
+          // and constrained to the tank body footprint (14w × 8h).
+          if (actualDmg > 0) {
+            const marks = Math.min(3, 1 + Math.floor(actualDmg / 25));
+            for (let m = 0; m < marks; m++) {
+              t.scorches.push({
+                dx: Math.floor((Math.random() - 0.5) * 14),
+                dy: Math.floor((Math.random() - 0.5) * 6) - 2
+              });
+            }
+            // Cap so the tank doesn't become solid black
+            if (t.scorches.length > 14) t.scorches.splice(0, t.scorches.length - 14);
+          }
+          if (t.hp <= 0) {
+            t.hp = 0;
+            t.alive = false;
+            // Kill credit to the projectile owner (if opponent)
+            if (owner !== undefined && owner !== t.id) {
+              killsThisRound[owner] = (killsThisRound[owner] || 0) + 1;
+            }
+            triggerTankDeath(t);
+            showQuip(randomQuip(KILL_QUIPS, t.name), 2500);
+          }
+        }
+      }
+    }
+
+    // Terrain manipulation by kind. Most are synchronous; Magic Wall animates.
+    if (kind === 'wall') {
+      // Animated rise — calls done() when complete
+      buildMagicWallAnimated(x, y, radius, () => {
+        render();
+        done();
+      });
+      return;
+    }
+
+    if (kind === 'dirt') {
+      addDirtMound(x, y, radius);
+    } else if (kind === 'dirt-wide') {
+      addDirtMound(x, y, radius, 0.15); // flatter dome
+    } else if (kind === 'napalm-primary') {
+      carveCrater(x, y, Math.round(radius * 0.7));
+      // Spawn lingering flame particles on the new surface — double dose for
+      // primary napalm impact to compensate for the more dramatic explosion.
+      spawnNapalmFlames(x, y, radius);
+      spawnNapalmFlames(x, y, radius * 0.7);
+      // Also throw up a tall flame plume — the signature spectacle effect
+      spawnFlamePlume(x, y, radius);
+    } else if (kind === 'tracer') {
+      // No terrain effect
+    } else if (kind === 'plasma') {
+      carveCrater(x, y, Math.round(radius * 0.9));
+      spawnSmoke(x, y, radius);
+    } else if (kind === 'deathshead') {
+      // Big crater + extra smoke + radial debris
+      carveCrater(x, y, radius);
+      spawnSmoke(x, y, radius);
+      spawnSmoke(x, y, radius * 0.8); // double dose
+      // Throw a few debris particles for added drama
+      for (let i = 0; i < 18; i++) {
+        const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 1.2;
+        const speed = 1.5 + Math.random() * 3;
+        debrisParticles.push({
+          x: x + (Math.random() - 0.5) * 14,
+          y: y + (Math.random() - 0.5) * 8,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          age: 0,
+          maxAge: 40 + Math.floor(Math.random() * 30),
+          color: [EGA.RED, EGA.YELLOW, EGA.BROWN, EGA.LIGHTRED][Math.floor(Math.random() * 4)]
+        });
+      }
+    } else if (kind === 'nuke') {
+      // Big crater + extra smoke
+      carveCrater(x, y, radius);
+      spawnSmoke(x, y, radius);
+      spawnSmoke(x, y, radius * 0.7);
+    } else if (kind === 'heavy-roller') {
+      // Ground-impact crater + lots of dust/smoke from the bottom up
+      carveCrater(x, y, radius);
+      spawnSmoke(x, y, radius);
+      spawnSmoke(x, y + 4, radius * 0.6);
+    } else if (kind === 'baby-nuke') {
+      carveCrater(x, y, radius);
+      spawnSmoke(x, y, radius);
+    } else {
+      carveCrater(x, y, radius);
+      // Smoke for medium+ explosions
+      if (radius >= 20) spawnSmoke(x, y, radius);
+    }
+    render();
+    done();
+  });
+}
+
+function buildMagicWallAnimated(cx, cy, radius, onDone) {
+  // Build the column from the bottom up, one horizontal slice at a time.
+  const halfW = Math.max(4, Math.floor(radius * 0.18));
+  const height = Math.floor(radius * 1.6);
+  const top = cy - height;
+  const bottom = Math.min(CANVAS_H - 1, cy + 4);
+  const x0 = Math.max(0, cx - halfW);
+  const x1 = Math.min(CANVAS_W - 1, cx + halfW);
+
+  // Build a queue of y-rows from bottom to top
+  const yRows = [];
+  for (let y = bottom; y >= Math.max(0, top); y--) yRows.push(y);
+
+  const sliceSize = Math.max(1, Math.ceil(yRows.length / 12)); // ~12 animation steps
+
+  function step() {
+    const slice = yRows.splice(0, sliceSize);
+    for (const y of slice) {
+      const depth = y - top;
+      let color = TERRAIN_LAYERS[0].color;
+      for (let i = TERRAIN_LAYERS.length - 1; i >= 0; i--) {
+        if (depth >= TERRAIN_LAYERS[i].depth) { color = TERRAIN_LAYERS[i].color; break; }
+      }
+      const [r, g, b] = hexToRgb(color);
+      for (let x = x0; x <= x1; x++) {
+        const idx = (y * CANVAS_W + x) * 4;
+        groundPixels.data[idx]   = r;
+        groundPixels.data[idx+1] = g;
+        groundPixels.data[idx+2] = b;
+        groundPixels.data[idx+3] = 255;
+      }
+    }
+    render();
+    if (yRows.length > 0) {
+      setTimeout(step, 35);
+    } else {
+      // Finalize heights
+      for (let x = x0; x <= x1; x++) recomputeColumnHeight(x);
+      onDone();
+    }
+  }
+  // Subtle rumble while the wall rises
+  SOUNDS.dirt();
+  step();
+}
+
+function addDirtMound(cx, cy, radius, flatness) {
+  // Inverse of carveCrater: paint terrain pixels in a half-circle dome.
+  // flatness 0.3 = normal half-dome, lower = flatter pancake.
+  const f = flatness !== undefined ? flatness : 0.3;
+  for (let y = Math.max(0, cy - radius); y <= Math.min(CANVAS_H - 1, cy + radius); y++) {
+    for (let x = Math.max(0, cx - radius); x <= Math.min(CANVAS_W - 1, cx + radius); x++) {
+      const dx = x - cx, dy = y - cy;
+      if (dx*dx + dy*dy <= radius*radius && y >= cy - radius * f) {
+        const top = cy - Math.sqrt(radius*radius - dx*dx) * (f / 0.3);
+        const depth = Math.max(0, y - top);
+        let color = TERRAIN_LAYERS[0].color;
+        for (let i = TERRAIN_LAYERS.length - 1; i >= 0; i--) {
+          if (depth >= TERRAIN_LAYERS[i].depth) { color = TERRAIN_LAYERS[i].color; break; }
+        }
+        const [r, g, b] = hexToRgb(color);
+        const idx = (y * CANVAS_W + x) * 4;
+        groundPixels.data[idx]   = r;
+        groundPixels.data[idx+1] = g;
+        groundPixels.data[idx+2] = b;
+        groundPixels.data[idx+3] = 255;
+      }
+    }
+  }
+  const x0 = Math.max(0, cx - radius);
+  const x1 = Math.min(CANVAS_W - 1, cx + radius);
+  for (let x = x0; x <= x1; x++) recomputeColumnHeight(x);
+}
+
+function drawBursts() {
+  // Render and age out short-lived bursts in place
+  for (const b of burstFlashes) {
+    const t = 1 - (b.age / b.maxAge);
+    if (t <= 0) continue;
+    const r = b.radius * (1 + (1 - t) * 1.5); // expands as it fades
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    b.age++;
+  }
+  burstFlashes = burstFlashes.filter(b => b.age < b.maxAge);
+}
+
+function drawDebris() {
+  // Death debris pixels with simple gravity
+  for (const d of debrisParticles) {
+    if (d.age >= d.maxAge) continue;
+    ctx.fillStyle = d.color;
+    ctx.fillRect(Math.round(d.x), Math.round(d.y), 1, 1);
+    d.x += d.vx;
+    d.y += d.vy;
+    d.vy += 0.18;
+    d.age++;
+  }
+  debrisParticles = debrisParticles.filter(d => d.age < d.maxAge && d.y < CANVAS_H);
+}
+
+function drawSurfaceParticles() {
+  // Surface effects: napalm flames, smoke puffs, roller dust.
+  // Each particle's `kind` controls its animation behavior.
+  for (const p of surfaceParticles) {
+    if (p.age >= p.maxAge) continue;
+    const lifeT = p.age / p.maxAge; // 0..1 progression
+
+    if (p.kind === 'napalm') {
+      // Flickering flame: pick from a color cycle, occasionally pop upward
+      const colors = [EGA.YELLOW, EGA.LIGHTRED, EGA.RED, EGA.BROWN];
+      const c = colors[(p.age + p.colorCycle) % colors.length];
+      ctx.fillStyle = c;
+      // Flame shape: 2x2 base with random 1px flicker above
+      ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 2, 2);
+      if (Math.random() < 0.5 && lifeT < 0.7) {
+        ctx.fillRect(Math.round(p.x), Math.round(p.y) - 2, 1, 1);
+      }
+      // Slow upward drift, fading
+      p.y -= 0.08;
+    } else if (p.kind === 'smoke') {
+      // Gray drifting puff that fades upward
+      const colors = [EGA.LIGHTGRAY, EGA.DARKGRAY];
+      const c = lifeT < 0.6 ? colors[0] : colors[1];
+      const size = Math.max(1, p.size - Math.floor(lifeT * p.size));
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.round(p.x) - Math.floor(size/2), Math.round(p.y) - Math.floor(size/2), size, size);
+      // Drift up + light horizontal jitter
+      p.x += p.vx;
+      p.y += p.vy;
+      // Slow horizontal jitter
+      if (Math.random() < 0.3) p.vx += (Math.random() - 0.5) * 0.1;
+    } else if (p.kind === 'dust') {
+      // Roller dust: brown particle that fades fast
+      ctx.fillStyle = lifeT < 0.5 ? EGA.BROWN : EGA.DARKGRAY;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+      // No movement — sits where the roller was
+    }
+    p.age++;
+  }
+  surfaceParticles = surfaceParticles.filter(p => p.age < p.maxAge);
+}
+
+// Helper: spawn napalm flames in a patch around impact
+function spawnNapalmFlames(cx, cy, radius) {
+  const count = Math.floor(radius * 0.8);
+  for (let i = 0; i < count; i++) {
+    // Spread within the crater radius, biased to the rim where dirt remains
+    const offset = (Math.random() - 0.5) * radius * 1.6;
+    const x = cx + offset;
+    // Find the current terrain surface at this column
+    const ix = Math.max(0, Math.min(CANVAS_W - 1, Math.round(x)));
+    const surfaceY = terrain[ix] - 1;
+    if (surfaceY < 0 || surfaceY > CANVAS_H - 2) continue;
+    surfaceParticles.push({
+      x, y: surfaceY,
+      kind: 'napalm',
+      age: 0,
+      maxAge: 60 + Math.floor(Math.random() * 40),
+      colorCycle: Math.floor(Math.random() * 4)
+    });
+  }
+}
+
+// Helper: spawn a tall flame plume rising from the impact point. Used as
+// part of the Napalm primary-impact "moment" — a column of flame shoots up
+// from the impact, distinct from the lingering surface flames.
+function spawnFlamePlume(cx, cy, radius) {
+  // Plume rises from impact point. Use the debris particle system because
+  // we want physics (upward velocity, gravity) rather than fixed positions.
+  const plumeHeight = radius * 1.5;
+  const count = Math.floor(radius * 1.2);
+  for (let i = 0; i < count; i++) {
+    const xJitter = (Math.random() - 0.5) * radius * 0.6;
+    // Upward velocity is the main thing — biased high, with mild gravity
+    // making it arc back down briefly
+    const upSpeed = 2.5 + Math.random() * 2.5;
+    debrisParticles.push({
+      x: cx + xJitter,
+      y: cy,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: -upSpeed,
+      age: 0,
+      maxAge: 22 + Math.floor(Math.random() * 14),
+      // Cycle through flame colors — assigned at spawn so each particle
+      // burns a particular hue. Mix of yellow/red/orange/brown.
+      color: [EGA.YELLOW, EGA.LIGHTRED, EGA.RED, EGA.BROWN, EGA.YELLOW][Math.floor(Math.random() * 5)]
+    });
+  }
+}
+
+// Helper: spawn smoke puffs at an explosion site
+function spawnSmoke(cx, cy, radius) {
+  const count = Math.max(4, Math.floor(radius / 6));
+  for (let i = 0; i < count; i++) {
+    surfaceParticles.push({
+      x: cx + (Math.random() - 0.5) * radius * 0.8,
+      y: cy + (Math.random() - 0.5) * radius * 0.5,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: -0.3 - Math.random() * 0.5,
+      kind: 'smoke',
+      age: 0,
+      maxAge: 40 + Math.floor(Math.random() * 30),
+      size: 2 + Math.floor(Math.random() * 2)
+    });
+  }
+}
+
+function triggerTankDeath(t) {
+  // Spawn ~25 debris particles ejecting upward and outward from the tank
+  const cx = t.x;
+  const cy = t.y - 3;
+  const debrisColors = [t.color, EGA.DARKGRAY, EGA.LIGHTGRAY, EGA.YELLOW, EGA.LIGHTRED];
+  for (let i = 0; i < 28; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    // Bias upward — most debris should fly up and arc back down
+    const upBias = -Math.PI / 2;
+    const blendedAngle = angle * 0.4 + upBias * 0.6 + (Math.random() - 0.5) * 0.4;
+    const speed = 1.5 + Math.random() * 3.5;
+    debrisParticles.push({
+      x: cx + (Math.random() - 0.5) * 10,
+      y: cy + (Math.random() - 0.5) * 6,
+      vx: Math.cos(blendedAngle) * speed,
+      vy: Math.sin(blendedAngle) * speed,
+      age: 0,
+      maxAge: 40 + Math.floor(Math.random() * 20),
+      color: debrisColors[Math.floor(Math.random() * debrisColors.length)]
+    });
+  }
+  // A fireball burst at the tank location (uses the burst flash system)
+  burstFlashes.push({ x: cx, y: cy, radius: 18, age: 0, maxAge: 10, color: EGA.WHITE });
+  burstFlashes.push({ x: cx, y: cy, radius: 14, age: 0, maxAge: 14, color: EGA.YELLOW });
+  burstFlashes.push({ x: cx, y: cy, radius: 10, age: 0, maxAge: 18, color: EGA.LIGHTRED });
+  // Small shake on death
+  triggerShake(3, 8);
+  // Audio cue (deeper than a normal explosion)
+  SOUNDS.explode(40);
+}
+
+/* ============================================================
+   Detonation overlay graphics
+   ============================================================ */
+
+// Skull pixel pattern for Death's Head detonation. 1 = pixel on, 0 = off.
+// Roughly 22 wide × 18 tall.
+const SKULL_PATTERN = [
+  '...########...',
+  '..##########..',
+  '.############.',
+  '.##.##.##.##.#',
+  '.##.##.##.##.#',
+  '.############.',
+  '.##.##..##.##.',
+  '.##.######.##.',
+  '.############.',
+  '..##########..',
+  '...########...',
+  '....######....',
+  '..##.####.##..',
+  '..##.####.##..',
+];
+
+function drawSkullFlash(cx, cy, scale, color) {
+  // Center the skull on (cx, cy), scaling each pixel by `scale`.
+  const w = SKULL_PATTERN[0].length;
+  const h = SKULL_PATTERN.length;
+  const px = scale;
+  const offX = cx - (w * px) / 2;
+  const offY = cy - (h * px) / 2;
+  ctx.fillStyle = color;
+  for (let r = 0; r < h; r++) {
+    const row = SKULL_PATTERN[r];
+    for (let c = 0; c < w; c++) {
+      if (row[c] === '#') {
+        ctx.fillRect(Math.round(offX + c * px), Math.round(offY + r * px), px, px);
+      }
+    }
+  }
+}
+
+function drawPlasmaArcs(cx, cy, radius) {
+  // Draw 4-6 jagged "lightning" lines from center outward.
+  // Each line zigzags through a few segments before fading.
+  const arcCount = 5;
+  ctx.strokeStyle = EGA.WHITE;
+  ctx.lineWidth = 1;
+  for (let a = 0; a < arcCount; a++) {
+    const angle = (a / arcCount) * Math.PI * 2 + Math.random() * 0.5;
+    const length = radius * (0.9 + Math.random() * 0.4);
+    const segments = 4;
+    let px = cx, py = cy;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    for (let s = 1; s <= segments; s++) {
+      const t = s / segments;
+      const baseX = cx + Math.cos(angle) * length * t;
+      const baseY = cy + Math.sin(angle) * length * t;
+      // Add perpendicular jitter so it looks like lightning
+      const jitter = (Math.random() - 0.5) * 8;
+      const perpX = -Math.sin(angle) * jitter;
+      const perpY = Math.cos(angle) * jitter;
+      px = baseX + perpX;
+      py = baseY + perpY;
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawCanvasFlash(color, alpha) {
+  // Briefly tint the whole canvas — used for Death's Head's world-flash.
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  ctx.restore();
+}
+
+function flashExplosion(x, y, radius, kind, done) {
+  // Allow legacy 4-arg invocation (no kind)
+  if (typeof kind === 'function') { done = kind; kind = 'normal'; }
+
+  // Mark that an explosion sequence is running, so the main loop doesn't
+  // overwrite our overlay frames with its own render() calls.
+  explosionInProgress = true;
+  const origDone = done;
+  done = function() {
+    explosionInProgress = false;
+    origDone();
+  };
+  // Safety: if something goes wrong and done() never gets called, ensure
+  // the flag eventually resets so the game doesn't lock up.
+  setTimeout(() => {
+    if (explosionInProgress) {
+      explosionInProgress = false;
+    }
+  }, 8000);
+
+  let frames;
+  let frameDuration = 60; // default; individual frames can override via f.dur
+
+  if (kind === 'plasma') {
+    // Lightning arcs persist across all 4 frames so they crackle continuously
+    frames = [
+      { color: EGA.LIGHTCYAN, r: radius * 0.7, arcs: true,  dur: 80 },
+      { color: EGA.WHITE,     r: radius * 1.0, arcs: true,  dur: 100 },
+      { color: EGA.LIGHTBLUE, r: radius * 1.1, arcs: true,  dur: 90 },
+      { color: EGA.BLUE,      r: radius * 0.9, arcs: true,  dur: 80 },
+      { color: EGA.LIGHTBLUE, r: radius * 0.6, dur: 70 }
+    ];
+    if (radius >= 40) triggerShake(3, 12);
+
+  } else if (kind === 'deathshead') {
+    // Death's Head — the apocalypse moment. Total ~1.9s before the explosion
+    // fully fades. World-flash + 15 strobing skull frames at 120ms each +
+    // 6-frame large explosion + sustained shake.
+    frames = [];
+    // 1. Initial world-flash (single bright frame)
+    frames.push({ worldFlash: 'white', dur: 100, alpha: 0.9 });
+    // 2. 15 skull frames with strobing color + pulsing world-flash
+    const SKULL_FRAMES = 15;
+    for (let i = 0; i < SKULL_FRAMES; i++) {
+      const lifeT = i / Math.max(1, SKULL_FRAMES - 1);
+      // Pulse intensity decays slightly over the sequence
+      const pulse = (Math.sin(lifeT * Math.PI * 4) + 1) / 2;
+      const flashAlpha = 0.6 * (1 - lifeT * 0.5) * (0.3 + pulse * 0.5);
+      // Strobe between white and red on alternating frames
+      const useRed = (i % 2 === 1) && lifeT > 0.2;
+      frames.push({
+        skull: true,
+        scale: 6,
+        color: useRed ? EGA.RED : EGA.WHITE,
+        worldFlashAlpha: flashAlpha,
+        dur: 120
+      });
+    }
+    // 3. Standard large explosion to "burn out" the skull moment
+    frames.push({ color: EGA.WHITE,    r: radius * 0.4, dur: 80 });
+    frames.push({ color: EGA.WHITE,    r: radius * 0.8, dur: 80 });
+    frames.push({ color: EGA.YELLOW,   r: radius * 1.15, dur: 75 });
+    frames.push({ color: EGA.LIGHTRED, r: radius * 1.3, dur: 75 });
+    frames.push({ color: EGA.RED,      r: radius * 1.1, dur: 75 });
+    frames.push({ color: EGA.BROWN,    r: radius * 0.85, dur: 80 });
+    // Sustained heavy shake across the whole moment
+    triggerShake(8, 50);
+
+  } else if (kind === 'nuke') {
+    // Nuke — extended held-white core spectacle. Total ~1.3s.
+    // Signature: blinding white that sustains, then the standard explosion fade.
+    frames = [
+      // Initial blinding world-flash
+      { worldFlash: 'white', dur: 90, alpha: 0.95 },
+      // Held white core, expanding slightly each frame (4 frames at 130ms)
+      { color: EGA.WHITE,    r: radius * 0.5,  dur: 130 },
+      { color: EGA.WHITE,    r: radius * 0.7,  dur: 130 },
+      { color: EGA.WHITE,    r: radius * 0.9,  dur: 130 },
+      { color: EGA.YELLOW,   r: radius * 1.1,  dur: 110 },
+      // Standard fade-out
+      { color: EGA.YELLOW,   r: radius * 1.25, dur: 90 },
+      { color: EGA.LIGHTRED, r: radius * 1.35, dur: 90 },
+      { color: EGA.RED,      r: radius * 1.15, dur: 85 },
+      { color: EGA.BROWN,    r: radius * 0.85, dur: 80 }
+    ];
+    triggerShake(6, 38);
+
+  } else if (kind === 'heavy-roller') {
+    // Heavy Roller — ground-pound spectacle with held shake. Total ~1.2s.
+    // Signature: less white, more low-to-the-ground orange/brown impact
+    // with sustained shake conveying the weight.
+    frames = [
+      { color: EGA.WHITE,    r: radius * 0.55, dur: 90 },
+      { color: EGA.YELLOW,   r: radius * 0.85, dur: 130 },
+      { color: EGA.LIGHTRED, r: radius * 1.1,  dur: 130 },
+      { color: EGA.LIGHTRED, r: radius * 1.25, dur: 130 },
+      { color: EGA.RED,      r: radius * 1.2,  dur: 120 },
+      { color: EGA.BROWN,    r: radius * 1.05, dur: 110 },
+      { color: EGA.BROWN,    r: radius * 0.85, dur: 90 },
+      { color: EGA.DARKGRAY, r: radius * 0.65, dur: 80 }
+    ];
+    // Long sustained shake — the ground keeps reverberating
+    triggerShake(7, 45);
+
+  } else if (kind === 'napalm-primary') {
+    // Napalm primary — wide flaming spectacle. Total ~900ms in the flash
+    // sequence (the flame plume continues after via particle physics).
+    // Signature: yellow→orange→red, sustained orange phase.
+    frames = [
+      { color: EGA.YELLOW,   r: radius * 0.5,  dur: 80 },
+      { color: EGA.YELLOW,   r: radius * 0.85, dur: 110 },
+      { color: EGA.LIGHTRED, r: radius * 1.05, dur: 130 },
+      { color: EGA.LIGHTRED, r: radius * 1.2,  dur: 130 },
+      { color: EGA.RED,      r: radius * 1.15, dur: 110 },
+      { color: EGA.BROWN,    r: radius * 1.0,  dur: 100 },
+      { color: EGA.RED,      r: radius * 0.8,  dur: 90 },
+      { color: EGA.BROWN,    r: radius * 0.6,  dur: 80 }
+    ];
+    triggerShake(4, 22);
+
+  } else if (kind === 'baby-nuke') {
+    // Baby Nuke — Tier 2, ~700ms. White-held core but shorter than Nuke.
+    frames = [
+      { color: EGA.WHITE,    r: radius * 0.55, dur: 100 },
+      { color: EGA.WHITE,    r: radius * 0.85, dur: 110 },
+      { color: EGA.YELLOW,   r: radius * 1.1,  dur: 110 },
+      { color: EGA.LIGHTRED, r: radius * 1.2,  dur: 100 },
+      { color: EGA.LIGHTRED, r: radius * 1.15, dur: 90 },
+      { color: EGA.RED,      r: radius * 0.95, dur: 90 },
+      { color: EGA.BROWN,    r: radius * 0.75, dur: 80 }
+    ];
+    triggerShake(4, 18);
+
+  } else if (kind === 'tracer') {
+    frames = [{ color: EGA.WHITE, r: 4, dur: 80 }];
+  } else if (kind === 'dirt' || kind === 'dirt-wide' || kind === 'wall') {
+    frames = [
+      { color: EGA.BROWN,     r: radius * 0.6 },
+      { color: EGA.LIGHTGRAY, r: radius * 0.4 }
+    ];
+  } else {
+    // "Normal" explosion (small or medium). All large kinds — Nuke, Heavy
+    // Roller, Death's Head — have their own branches above, so a 'normal'
+    // kind here is always Baby Missile / Missile / Roller / sub-warhead size.
+    if (radius <= 18) {
+      // SMALL — Baby Missile, Missile, Sandbag, Funky bomblets, sub-warheads
+      frames = [
+        { color: EGA.WHITE,    r: radius * 0.6 },
+        { color: EGA.YELLOW,   r: radius * 0.95 },
+        { color: EGA.LIGHTRED, r: radius * 0.85 }
+      ];
+      frameDuration = 50;
+    } else {
+      // MEDIUM — MIRV warheads, Roller, Heaven's Fury strikes,
+      // Death's Skull sub-warheads, Dirt Ball
+      frames = [
+        { color: EGA.WHITE,    r: radius * 0.7 },
+        { color: EGA.YELLOW,   r: radius * 1.0 },
+        { color: EGA.LIGHTRED, r: radius * 1.1 },
+        { color: EGA.RED,      r: radius * 0.9 }
+      ];
+      if (radius >= 30) triggerShake(2, 6);
+    }
+  }
+  // rAF-based frame stepping. Unlike setTimeout, requestAnimationFrame pauses
+  // cleanly when the tab/app is backgrounded (critical on iOS, which throttles
+  // timers aggressively) and resumes where it left off. Each frame's duration
+  // is measured in elapsed wall time between rAF ticks.
+  let i = 0;
+  let currentDur = 0;
+  let acc = 0;
+  let lastTs = null;
+
+  function drawFrameAt(idx) {
+    render();
+    const f = frames[idx];
+    currentDur = f.dur !== undefined ? f.dur : frameDuration;
+
+    // World flash — tint the whole canvas
+    if (f.worldFlash) {
+      const a = f.alpha !== undefined ? f.alpha : 0.85;
+      drawCanvasFlash(f.worldFlash === 'white' ? EGA.WHITE : EGA.YELLOW, a);
+      return;
+    }
+
+    // Skull silhouette overlay — also supports an underlying pulsing world-flash
+    if (f.skull) {
+      if (f.worldFlashAlpha && f.worldFlashAlpha > 0.02) {
+        drawCanvasFlash(EGA.WHITE, f.worldFlashAlpha);
+      }
+      drawSkullFlash(x, y, f.scale, f.color);
+      return;
+    }
+
+    // Standard expanding circle frame
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.arc(x, y, f.r, 0, Math.PI * 2);
+    ctx.fill();
+    // Plasma arc overlay on flagged frames — new random arcs each call
+    if (f.arcs) drawPlasmaArcs(x, y, f.r);
+  }
+
+  function step(ts) {
+    if (i >= frames.length) { render(); done(); return; }
+    if (lastTs === null) {
+      // First tick — draw frame 0 and start timing
+      lastTs = ts;
+      drawFrameAt(i);
+      requestAnimationFrame(step);
+      return;
+    }
+    // Clamp delta so a long background pause doesn't skip the whole sequence
+    // in one tick — instead we advance at most one frame per tick, fast-
+    // forwarding smoothly after a pause.
+    const delta = Math.min(ts - lastTs, 250);
+    lastTs = ts;
+    acc += delta;
+    if (acc >= currentDur) {
+      acc = 0;
+      i++;
+      if (i >= frames.length) { render(); done(); return; }
+      drawFrameAt(i);
+    }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ------------------------------------------------------------
+   Turn flow
+   ------------------------------------------------------------ */
+/* ============================================================
+   AI OPPONENTS
+   ============================================================ */
+
+// Per-player AI/human types live in gameConfig.playerTypes (indexed by tank id)
+function tankType(t) {
+  return gameConfig.playerTypes[t.id] || 'HUMAN';
+}
+
+function isAI(t) {
+  return tankType(t) !== 'HUMAN';
+}
+
+const AI_THINK_TIME_MS = 800;
+
+// Pending setTimeout handles for AI turn delays. We track these so we can
+// cancel them when a round ends — otherwise stale timers can fire shots after
+// a new round has started, causing extra shots / auto-fires for the player.
+let aiTimerHandles = [];
+
+function cancelPendingAITimers() {
+  for (const h of aiTimerHandles) clearTimeout(h);
+  aiTimerHandles = [];
+  // Also hide the thinking indicator if it was up
+  const el = document.getElementById('ai-thinking');
+  if (el) el.classList.remove('show');
+  // Stop any drive sound and clear held drive keys
+  heldKeys.a = false;
+  heldKeys.d = false;
+  stopDriveSound();
+}
+
+// Simulate a projectile trajectory and return its impact point (x, y).
+// Returns null if it flies off-screen without impact.
+function simulateShot(sx, sy, angleDeg, power) {
+  const rad = (angleDeg * Math.PI) / 180;
+  const speed = power * POWER_SCALE;
+  let px = sx + Math.cos(rad) * 12;
+  let py = sy - Math.sin(rad) * 12;
+  let vx = Math.cos(rad) * speed;
+  let vy = -Math.sin(rad) * speed;
+
+  for (let i = 0; i < 500; i++) {
+    const prevX = px;
+    const prevY = py;
+    vy += GRAVITY;
+    vx += wind * WIND_SCALE;
+    px += vx;
+    py += vy;
+    if (px < 0 || px > CANVAS_W || py > CANVAS_H) return null;
+    if (py < 0) continue;
+
+    // Sweep the segment, matching stepProjectile's collision exactly — if the
+    // simulation only tested endpoints it would predict shots passing through
+    // thin ridges that the real shell now detonates against.
+    const dx = px - prevX;
+    const dy = py - prevY;
+    const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy)));
+    for (let s = 1; s <= steps; s++) {
+      const cy = prevY + (dy * s) / steps;
+      if (cy < 0) continue;
+      const ix = Math.round(prevX + (dx * s) / steps);
+      const iy = Math.round(cy);
+      if (ix >= 0 && ix < CANVAS_W && iy >= 0 && iy < CANVAS_H && isPixelGround(ix, iy)) {
+        return { x: ix, y: iy };
+      }
+    }
+  }
+  return null;
+}
+
+// Find best (angle, power) to hit target tank.
+// quality: 'coarse' or 'fine' controls sweep granularity and outcome accuracy.
+function aiFindAim(shooter, target, quality) {
+  const sx = shooter.x;
+  const sy = shooter.y - 6;
+  const tx = target.x;
+  const ty = target.y - 3;
+
+  // Skip self-direction (left if target is left, right if target is right)
+  const targetIsLeft = tx < sx;
+
+  // Sweep candidate (angle, power) pairs. For high quality, try more powers.
+  const angleStep = quality === 'fine' ? 2 : 5;
+  const powers = quality === 'fine'
+    ? [120, 180, 240, 300, 360, 420, 480]
+    : [200, 300, 400];
+
+  let best = null;
+  let bestDist = Infinity;
+
+  for (let a = 5; a <= 175; a += angleStep) {
+    // Only consider angles pointing roughly toward target
+    if (targetIsLeft && a < 90) continue;
+    if (!targetIsLeft && a > 90) continue;
+
+    for (const p of powers) {
+      const hit = simulateShot(sx, sy, a, p);
+      if (!hit) continue;
+      const dx = hit.x - tx;
+      const dy = hit.y - ty;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { angle: a, power: p, dist };
+      }
+    }
+  }
+  return best;
+}
+
+// Pick which weapon the AI wants to use this turn, based on personality.
+function aiPickWeapon(t) {
+  const type = tankType(t);
+
+  // Available = currently has ammo
+  const available = WEAPON_ORDER.filter(id => tankHasAmmo(t, id) && id !== 'TRACER');
+
+  if (type === 'MORON' || type === 'SITTING_DUCK' || type === 'POOTER' || type === 'USELESS') {
+    return available[Math.floor(Math.random() * available.length)];
+  }
+
+  if (type === 'LUNATIC') {
+    // Prefer biggest available weapon
+    const priority = [
+      'DEATHS_HEAD', 'NUKE', 'DEATHS_SKULL', 'BABY_NUKE',
+      'HEAVENS_FURY', 'PLASMA_BLAST', 'MIRV', 'FUNKY_BOMB',
+      'HEAVY_ROLLER', 'NAPALM', 'MISSILE', 'ROLLER',
+      'MAGIC_WALL', 'DIRT_BALL', 'LIQUID_DIRT', 'SANDBAG', 'BABY_MISSILE'
+    ];
+    for (const id of priority) if (available.includes(id)) return id;
+    return available[0];
+  }
+
+  if (type === 'CYBORG') {
+    // Smart selection — match weapon power to remaining opponent HP when possible
+    const opponent = pickWeakestOpponent(t);
+    const oppHp = opponent ? opponent.hp : 100;
+
+    // Heavy weapons reserved for finishing blows or wounded opponents
+    if (oppHp <= 70 && available.includes('DEATHS_HEAD')) return 'DEATHS_HEAD';
+    if (oppHp <= 80 && available.includes('NUKE')) return 'NUKE';
+
+    // Mid-game variety
+    if (available.includes('HEAVENS_FURY') && Math.random() < 0.20) return 'HEAVENS_FURY';
+    if (available.includes('DEATHS_SKULL') && Math.random() < 0.25) return 'DEATHS_SKULL';
+    if (available.includes('PLASMA_BLAST') && Math.random() < 0.30) return 'PLASMA_BLAST';
+    if (available.includes('BABY_NUKE') && Math.random() < 0.30) return 'BABY_NUKE';
+    if (available.includes('MIRV') && Math.random() < 0.25) return 'MIRV';
+    if (available.includes('HEAVY_ROLLER') && Math.random() < 0.20) return 'HEAVY_ROLLER';
+
+    // Default reliable
+    if (available.includes('MISSILE')) return 'MISSILE';
+    return available[0];
+  }
+
+  // SHOOTER: prefer reliable missiles, occasionally fancy
+  if (available.includes('MISSILE') && Math.random() < 0.65) return 'MISSILE';
+  if (available.includes('BABY_NUKE') && Math.random() < 0.30) return 'BABY_NUKE';
+  if (available.includes('FUNKY_BOMB') && Math.random() < 0.20) return 'FUNKY_BOMB';
+  if (available.includes('PLASMA_BLAST') && Math.random() < 0.25) return 'PLASMA_BLAST';
+  if (available.includes('NAPALM') && Math.random() < 0.20) return 'NAPALM';
+  return available.includes('MISSILE') ? 'MISSILE' : available[0];
+}
+
+// Pick the weakest alive opponent (lowest HP, ties broken by closeness).
+// In 2-player games this is the only opponent. In 3-4 player games this
+// makes AIs gang up on the wounded, which is the right strategy.
+function pickWeakestOpponent(t) {
+  const opponents = tanks.filter(o => o.alive && o.id !== t.id);
+  if (opponents.length === 0) return null;
+  opponents.sort((a, b) => {
+    if (a.hp !== b.hp) return a.hp - b.hp;
+    return Math.abs(a.x - t.x) - Math.abs(b.x - t.x);
+  });
+  return opponents[0];
+}
+
+// Compute the AI's chosen aim. Returns {angle, power, weaponId}.
+function aiPlanShot(t) {
+  const type = tankType(t);
+  const target = pickWeakestOpponent(t);
+  if (!target) return null;
+
+  const weaponId = aiPickWeapon(t);
+  const weapon = WEAPONS[weaponId];
+
+  if (type === 'SITTING_DUCK') {
+    // Fires straight up — comedic, mostly hits itself or nothing
+    return { angle: 90 + (Math.random() - 0.5) * 10, power: 200 + Math.random() * 200, weaponId };
+  }
+
+  if (type === 'MORON') {
+    // Totally random, but at least firing in the target's general direction
+    const targetIsLeft = target.x < t.x;
+    const angle = targetIsLeft ? 90 + Math.random() * 85 : Math.random() * 85;
+    const power = 100 + Math.random() * 400;
+    return { angle: Math.round(angle), power: Math.round(power), weaponId };
+  }
+
+  if (type === 'POOTER') {
+    // Random angle (any direction), but power roughly in the right ballpark
+    // for the distance. Misses often but lobs solid shots.
+    const dist = Math.abs(target.x - t.x);
+    const angle = 30 + Math.random() * 120;
+    const power = Math.min(500, dist * 0.9 + (Math.random() - 0.5) * 80);
+    return { angle: Math.round(angle), power: Math.round(power), weaponId };
+  }
+
+  if (type === 'USELESS') {
+    // Worse than Moron: 30% chance fires in completely the wrong direction.
+    // Often hurts itself. The original Useless was a joke opponent.
+    const targetIsLeft = target.x < t.x;
+    const wrongDir = Math.random() < 0.3;
+    const aimLeft = wrongDir ? !targetIsLeft : targetIsLeft;
+    const angle = aimLeft ? 90 + Math.random() * 85 : Math.random() * 85;
+    const power = 50 + Math.random() * 450;
+    return { angle: Math.round(angle), power: Math.round(power), weaponId };
+  }
+
+  // Heaven's Fury: bypass trajectory sim — pick angle/power such that
+  // t.x + cos(angle) * power lands near target.x. (See fire() heavensFury branch.)
+  if (weapon.heavensFury) {
+    const dx = target.x - t.x;
+    // Use power = |dx|, angle = 0 (right) if dx>0 or 180 (left) if dx<0,
+    // but those degenerate cases are OK — vertical component doesn't matter for HF.
+    let angle, power;
+    if (Math.abs(dx) < 5) {
+      angle = 90; power = 5;
+    } else if (dx > 0) {
+      angle = 0;  power = Math.min(500, Math.abs(dx));
+    } else {
+      angle = 180; power = Math.min(500, Math.abs(dx));
+    }
+    // Cyborg accurate; others wobble
+    if (type !== 'CYBORG') power += (Math.random() - 0.5) * 40;
+    return {
+      angle: Math.max(0, Math.min(180, Math.round(angle))),
+      power: Math.max(1, Math.min(500, Math.round(power))),
+      weaponId
+    };
+  }
+
+  // Shooter and above use real aim simulation
+  const quality = (type === 'CYBORG') ? 'fine' : 'coarse';
+  const aim = aiFindAim(t, target, quality);
+
+  if (!aim) {
+    // Fallback: rough direct shot
+    const targetIsLeft = target.x < t.x;
+    return {
+      angle: targetIsLeft ? 135 : 45,
+      power: 300,
+      weaponId
+    };
+  }
+
+  // Add some inaccuracy for non-Cyborg
+  let angle = aim.angle;
+  let power = aim.power;
+  if (type === 'SHOOTER') {
+    angle += (Math.random() - 0.5) * 10;
+    power += (Math.random() - 0.5) * 40;
+  } else if (type === 'LUNATIC') {
+    angle += (Math.random() - 0.5) * 25;
+    power += (Math.random() - 0.5) * 100;
+  }
+
+  return {
+    angle: Math.max(0, Math.min(180, Math.round(angle))),
+    power: Math.max(1, Math.min(500, Math.round(power))),
+    weaponId
+  };
+}
+
+// Execute the AI's turn (called from endTurn when it's an AI's turn).
+function aiTakeTurn() {
+  const t = tanks[currentTurn];
+  if (!t.alive || !isAI(t)) return;
+  // Don't start a new AI turn if the round is over or one is already pending.
+  if (gameOver) return;
+  if (aiTimerHandles.length > 0) return; // already thinking — guard against re-entry
+
+  showAIThinking(true);
+
+  const thinkHandle = setTimeout(() => {
+    // Remove this handle from the list now that it has fired
+    aiTimerHandles = aiTimerHandles.filter(h => h !== thinkHandle);
+    if (gameOver) { showAIThinking(false); return; }
+    const plan = aiPlanShot(t);
+    if (!plan) { showAIThinking(false); return; }
+
+    // Set the AI's chosen weapon
+    t.weaponIdx = WEAPON_ORDER.indexOf(plan.weaponId);
+    if (t.weaponIdx < 0) t.weaponIdx = 0;
+    t.angle = plan.angle;
+    t.power = plan.power;
+    updateHUD();
+    render();
+
+    // AI driving: smart types may drive a bit before shooting if they have
+    // fuel available. Adds positional variety, makes them less predictable.
+    const aiType = tankType(t);
+    const canDrive = t.driveFuelLeft > 0 && t.alive && !t.falling;
+    const wantsDrive = canDrive &&
+      (aiType === 'CYBORG' || aiType === 'SHOOTER' || aiType === 'LUNATIC') &&
+      Math.random() < 0.30;
+
+    const proceedToFire = () => {
+      const aimHandle = setTimeout(() => {
+        aiTimerHandles = aiTimerHandles.filter(h => h !== aimHandle);
+        if (gameOver) { showAIThinking(false); return; }
+        const stillMe = tanks[currentTurn] === t && t.alive && isAI(t);
+        if (!stillMe) { showAIThinking(false); return; }
+        showAIThinking(false);
+        fire();
+      }, 400);
+      aiTimerHandles.push(aimHandle);
+    };
+
+    if (wantsDrive) {
+      // Pick a direction and a step count; drive that many pixels, then fire.
+      // Aim toward target if Cyborg/Shooter (might give better angle);
+      // random for Lunatic.
+      const target = pickWeakestOpponent(t);
+      let direction;
+      if (aiType === 'LUNATIC' || !target) {
+        direction = Math.random() < 0.5 ? -1 : 1;
+      } else {
+        // Cyborg/Shooter: drive away from target to increase arc opportunity,
+        // OR toward target to close range. Mix both for unpredictability.
+        const toward = target.x < t.x ? -1 : 1;
+        direction = Math.random() < 0.5 ? toward : -toward;
+      }
+      const steps = 8 + Math.floor(Math.random() * 18); // 8-25 px
+
+      // Drive step-by-step with a small delay between each so the player sees it
+      let stepsLeft = steps;
+      const driveStep = () => {
+        // Filter ALL fired drive handles. (We can't track our own here because
+        // setTimeout returns are async — the handle isn't known to this closure.
+        // Instead, sweep stale handles each step: any handle in the list that
+        // doesn't match the most recently-scheduled one is fired and dead.)
+        if (gameOver) { showAIThinking(false); return; }
+        const stillMe = tanks[currentTurn] === t && t.alive && isAI(t);
+        if (!stillMe) { showAIThinking(false); return; }
+        if (stepsLeft <= 0 || t.driveFuelLeft <= 0 || t.falling) {
+          stopDriveSound();
+          // Clear all drive handles from the list — they've all fired or are
+          // about to be canceled.
+          aiTimerHandles = [];
+          proceedToFire();
+          return;
+        }
+        const moved = driveTank(t, direction);
+        if (!moved) {
+          stopDriveSound();
+          aiTimerHandles = [];
+          proceedToFire();
+          return;
+        }
+        stepsLeft--;
+        updateHUD();
+        render();
+        // Replace the timer handles list with just the next scheduled one.
+        // This is safe because between drive steps there's only ever one
+        // pending drive timer at a time.
+        const handle = setTimeout(driveStep, 40);
+        aiTimerHandles = [handle];
+      };
+      // Kick off drive with sound
+      startDriveSound();
+      // Initial drive timer also replaces the handles list (the thinkHandle
+      // already filtered itself out before reaching this branch).
+      aiTimerHandles = [];
+      driveStep();
+    } else {
+      proceedToFire();
+    }
+  }, AI_THINK_TIME_MS);
+  aiTimerHandles.push(thinkHandle);
+}
+
+function showAIThinking(on) {
+  const el = document.getElementById('ai-thinking');
+  if (on) {
+    const t = tanks[currentTurn];
+    el.textContent = `${t.name} (${tankType(t)}) THINKING…`;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+/* AI shopping — spend cash on weapons/parachutes based on personality. */
+function aiShop(t) {
+  const type = tankType(t);
+
+  // ── Defensive buys (all non-random AIs prioritize defense) ──
+  const isRandomBuyer = type === 'MORON' || type === 'SITTING_DUCK'
+                     || type === 'POOTER' || type === 'USELESS';
+  if (!isRandomBuyer) {
+    // Parachutes — keep 2 on hand
+    if (t.parachutes < 2 && t.cash >= PARACHUTE_PRICE) {
+      const want = 2 - t.parachutes;
+      const afford = Math.min(want, Math.floor(t.cash * 0.05 / PARACHUTE_PRICE) + 1);
+      t.parachutes += afford;
+      t.cash -= afford * PARACHUTE_PRICE;
+    }
+    // Shield — buy the best one you can afford if none stocked
+    const totalShields = t.shields.MAGNETIC + t.shields.HEAVY + t.shields.SUPER;
+    if (totalShields < 2) {
+      if (type === 'CYBORG' && t.cash >= SHIELDS.SUPER.price * 1.5) {
+        t.shields.SUPER++; t.cash -= SHIELDS.SUPER.price;
+      } else if (t.cash >= SHIELDS.HEAVY.price * 1.5) {
+        t.shields.HEAVY++; t.cash -= SHIELDS.HEAVY.price;
+      } else if (t.cash >= SHIELDS.MAGNETIC.price) {
+        t.shields.MAGNETIC++; t.cash -= SHIELDS.MAGNETIC.price;
+      }
+    }
+    // Battery — cheap heal, buy 1
+    if (t.batteries < 1 && t.cash >= BATTERY_PRICE * 2) {
+      t.batteries++; t.cash -= BATTERY_PRICE;
+    }
+  } else {
+    // Moron/Duck still parachute opportunistically
+    if (t.parachutes < 1 && t.cash >= PARACHUTE_PRICE) {
+      t.parachutes++; t.cash -= PARACHUTE_PRICE;
+    }
+  }
+
+  // ── Weapon buys by personality ──
+  if (isRandomBuyer) {
+    const buyables = Object.keys(WEAPON_PRICES).filter(id => id !== 'BABY_MISSILE' && WEAPON_PRICES[id] > 0);
+    let safety = 60;
+    while (safety-- > 0) {
+      const id = buyables[Math.floor(Math.random() * buyables.length)];
+      const price = WEAPON_PRICES[id];
+      if (t.cash >= price) {
+        t.inventory[id] = (t.inventory[id] || 0) + 1;
+        t.cash -= price;
+      } else break;
+    }
+    return;
+  }
+
+  if (type === 'LUNATIC') {
+    // Spend everything on the biggest weapons it can
+    const priority = ['DEATHS_HEAD', 'NUKE', 'DEATHS_SKULL', 'HEAVENS_FURY', 'BABY_NUKE',
+                      'PLASMA_BLAST', 'MIRV', 'FUNKY_BOMB', 'HEAVY_ROLLER', 'NAPALM', 'MISSILE'];
+    for (const id of priority) {
+      while (t.cash >= WEAPON_PRICES[id]) {
+        t.inventory[id] = (t.inventory[id] || 0) + 1;
+        t.cash -= WEAPON_PRICES[id];
+        if ((t.inventory[id] || 0) >= 20) break;
+      }
+    }
+    return;
+  }
+
+  if (type === 'CYBORG') {
+    // Save toward Death's Head once Nuke is stocked
+    if ((t.inventory.NUKE || 0) === 0 && t.cash >= WEAPON_PRICES.NUKE) {
+      t.inventory.NUKE++; t.cash -= WEAPON_PRICES.NUKE;
+    }
+    if ((t.inventory.NUKE || 0) >= 1 && (t.inventory.DEATHS_HEAD || 0) === 0
+        && t.cash >= WEAPON_PRICES.DEATHS_HEAD) {
+      t.inventory.DEATHS_HEAD++; t.cash -= WEAPON_PRICES.DEATHS_HEAD;
+    }
+    // Heaven's Fury for terrain-blocked situations
+    if ((t.inventory.HEAVENS_FURY || 0) < 2 && t.cash >= WEAPON_PRICES.HEAVENS_FURY * 1.5) {
+      t.inventory.HEAVENS_FURY++; t.cash -= WEAPON_PRICES.HEAVENS_FURY;
+    }
+    // Death's Skull (12-warhead spread) as a backup big shot
+    if ((t.inventory.DEATHS_SKULL || 0) < 1 && t.cash >= WEAPON_PRICES.DEATHS_SKULL * 1.5) {
+      t.inventory.DEATHS_SKULL++; t.cash -= WEAPON_PRICES.DEATHS_SKULL;
+    }
+    // Stock Missiles up to 8
+    while ((t.inventory.MISSILE || 0) < 8 && t.cash >= WEAPON_PRICES.MISSILE) {
+      t.inventory.MISSILE++; t.cash -= WEAPON_PRICES.MISSILE;
+    }
+    // Plasma Blast
+    while ((t.inventory.PLASMA_BLAST || 0) < 3 && t.cash >= WEAPON_PRICES.PLASMA_BLAST * 1.5) {
+      t.inventory.PLASMA_BLAST++; t.cash -= WEAPON_PRICES.PLASMA_BLAST;
+    }
+    // MIRVs
+    while ((t.inventory.MIRV || 0) < 3 && t.cash >= WEAPON_PRICES.MIRV * 2) {
+      t.inventory.MIRV++; t.cash -= WEAPON_PRICES.MIRV;
+    }
+    // Baby Nukes
+    while ((t.inventory.BABY_NUKE || 0) < 3 && t.cash >= WEAPON_PRICES.BABY_NUKE * 2) {
+      t.inventory.BABY_NUKE++; t.cash -= WEAPON_PRICES.BABY_NUKE;
+    }
+    return;
+  }
+
+  // SHOOTER: missiles and the occasional special
+  while ((t.inventory.MISSILE || 0) < 6 && t.cash >= WEAPON_PRICES.MISSILE) {
+    t.inventory.MISSILE++; t.cash -= WEAPON_PRICES.MISSILE;
+  }
+  while ((t.inventory.BABY_NUKE || 0) < 2 && t.cash >= WEAPON_PRICES.BABY_NUKE * 2) {
+    t.inventory.BABY_NUKE++; t.cash -= WEAPON_PRICES.BABY_NUKE;
+  }
+  while ((t.inventory.FUNKY_BOMB || 0) < 2 && t.cash >= WEAPON_PRICES.FUNKY_BOMB * 2) {
+    t.inventory.FUNKY_BOMB++; t.cash -= WEAPON_PRICES.FUNKY_BOMB;
+  }
+  while ((t.inventory.NAPALM || 0) < 2 && t.cash >= WEAPON_PRICES.NAPALM * 2) {
+    t.inventory.NAPALM++; t.cash -= WEAPON_PRICES.NAPALM;
+  }
+  while ((t.inventory.PLASMA_BLAST || 0) < 1 && t.cash >= WEAPON_PRICES.PLASMA_BLAST * 1.5) {
+    t.inventory.PLASMA_BLAST++; t.cash -= WEAPON_PRICES.PLASMA_BLAST;
+  }
+}
+
+// Set true between fire() and endTurn() so we can detect and reject a second
+// endTurn() invocation for the same physical turn (a defense against multiple
+// concurrent detonation chains both deciding "I'm the last one out").
+let turnInFlight = false;
+
+function endTurn() {
+  // Idempotency guard. If turnInFlight is already false, another async path
+  // already advanced the turn — don't advance again.
+  if (!turnInFlight) return;
+  turnInFlight = false;
+
+  // Resolve OUTGOING tank's battery: if they had an active battery, consume
+  // one charge. If they didn't drive this turn, the charge is spent on healing.
+  // If they drove, the charge was spent on driving — no heal.
+  const outgoing = tanks[currentTurn];
+  if (outgoing && outgoing.alive && outgoing.batteryChargesLeft > 0) {
+    outgoing.batteryChargesLeft--;
+    if (!outgoing.droveThisTurn) {
+      const healed = Math.min(BATTERY_HEAL, 100 - outgoing.hp);
+      outgoing.hp += healed;
+      if (healed > 0) {
+        showQuip(`${outgoing.name}: +${healed} HP (battery)`, 1100);
+        SOUNDS.battery();
+      }
+    }
+  }
+  // Reset drive flags on the outgoing tank
+  if (outgoing) {
+    outgoing.droveThisTurn = false;
+    outgoing.driveFuelLeft = 0;
+  }
+
+  inputLocked = false;
+  currentTurn = (currentTurn + 1) % tanks.length;
+  let safety = 0;
+  while (!tanks[currentTurn].alive && safety < tanks.length + 1) {
+    currentTurn = (currentTurn + 1) % tanks.length;
+    safety++;
+  }
+
+  // Wind: reroll if per-turn variability is on
+  if (settings.windMode === 'per_turn' || settings.windMode === 'per_shot') {
+    wind = Math.round((Math.random() * 2 - 1) * 10);
+  }
+
+  // Set up the NEW active tank's drive fuel if they have battery charges
+  const active = tanks[currentTurn];
+  if (active.alive && active.batteryChargesLeft > 0) {
+    active.driveFuelLeft = DRIVE_FUEL_PER_TURN;
+    active.droveThisTurn = false;
+  } else {
+    active.driveFuelLeft = 0;
+  }
+
+  updateHUD();
+  render();
+
+  // If the new active tank is AI, start its thinking process.
+  if (!gameOver && tanks[currentTurn].alive && isAI(tanks[currentTurn])) {
+    aiTakeTurn();
+  }
+}
+
+function checkWin() {
+  // Guard: only resolve a round once. Multi-projectile weapons (Funky Bomb,
+  // MIRV, Death's Skull, Heaven's Fury) can trigger checkWin multiple times
+  // as each bomblet impacts; without this guard, wins would double-count and
+  // multiple round-advance timers would stack up, skipping rounds.
+  if (gameOver) return true;
+
+  const alive = tanks.filter(t => t.alive);
+  if (alive.length <= 1) {
+    gameOver = true;
+    turnInFlight = false; // round is over, no further endTurn should resolve
+    // Cancel any pending AI setTimeout chains — otherwise a stale timer can
+    // fire a shot after the round has ended.
+    cancelPendingAITimers();
+    // Determine round winner
+    const winner = alive.length === 1 ? alive[0] : null;
+    if (winner) winner.wins++;
+
+    // Award prize money to all tanks
+    awardPrizeMoney(winner ? winner.id : -1);
+    // Compound interest on remaining cash
+    applyInterest();
+
+    // Show the end-of-round message briefly, then advance
+    const roundText = winner
+      ? `${winner.name} wins round ${roundNumber}!`
+      : `Round ${roundNumber} — mutual destruction!`;
+    showMessage(roundText);
+    if (winner) SOUNDS.win(); else SOUNDS.lose();
+
+    setTimeout(() => {
+      hideMessage();
+      if (roundNumber >= gameConfig.totalRounds) {
+        showResults();
+      } else {
+        roundNumber++;
+        openShopFor(0);
+      }
+    }, 2200);
+
+    return true;
+  }
+  return false;
+}
+
+function awardPrizeMoney(winnerId) {
+  for (let i = 0; i < tanks.length; i++) {
+    const t = tanks[i];
+    let prize = damageDealtThisRound[i] * PRIZE_PER_DAMAGE;
+    if (t.alive) prize += SURVIVAL_BONUS;
+    // Per-kill bonus: in 2-player games this equals the old "winner gets KILL_BONUS"
+    // behavior. In 3-4 player games, a player who killed 2 opponents before dying
+    // still gets paid for those kills.
+    prize += (killsThisRound[i] || 0) * KILL_BONUS;
+    t.cash += prize;
+  }
+}
+
+function applyInterest() {
+  for (const t of tanks) {
+    t.cash = Math.floor(t.cash * (1 + INTEREST_RATE));
+  }
+}
+
+function showMessage(text) {
+  const el = document.getElementById('message');
+  el.textContent = text;
+  el.classList.add('show');
+}
+
+function hideMessage() {
+  document.getElementById('message').classList.remove('show');
+}
+
+function showQuip(text, duration) {
+  const el = document.getElementById('quip');
+  el.textContent = text;
+  el.classList.add('show');
+  if (showQuip._timer) clearTimeout(showQuip._timer);
+  showQuip._timer = setTimeout(() => el.classList.remove('show'), duration || 1800);
+}
+
+/* ------------------------------------------------------------
+   HUD
+   ------------------------------------------------------------ */
+function updateHUD() {
+  const typeLabel = (type) => type === 'HUMAN' ? '' : type.replace('_', ' ');
+
+  // Rebuild the player cards from tanks[]. Each card shows: P# (in tank color),
+  // type, HP, cash, wins. Active player highlighted; dead players dimmed.
+  const container = document.getElementById('player-cards');
+  // Only rebuild if the count changed (avoid thrashing every frame).
+  const needRebuild = container.children.length !== tanks.length;
+  if (needRebuild) {
+    container.innerHTML = '';
+    for (let i = 0; i < tanks.length; i++) {
+      const card = document.createElement('div');
+      card.className = 'player-card';
+      card.dataset.idx = String(i);
+      card.innerHTML = `
+        <span class="pname p${i+1}-color">P${i+1}</span>
+        <span class="ptype"></span>
+        <span class="label">HP</span><span class="value pcard-hp"></span>
+        <span class="label">$</span><span class="value pcard-cash"></span>
+        <span class="label">W</span><span class="value pcard-wins"></span>
+      `;
+      container.appendChild(card);
+    }
+  }
+
+  // Update each card's text + active/dead state
+  for (let i = 0; i < tanks.length; i++) {
+    const card = container.children[i];
+    if (!card) continue;
+    const t = tanks[i];
+    card.querySelector('.ptype').textContent = typeLabel(gameConfig.playerTypes[i] || 'HUMAN');
+    card.querySelector('.pcard-hp').textContent = t.hp;
+    card.querySelector('.pcard-cash').textContent = t.cash;
+    card.querySelector('.pcard-wins').textContent = t.wins;
+    card.classList.toggle('active', i === currentTurn);
+    card.classList.toggle('dead', !t.alive);
+  }
+
+  // Wind readout — hidden entirely when wind is turned off, so the HUD stays clean
+  const windReadout = document.getElementById('wind-readout');
+  if (settings.windMode === 'off') {
+    windReadout.style.display = 'none';
+  } else {
+    windReadout.style.display = '';
+    document.getElementById('wind').textContent = (wind > 0 ? '→' : wind < 0 ? '←' : '·') + Math.abs(wind);
+  }
+  document.getElementById('round-display').textContent = `${roundNumber}/${gameConfig.totalRounds}`;
+  document.getElementById('turn').textContent = tanks[currentTurn] ? tanks[currentTurn].name : '-';
+
+  // Weapon bar — show current tank's weapon, angle, power
+  const t = tanks[currentTurn];
+  if (t && t.alive) {
+    const w = currentWeapon(t);
+    document.getElementById('weapon-name').textContent = w.name;
+    const ammo = t.inventory[w.id];
+    document.getElementById('weapon-ammo').textContent = ammo === -1 ? '∞' : ammo;
+    document.getElementById('hud-angle').textContent = t.angle + '°';
+    document.getElementById('hud-power').textContent = t.power;
+    // Hint line: show drive fuel when active, otherwise just chutes + weapon hint
+    // Hint line: on touch devices the on-screen buttons make key names
+    // pointless noise, so show just the live values.
+    const touchUI = document.body.classList.contains('touch-mode');
+    let hint;
+    if (touchUI) {
+      hint = `Chutes: ${t.parachutes}`;
+      if (t.driveFuelLeft > 0) hint = `Fuel: ${t.driveFuelLeft}  ·  Chutes: ${t.parachutes}`;
+    } else {
+      hint = `Chutes: ${t.parachutes}  ·  Z/X weapon`;
+      if (t.driveFuelLeft > 0) {
+        hint = `FUEL: ${t.driveFuelLeft}  ·  A/D to drive  ·  Z/X weapon`;
+      }
+    }
+    document.getElementById('weapon-hint').textContent = hint;
+  }
+
+  // Keep the touch drive cluster + fuel readout in sync
+  if (typeof updateTouchDriveUI === 'function') updateTouchDriveUI();
+}
+
+/* ------------------------------------------------------------
+   Input — discrete keys (aim/power/weapon/fire) handled on keydown.
+   Held keys (A/D drive) are tracked in heldKeys and applied each frame
+   by pollInput() in the main loop.
+   ------------------------------------------------------------ */
+window.addEventListener('keydown', (e) => {
+  // ESC toggles pause/resume (works only during gameplay)
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (document.getElementById('pause-screen').style.display !== 'none') {
+      resumeGame();
+    } else if (document.getElementById('settings-screen').style.display !== 'none') {
+      showScreen(settingsReturnTo);
+    } else if (document.getElementById('instructions-screen').style.display !== 'none') {
+      showScreen('start-screen');
+    } else if (isInGame()) {
+      pauseGame();
+    }
+    return;
+  }
+
+  // F toggles fullscreen anywhere (menus or in-game). Ignore when a modifier
+  // is held so it doesn't hijack browser shortcuts like Ctrl+F.
+  if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    toggleFullscreen();
+    return;
+  }
+
+  if (e.key === ' ') {
+    e.preventDefault();
+    // Only allow human to manually fire when it's a human's turn
+    const t = tanks[currentTurn];
+    if (t && t.alive && !isAI(t)) fire();
+    return;
+  }
+  // R no longer resets a round mid-tournament — round flow is automatic.
+
+  if (gameOver || projectiles.length > 0 || dirtSettling || inputLocked) return;
+  const t = tanks[currentTurn];
+  if (!t || !t.alive) return;
+  // Don't accept input while an AI is taking its turn.
+  if (isAI(t)) return;
+
+  // Weapon switching
+  const k = e.key.toLowerCase();
+  if (k === 'z' || e.key === '[') { cycleWeapon(t, -1); updateHUD(); render(); return; }
+  if (k === 'x' || e.key === ']') { cycleWeapon(t,  1); updateHUD(); render(); return; }
+
+  // Drive keys — A drives left, D drives right. Only when battery active.
+  if (k === 'a' || k === 'd') {
+    e.preventDefault();
+    if (t.driveFuelLeft <= 0) return; // no fuel = no drive
+    heldKeys[k] = true;
+    startDriveSound();
+    return;
+  }
+
+  // Aim / power — one press = one unit
+  let changed = false;
+  if (e.key === 'ArrowLeft')  { t.angle = Math.min(180, t.angle + 1); changed = true; }
+  if (e.key === 'ArrowRight') { t.angle = Math.max(0,   t.angle - 1); changed = true; }
+  if (e.key === 'ArrowUp')    { t.power = Math.min(500, t.power + 1); changed = true; }
+  if (e.key === 'ArrowDown')  { t.power = Math.max(1,   t.power - 1); changed = true; }
+  if (changed) {
+    e.preventDefault();
+    updateHUD();
+    render();
+  }
+});
+
+// Keyup — release drive keys, stop sound when neither is held
+window.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'a' || k === 'd') {
+    heldKeys[k] = false;
+    if (!heldKeys.a && !heldKeys.d) {
+      stopDriveSound();
+    }
+  }
+});
+
+/* ------------------------------------------------------------
+   Touch controls
+   Buttons mirror the keyboard: tap = one unit, hold = auto-repeat.
+   Drive buttons set the same heldKeys flags the keyboard uses, so
+   pollInput() handles the actual movement identically.
+   ------------------------------------------------------------ */
+function isTouchDevice() {
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+}
+
+function touchModeActive() {
+  if (settings.touchControls === 'on') return true;
+  if (settings.touchControls === 'off') return false;
+  return isTouchDevice(); // auto
+}
+
+function applyTouchMode() {
+  document.body.classList.toggle('touch-mode', touchModeActive());
+  updateOrientationClass();
+  // Reserve space changes with touch mode, so re-fit the game scale
+  if (typeof fitGameToViewport === 'function') fitGameToViewport();
+  // Hint text differs between keyboard and touch — refresh it now
+  if (typeof updateHUD === 'function' && typeof tanks !== 'undefined' && tanks.length) updateHUD();
+}
+
+function updateOrientationClass() {
+  const portrait = window.innerHeight > window.innerWidth;
+  document.body.classList.toggle('portrait', portrait);
+}
+
+window.addEventListener('resize', updateOrientationClass);
+window.addEventListener('orientationchange', () => {
+  // Give the browser a beat to settle dimensions, then re-check + refit
+  setTimeout(() => { updateOrientationClass(); fitGameToViewport(); }, 120);
+});
+
+/* ------------------------------------------------------------
+   App lifecycle (background / foreground)
+   iOS throttles or suspends timers when the app backgrounds. The rAF-based
+   explosion runner pauses cleanly on its own, but held inputs, the drive
+   engine sound, and any stranded turn state need explicit handling.
+   ------------------------------------------------------------ */
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Going to background: release everything that's "held".
+    heldKeys.a = false;
+    heldKeys.d = false;
+    stopDriveSound();
+    if (typeof tcStopAllRepeats === 'function') tcStopAllRepeats();
+    document.querySelectorAll('#touch-controls .tc-held')
+      .forEach(el => el.classList.remove('tc-held'));
+  } else {
+    // Returning to foreground: refit layout (rotation may have happened
+    // while backgrounded) and resume the audio context.
+    updateOrientationClass();
+    fitGameToViewport();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    // Watchdog: give any in-flight async chains a moment to settle, then
+    // check for a stranded turn (inputLocked with nothing actually happening)
+    // and recover it. This catches setTimeout chains (AI timers, Heaven's
+    // Fury spawns, dirt settling callbacks) that iOS may have dropped.
+    setTimeout(() => {
+      const stranded = inputLocked && !gameOver &&
+        projectiles.length === 0 &&
+        pendingDetonation === 0 &&
+        !dirtSettling &&
+        hfSpawnsPending <= 0 &&
+        !explosionInProgress;
+      if (stranded) {
+        inputLocked = false;
+        if (turnInFlight) endTurn();
+      }
+      // Also: if it's an AI's turn but no AI timers are pending and nothing
+      // is in flight, the AI's timers were dropped — restart its turn.
+      const t = tanks[currentTurn];
+      const aiStalled = !gameOver && t && t.alive && isAI(t) &&
+        aiTimerHandles.length === 0 &&
+        projectiles.length === 0 &&
+        pendingDetonation === 0 &&
+        !inputLocked && !dirtSettling && !explosionInProgress &&
+        !isOverlayVisible();
+      if (aiStalled) {
+        aiTakeTurn();
+      }
+    }, 1500);
+  }
+});
+
+// --- Touch action implementations (mirror keyboard behavior exactly) ---
+
+function tcCanAct() {
+  if (isOverlayVisible()) return null;
+  if (gameOver || projectiles.length > 0 || dirtSettling || inputLocked) return null;
+  const t = tanks[currentTurn];
+  if (!t || !t.alive || isAI(t)) return null;
+  return t;
+}
+
+const TC_ACTIONS = {
+  aimLeft()   { const t = tcCanAct(); if (!t) return; t.angle = Math.min(180, t.angle + 1); updateHUD(); render(); },
+  aimRight()  { const t = tcCanAct(); if (!t) return; t.angle = Math.max(0,   t.angle - 1); updateHUD(); render(); },
+  powerUp()   { const t = tcCanAct(); if (!t) return; t.power = Math.min(500, t.power + 1); updateHUD(); render(); },
+  powerDown() { const t = tcCanAct(); if (!t) return; t.power = Math.max(1,   t.power - 1); updateHUD(); render(); },
+  weaponPrev(){ const t = tcCanAct(); if (!t) return; cycleWeapon(t, -1); updateHUD(); render(); },
+  weaponNext(){ const t = tcCanAct(); if (!t) return; cycleWeapon(t,  1); updateHUD(); render(); },
+  fire() {
+    if (isOverlayVisible()) return;
+    const t = tanks[currentTurn];
+    if (t && t.alive && !isAI(t)) fire();
+  },
+  pause() {
+    // Same as ESC: toggle pause when in-game, back out of settings/instructions
+    if (document.getElementById('pause-screen').style.display !== 'none') {
+      resumeGame();
+    } else if (document.getElementById('settings-screen').style.display !== 'none') {
+      showScreen(settingsReturnTo);
+    } else if (document.getElementById('instructions-screen').style.display !== 'none') {
+      showScreen('start-screen');
+    } else if (isInGame()) {
+      pauseGame();
+    }
+  }
+  // driveLeft / driveRight handled separately (hold semantics via heldKeys)
+};
+
+// --- Auto-repeat plumbing ---
+// Tap fires once. Holding fires again after 350ms, then repeats at 20/sec,
+// accelerating to 45/sec after 1.2s of holding — good for big power swings.
+const tcRepeatState = {}; // action -> { initialTimer, repeatTimer, heldSince }
+
+function tcStartRepeat(action) {
+  const fn = TC_ACTIONS[action];
+  if (!fn) return;
+  fn(); // fire immediately on press
+  tcStopRepeat(action);
+  const state = { heldSince: Date.now() };
+  state.initialTimer = setTimeout(() => {
+    const tick = () => {
+      fn();
+      const heldMs = Date.now() - state.heldSince;
+      const interval = heldMs > 1200 ? 22 : 50;
+      state.repeatTimer = setTimeout(tick, interval);
+    };
+    tick();
+  }, 350);
+  tcRepeatState[action] = state;
+}
+
+function tcStopRepeat(action) {
+  const state = tcRepeatState[action];
+  if (!state) return;
+  clearTimeout(state.initialTimer);
+  clearTimeout(state.repeatTimer);
+  delete tcRepeatState[action];
+}
+
+function tcStopAllRepeats() {
+  for (const action of Object.keys(tcRepeatState)) tcStopRepeat(action);
+}
+
+// --- Wire up the touch buttons ---
+function bindTouchControls() {
+  document.querySelectorAll('#touch-controls [data-action]').forEach(btn => {
+    const action = btn.dataset.action;
+
+    if (action === 'driveLeft' || action === 'driveRight') {
+      // Hold semantics — set heldKeys just like keyboard A/D
+      const key = action === 'driveLeft' ? 'a' : 'd';
+      const press = (e) => {
+        e.preventDefault();
+        const t = tcCanAct();
+        if (!t || t.driveFuelLeft <= 0) return;
+        heldKeys[key] = true;
+        btn.classList.add('tc-held');
+        startDriveSound();
+      };
+      const release = (e) => {
+        e.preventDefault();
+        heldKeys[key] = false;
+        btn.classList.remove('tc-held');
+        if (!heldKeys.a && !heldKeys.d) stopDriveSound();
+      };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointercancel', release);
+      btn.addEventListener('pointerleave', release);
+      return;
+    }
+
+    if (action === 'fire' || action === 'pause') {
+      // One-shot actions — no repeat
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        TC_ACTIONS[action]();
+      });
+      return;
+    }
+
+    // Repeating actions (aim/power/weapon)
+    const press = (e) => {
+      e.preventDefault();
+      btn.classList.add('tc-held');
+      tcStartRepeat(action);
+    };
+    const release = (e) => {
+      e.preventDefault();
+      btn.classList.remove('tc-held');
+      tcStopRepeat(action);
+    };
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointercancel', release);
+    btn.addEventListener('pointerleave', release);
+  });
+}
+
+// Update the drive cluster + fuel gauge visibility every HUD refresh.
+// Called from updateHUD via this hook.
+function updateTouchDriveUI() {
+  const driveEl = document.getElementById('tc-drive');
+  if (!driveEl) return;
+  const t = tanks[currentTurn];
+  const show = t && t.alive && !isAI(t) && t.driveFuelLeft > 0;
+  driveEl.style.display = show ? 'flex' : 'none';
+  if (show) {
+    document.getElementById('tc-fuel').textContent = t.driveFuelLeft;
+  }
+}
+
+// Track which keys are held (so A/D can drive continuously)
+const heldKeys = { a: false, d: false };
+
+// Drive engine sound state — started on keydown, stopped on keyup
+let driveOscillator = null;
+let driveGain = null;
+
+function startDriveSound() {
+  const ctx = getAudioCtx();
+  if (!ctx || driveOscillator) return;
+  driveOscillator = ctx.createOscillator();
+  driveGain = ctx.createGain();
+  driveOscillator.type = 'sawtooth';
+  driveOscillator.frequency.setValueAtTime(60, ctx.currentTime);
+  driveGain.gain.setValueAtTime(0.08, ctx.currentTime);
+  driveOscillator.connect(driveGain);
+  driveGain.connect(ctx.destination);
+  driveOscillator.start();
+}
+
+function stopDriveSound() {
+  if (!driveOscillator) return;
+  try {
+    const ctx = getAudioCtx();
+    if (ctx && driveGain) {
+      driveGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+      driveOscillator.stop(ctx.currentTime + 0.1);
+    } else {
+      driveOscillator.stop();
+    }
+  } catch (e) {}
+  driveOscillator = null;
+  driveGain = null;
+}
+
+// Drive the tank one step in the given direction (-1 or +1). Returns true if
+// the tank moved. Handles slope climbing/descending limits and triggers
+// falls when driving off a cliff.
+function driveTank(t, direction) {
+  if (!t || !t.alive || t.falling) return false;
+  if (t.driveFuelLeft <= 0) return false;
+
+  const newX = Math.round(t.x + direction);
+  if (newX < 15 || newX > CANVAS_W - 15) return false;
+
+  // Get current and target column heights
+  const curY = terrain[Math.round(t.x)];
+  const newY = terrain[newX];
+  const delta = newY - curY; // positive = downhill, negative = uphill
+
+  // Too steep uphill — block movement
+  if (delta < -DRIVE_MAX_CLIMB) return false;
+
+  // Too steep downhill — start falling
+  if (delta > DRIVE_FALL_THRESHOLD) {
+    // Tank drives off a cliff. Move to the new x, then trigger fall.
+    t.x = newX;
+    t.driveFuelLeft = 0; // burn remaining fuel
+    t.droveThisTurn = true;
+    applyTankFalls(() => {
+      // After falling resolves, continue normally
+    });
+    return false;
+  }
+
+  // Normal movement
+  t.x = newX;
+  t.y = newY - 1; // sit just above the surface
+  t.driveFuelLeft--;
+  t.droveThisTurn = true;
+  return true;
+}
+
+// Called each frame from the main loop. If A or D is held by the active human,
+// move the tank.
+function pollInput() {
+  if (isOverlayVisible()) return;
+  if (projectiles.length > 0 || dirtSettling || inputLocked || gameOver) return;
+  const t = tanks[currentTurn];
+  if (!t || !t.alive || isAI(t)) return;
+  if (t.falling) return;
+  if (t.driveFuelLeft <= 0) return;
+
+  let dir = 0;
+  if (heldKeys.a) dir -= 1;
+  if (heldKeys.d) dir += 1;
+  if (dir === 0) return;
+
+  // Drive 1 px per frame; that's roughly 60 px/second at 60fps, but fuel limits
+  // total drive distance to DRIVE_FUEL_PER_TURN (30 px) per turn.
+  const moved = driveTank(t, dir);
+  if (moved) {
+    updateHUD();
+    render();
+  }
+}
+
+/* ------------------------------------------------------------
+   Round & tournament setup
+   ------------------------------------------------------------ */
+function startTournament() {
+  roundNumber = 1;
+  // Build the tank array for the chosen player count.
+  buildTanks(gameConfig.playerCount);
+  // Per-player tournament stats
+  tournamentStats = [];
+  for (let i = 0; i < tanks.length; i++) {
+    tournamentStats.push({ shotsFired: 0, hits: 0, damageDealt: 0, damageReceived: 0, weaponsUsed: {} });
+  }
+  // damageDealtThisRound needs to grow to match too
+  damageDealtThisRound = new Array(tanks.length).fill(0);
+  killsThisRound = new Array(tanks.length).fill(0);
+
+  for (const t of tanks) {
+    t.cash = gameConfig.startingCash;
+    t.wins = 0;
+    t.inventory = makeEmptyInventory();
+    t.parachutes = 0;
+    t.shields = { MAGNETIC: 0, HEAVY: 0, SUPER: 0 };
+    t.batteries = 0;
+    t.weaponIdx = 0;
+  }
+  // Open shop for player 1 first
+  openShopFor(0);
+}
+
+function startRound() {
+  hideMessage();
+  cancelPendingAITimers();
+  gameOver = false;
+  projectiles = [];
+  dirtSettling = false;
+  inputLocked = false;
+  pendingDetonation = 0;
+  turnInFlight = false;
+  currentTurn = 0;
+  wind = (settings.windMode === 'off') ? 0 : Math.round((Math.random() * 2 - 1) * 10);
+  damageDealtThisRound = new Array(tanks.length).fill(0);
+  tracerTrail = [];
+  flightTrail = [];
+  burstFlashes = [];
+  debrisParticles = [];
+  surfaceParticles = [];
+  shakeFramesLeft = 0;
+  shakeMagnitude = 0;
+  hfSpawnsPending = 0;
+  explosionInProgress = false;
+
+  for (let i = 0; i < tanks.length; i++) {
+    const t = tanks[i];
+    t.hp = 100;
+    t.alive = true;
+    // Default aim: outer tanks angle inward, inner tanks angle slightly out
+    if (i === 0) t.angle = 45;
+    else if (i === tanks.length - 1) t.angle = 135;
+    else t.angle = (i % 2 === 0) ? 60 : 120;
+    t.power = 250;
+    t.parachuteOpen = false;
+    t.falling = false;
+    t.weaponIdx = 0;
+    t.scorches = []; // clear damage marks for the new round
+    // Auto-deploy strongest owned shield for the round
+    t.activeShield = null;
+    t.shieldHpLeft = 0;
+    if (t.shields.SUPER > 0)         { t.activeShield = 'SUPER';    t.shieldHpLeft = SHIELDS.SUPER.absorb;    t.shields.SUPER--; }
+    else if (t.shields.HEAVY > 0)    { t.activeShield = 'HEAVY';    t.shieldHpLeft = SHIELDS.HEAVY.absorb;    t.shields.HEAVY--; }
+    else if (t.shields.MAGNETIC > 0) { t.activeShield = 'MAGNETIC'; t.shieldHpLeft = SHIELDS.MAGNETIC.absorb; t.shields.MAGNETIC--; }
+    if (t.batteries > 0) {
+      t.batteries--;
+      t.batteryChargesLeft = BATTERY_USES;
+    } else {
+      t.batteryChargesLeft = 0;
+    }
+    // Reset drive state for the new round
+    t.driveFuelLeft = 0;
+    t.droveThisTurn = false;
+  }
+
+  // Set up drive fuel for the first tank if they have battery active
+  const firstTank = tanks[0];
+  if (firstTank && firstTank.batteryChargesLeft > 0) {
+    firstTank.driveFuelLeft = DRIVE_FUEL_PER_TURN;
+  }
+
+  generateTerrain();
+  // Distribute tanks across the canvas in equal zones, each with a bit of jitter.
+  // Zone width = CANVAS_W / N. Tank i sits in the middle of zone i ± jitter.
+  const zoneW = CANVAS_W / tanks.length;
+  const jitterMax = Math.min(40, zoneW * 0.25);
+  for (let i = 0; i < tanks.length; i++) {
+    const center = (i + 0.5) * zoneW;
+    const jitter = (Math.random() - 0.5) * jitterMax * 2;
+    tanks[i].x = Math.round(Math.max(30, Math.min(CANVAS_W - 30, center + jitter)));
+  }
+
+  groundPixels = ctx.createImageData(CANVAS_W, CANVAS_H);
+  drawSkyToBuffer(groundPixels);
+  paintTerrainToBuffer(groundPixels);
+
+  placeTanksOnTerrain();
+  updateHUD();
+  render();
+
+  // If P1 is AI, kick off its turn immediately.
+  if (tanks[currentTurn].alive && isAI(tanks[currentTurn])) {
+    aiTakeTurn();
+  }
+}
+
+/* ------------------------------------------------------------
+   Screen management
+   ------------------------------------------------------------ */
+const ALL_OVERLAYS = ['start-screen', 'shop-screen', 'results-screen', 'settings-screen', 'pause-screen', 'instructions-screen'];
+
+function showScreen(id) {
+  for (const s of ALL_OVERLAYS) {
+    document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
+  }
+  syncOverlayBodyClass();
+}
+
+// Touch controls are z-index 500 and would otherwise float on top of the
+// menus (z-index 100), covering their buttons. Hide them whenever any
+// overlay is up. Called from the two places overlay visibility changes.
+function syncOverlayBodyClass() {
+  document.body.classList.toggle('overlay-open', isOverlayVisible());
+}
+
+function hideAllOverlays() {
+  for (const s of ALL_OVERLAYS) {
+    document.getElementById(s).style.display = 'none';
+  }
+  syncOverlayBodyClass();
+}
+
+/* ------------------------------------------------------------
+   Start screen setup
+   ------------------------------------------------------------ */
+const AI_TYPES = ['HUMAN', 'USELESS', 'MORON', 'POOTER', 'SHOOTER', 'CYBORG', 'LUNATIC', 'SITTING_DUCK'];
+const AI_TYPE_LABELS = {
+  HUMAN: 'Human', USELESS: 'Useless', MORON: 'Moron', POOTER: 'Pooter',
+  SHOOTER: 'Shooter', CYBORG: 'Cyborg', LUNATIC: 'Lunatic', SITTING_DUCK: 'Sitting Duck'
+};
+
+function renderPlayerTypeRows() {
+  const container = document.getElementById('player-type-rows');
+  container.innerHTML = '';
+  for (let i = 0; i < gameConfig.playerCount; i++) {
+    const row = document.createElement('div');
+    row.className = 'config-row';
+    const colorClass = `p${i + 1}-color`;
+    row.innerHTML = `<label class="${colorClass}">P${i + 1}:</label>
+      <div class="config-buttons" data-pidx="${i}">
+        ${AI_TYPES.map(type => {
+          const selected = gameConfig.playerTypes[i] === type ? 'selected' : '';
+          return `<button data-type="${type}" class="${selected}">${AI_TYPE_LABELS[type]}</button>`;
+        }).join('')}
+      </div>`;
+    container.appendChild(row);
+  }
+  // Wire up newly-rendered buttons
+  container.querySelectorAll('.config-buttons').forEach(group => {
+    const pIdx = parseInt(group.dataset.pidx, 10);
+    const btns = group.querySelectorAll('button');
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        btns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        gameConfig.playerTypes[pIdx] = btn.dataset.type;
+      });
+    });
+  });
+}
+
+function bindStartScreen() {
+  const roundBtns = document.querySelectorAll('#rounds-buttons button');
+  roundBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      roundBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      gameConfig.totalRounds = parseInt(btn.dataset.rounds, 10);
+    });
+  });
+  const cashBtns = document.querySelectorAll('#cash-buttons button');
+  cashBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      cashBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      gameConfig.startingCash = parseInt(btn.dataset.cash, 10);
+    });
+  });
+  // Player count selector
+  const countBtns = document.querySelectorAll('#player-count-buttons button');
+  countBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      countBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      gameConfig.playerCount = parseInt(btn.dataset.count, 10);
+      renderPlayerTypeRows();
+    });
+  });
+  // Initial render of the player type rows
+  renderPlayerTypeRows();
+
+  document.getElementById('start-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    // Honor a saved fullscreen preference now — this click is a user gesture,
+    // which browsers require before allowing a fullscreen request.
+    if (settings.fullscreen && !isFullscreen()) enterFullscreen();
+    startTournament();
+  });
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    settingsReturnTo = 'start-screen';
+    openSettings();
+  });
+}
+
+/* ------------------------------------------------------------
+   Settings screen
+   ------------------------------------------------------------ */
+let settingsReturnTo = 'start-screen';
+
+/* ------------------------------------------------------------
+   Instructions screen
+   ------------------------------------------------------------ */
+function openInstructions() {
+  populateInstructions();
+  showScreen('instructions-screen');
+}
+
+// Build the armory + defensive gear lists from the live shop data so the
+// instructions can never drift out of sync with actual prices/items.
+function populateInstructions() {
+  const wEl = document.getElementById('instr-weapons');
+  let html = `<div class="instr-weapon-row">
+    <span class="wname">Baby Missile</span>
+    <span class="wdesc">Blast 14, dmg 35 — your free fallback</span>
+    <span class="wprice">FREE</span>
+  </div>`;
+  for (const item of SHOP_ITEMS) {
+    html += `<div class="instr-weapon-row">
+      <span class="wname">${item.name}</span>
+      <span class="wdesc">${item.desc}</span>
+      <span class="wprice">$${WEAPON_PRICES[item.id]}</span>
+    </div>`;
+  }
+  wEl.innerHTML = html;
+
+  const dEl = document.getElementById('instr-defense');
+  dEl.innerHTML = `
+    <div class="instr-weapon-row"><span class="wname">Parachute</span><span class="wdesc">Prevents fall damage, auto-deploys on big falls</span><span class="wprice">$${PARACHUTE_PRICE}</span></div>
+    <div class="instr-weapon-row"><span class="wname">${SHIELDS.MAGNETIC.name}</span><span class="wdesc">Absorbs ${SHIELDS.MAGNETIC.absorb} HP of damage</span><span class="wprice">$${SHIELDS.MAGNETIC.price}</span></div>
+    <div class="instr-weapon-row"><span class="wname">${SHIELDS.HEAVY.name}</span><span class="wdesc">Absorbs ${SHIELDS.HEAVY.absorb} HP of damage</span><span class="wprice">$${SHIELDS.HEAVY.price}</span></div>
+    <div class="instr-weapon-row"><span class="wname">${SHIELDS.SUPER.name}</span><span class="wdesc">Absorbs ${SHIELDS.SUPER.absorb} HP of damage</span><span class="wprice">$${SHIELDS.SUPER.price}</span></div>
+    <div class="instr-weapon-row"><span class="wname">Battery</span><span class="wdesc">+${BATTERY_HEAL} HP per turn for ${BATTERY_USES} turns — or drive instead</span><span class="wprice">$${BATTERY_PRICE}</span></div>
+  `;
+}
+
+function bindInstructionsScreen() {
+  document.getElementById('instructions-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    openInstructions();
+  });
+  document.getElementById('instructions-back-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    showScreen('start-screen');
+  });
+}
+
+function openSettings() {
+  // Sync UI selections to current settings values
+  syncSettingsUI();
+  showScreen('settings-screen');
+}
+
+function syncSettingsUI() {
+  const sel = (groupId, dataKey, value) => {
+    document.querySelectorAll(`#${groupId} button`).forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset[dataKey] === String(value));
+    });
+  };
+  sel('theme-buttons',     'theme',   settings.theme);
+  sel('sound-buttons',     'sound',   settings.sound ? 'on' : 'off');
+  sel('palette-buttons',   'palette', settings.palette);
+  sel('wind-mode-buttons', 'wind',    settings.windMode);
+  sel('gravity-buttons',   'gravity', settings.gravity);
+  sel('terrain-buttons',   'terrain', settings.terrainStyle);
+  sel('touch-buttons',     'touch',   settings.touchControls);
+}
+
+function bindSettingsScreen() {
+  const wireGroup = (groupId, dataKey, onPick) => {
+    const btns = document.querySelectorAll(`#${groupId} button`);
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        SOUNDS.click();
+        btns.forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        onPick(btn.dataset[dataKey]);
+        applySettings();
+        saveSettings();
+      });
+    });
+  };
+  wireGroup('theme-buttons',     'theme',   v => { settings.theme = v; });
+  wireGroup('sound-buttons',     'sound',   v => { settings.sound = (v === 'on'); });
+  wireGroup('palette-buttons',   'palette', v => { settings.palette = v; });
+  wireGroup('wind-mode-buttons', 'wind',    v => { settings.windMode = v; });
+  wireGroup('gravity-buttons',   'gravity', v => { settings.gravity = parseFloat(v); });
+  wireGroup('terrain-buttons',   'terrain', v => { settings.terrainStyle = v; });
+  wireGroup('touch-buttons',     'touch',   v => { settings.touchControls = v; applyTouchMode(); });
+  document.getElementById('settings-back-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    showScreen(settingsReturnTo);
+  });
+}
+
+/* ------------------------------------------------------------
+   Pause menu
+   ------------------------------------------------------------ */
+function isInGame() {
+  // True when no overlay is showing (i.e. battle in progress)
+  return !isOverlayVisible() && !gameOver;
+}
+
+function pauseGame() {
+  if (!isInGame()) return;
+  heldKeys.a = false;
+  heldKeys.d = false;
+  stopDriveSound();
+  showScreen('pause-screen');
+}
+
+function resumeGame() {
+  hideAllOverlays();
+}
+
+/* ------------------------------------------------------------
+   Fullscreen
+   ------------------------------------------------------------ */
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function enterFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) {
+    const p = req.call(el);
+    if (p && p.catch) p.catch(() => {});
+  }
+}
+
+function exitFullscreen() {
+  const exit = document.exitFullscreen || document.webkitExitFullscreen;
+  if (exit) {
+    const p = exit.call(document);
+    if (p && p.catch) p.catch(() => {});
+  }
+}
+
+function toggleFullscreen() {
+  if (isFullscreen()) exitFullscreen(); else enterFullscreen();
+}
+
+function updateFullscreenButton() {
+  const btn = document.getElementById('game-fullscreen-btn');
+  if (!btn) return;
+  const fs = isFullscreen();
+  // ⛶ = enter, ⤢-ish exit glyph; keep it simple and legible
+  btn.textContent = fs ? '✕' : '⛶';
+  btn.title = fs ? 'Exit fullscreen (F)' : 'Fullscreen (F)';
+}
+
+// Keep the saved preference and the button label in sync with reality. The
+// browser can drop fullscreen on its own (user hits Esc, etc.), so we listen
+// for the real event rather than tracking state ourselves.
+document.addEventListener('fullscreenchange', () => {
+  settings.fullscreen = isFullscreen();
+  saveSettings();
+  updateFullscreenButton();
+  if (typeof fitGameToViewport === 'function') fitGameToViewport();
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  settings.fullscreen = isFullscreen();
+  saveSettings();
+  updateFullscreenButton();
+  if (typeof fitGameToViewport === 'function') fitGameToViewport();
+});
+
+function bindPauseScreen() {
+  document.getElementById('game-pause-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    if (isInGame()) pauseGame();
+  });
+  document.getElementById('game-fullscreen-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    toggleFullscreen();
+  });
+  document.getElementById('resume-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    resumeGame();
+  });
+  document.getElementById('pause-settings-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    settingsReturnTo = 'pause-screen';
+    openSettings();
+  });
+  document.getElementById('quit-btn').addEventListener('click', () => {
+    SOUNDS.click();
+    // Hard reset back to start screen
+    gameOver = true;
+    projectiles = [];
+    cancelPendingAITimers();
+    showScreen('start-screen');
+  });
+}
+
+/* ------------------------------------------------------------
+   Shop
+   ------------------------------------------------------------ */
+const SHOP_ITEMS = [
+  // Standard explosives
+  { id: 'MISSILE',      name: 'Missile',       desc: 'Blast 22, dmg 60' },
+  { id: 'BABY_NUKE',    name: 'Baby Nuke',     desc: 'Blast 35, dmg 90' },
+  { id: 'NUKE',         name: 'Nuke',          desc: 'Blast 55, dmg 140, heavy' },
+  { id: 'DEATHS_HEAD',  name: 'Reaper',        desc: 'Blast 75, dmg 200, very heavy' },
+  // Scatter / multi-warhead
+  { id: 'FUNKY_BOMB',   name: 'Chaos Bomb',    desc: 'Scatters 5 bomblets' },
+  { id: 'MIRV',         name: 'MIRV',          desc: '4 air-burst sub-warheads' },
+  { id: 'DEATHS_SKULL', name: "Reaper's Dozen", desc: '12 air-burst sub-warheads' },
+  // Special / fire / energy
+  { id: 'NAPALM',       name: 'Napalm',        desc: 'Wide burn, shallow crater' },
+  { id: 'PLASMA_BLAST', name: 'Plasma Blast',  desc: 'Blast 40, dmg 100, electric' },
+  { id: 'HEAVENS_FURY', name: 'Sky Strike',    desc: '5 missiles fall from above' },
+  // Dirt / building
+  { id: 'DIRT_BALL',    name: 'Dirt Ball',     desc: 'Adds dirt for defense' },
+  { id: 'LIQUID_DIRT',  name: 'Liquid Dirt',   desc: 'Wide flat dirt deposit' },
+  { id: 'SANDBAG',      name: 'Sandbag',       desc: 'Tiny dirt pile, cheap' },
+  { id: 'MAGIC_WALL',   name: 'Magic Wall',    desc: 'Builds a vertical dirt pillar' },
+  // Rolling
+  { id: 'ROLLER',       name: 'Roller',        desc: 'Rolls downhill on impact' },
+  { id: 'HEAVY_ROLLER', name: 'Heavy Roller',  desc: 'Bigger Roller, dmg 90' },
+  // Utility
+  { id: 'TRACER',       name: 'Tracer',        desc: 'Rangefinding, no damage' }
+];
+
+function openShopFor(playerIdx) {
+  // Skip AI players — they auto-shop instantly.
+  while (playerIdx < tanks.length && isAI(tanks[playerIdx])) {
+    aiShop(tanks[playerIdx]);
+    playerIdx++;
+  }
+  if (playerIdx >= tanks.length) {
+    // All shopping done — start the round.
+    beginRoundAfterShopping();
+    return;
+  }
+  shopBuyer = playerIdx;
+  showScreen('shop-screen');
+  renderShop();
+}
+
+function beginRoundAfterShopping() {
+  hideAllOverlays();
+  // Set initial weapon to first non-empty
+  for (const t of tanks) {
+    t.weaponIdx = 0;
+    if (!tankHasAmmo(t, WEAPON_ORDER[t.weaponIdx])) cycleWeapon(t, 1);
+  }
+  startRound();
+}
+
+function renderShop() {
+  const t = tanks[shopBuyer];
+  document.getElementById('shop-player').textContent = t.name;
+  document.getElementById('shop-cash').textContent = t.cash;
+  document.getElementById('shop-round').textContent = roundNumber;
+  document.getElementById('shop-total-rounds').textContent = gameConfig.totalRounds;
+
+  const list = document.getElementById('shop-items');
+  list.innerHTML = '';
+
+  // Helper to add a section header
+  function addHeader(text) {
+    const h = document.createElement('div');
+    h.className = 'shop-cat-header';
+    h.textContent = text;
+    list.appendChild(h);
+  }
+
+  // Helper to add an item row
+  function addRow(name, desc, price, ownedStr, dataAttr) {
+    const row = document.createElement('div');
+    row.className = 'shop-item';
+    row.innerHTML = `
+      <div class="item-name">${name} <span style="color:var(--ega-darkgray); font-size:10px;">— ${desc}</span></div>
+      <div class="item-price">$${price}</div>
+      <div class="item-owned">Owned: ${ownedStr}</div>
+      <div class="item-buy">
+        <button data-buy="${dataAttr}" data-qty="1">+1</button>
+        <button data-buy="${dataAttr}" data-qty="5">+5</button>
+      </div>
+    `;
+    list.appendChild(row);
+  }
+
+  addHeader('WEAPONS');
+  for (const item of SHOP_ITEMS) {
+    addRow(item.name, item.desc, WEAPON_PRICES[item.id], t.inventory[item.id] || 0, item.id);
+  }
+
+  addHeader('DEFENSE');
+  addRow('Parachute', 'prevents fall damage', PARACHUTE_PRICE, t.parachutes, 'PARACHUTE');
+  addRow(SHIELDS.MAGNETIC.name, `absorbs ${SHIELDS.MAGNETIC.absorb} HP`, SHIELDS.MAGNETIC.price, t.shields.MAGNETIC, 'SHIELD_MAGNETIC');
+  addRow(SHIELDS.HEAVY.name,    `absorbs ${SHIELDS.HEAVY.absorb} HP`,    SHIELDS.HEAVY.price,    t.shields.HEAVY,    'SHIELD_HEAVY');
+  addRow(SHIELDS.SUPER.name,    `absorbs ${SHIELDS.SUPER.absorb} HP`,    SHIELDS.SUPER.price,    t.shields.SUPER,    'SHIELD_SUPER');
+  addRow('Battery', `+${BATTERY_HEAL} HP/turn × ${BATTERY_USES} turns`, BATTERY_PRICE, t.batteries, 'BATTERY');
+
+  // Wire buy buttons
+  list.querySelectorAll('button[data-buy]').forEach(btn => {
+    const itemId = btn.dataset.buy;
+    const qty = parseInt(btn.dataset.qty, 10);
+    const price = priceForShopItem(itemId);
+    if (t.cash < price * qty) btn.disabled = true;
+    btn.addEventListener('click', () => buyItem(itemId, qty));
+  });
+}
+
+function priceForShopItem(itemId) {
+  if (itemId === 'PARACHUTE') return PARACHUTE_PRICE;
+  if (itemId === 'BATTERY')   return BATTERY_PRICE;
+  if (itemId === 'SHIELD_MAGNETIC') return SHIELDS.MAGNETIC.price;
+  if (itemId === 'SHIELD_HEAVY')    return SHIELDS.HEAVY.price;
+  if (itemId === 'SHIELD_SUPER')    return SHIELDS.SUPER.price;
+  return WEAPON_PRICES[itemId];
+}
+
+function buyItem(itemId, qty) {
+  const t = tanks[shopBuyer];
+  const price = priceForShopItem(itemId);
+  const total = price * qty;
+  if (t.cash < total) return;
+  t.cash -= total;
+  if (itemId === 'PARACHUTE') t.parachutes += qty;
+  else if (itemId === 'BATTERY') t.batteries += qty;
+  else if (itemId === 'SHIELD_MAGNETIC') t.shields.MAGNETIC += qty;
+  else if (itemId === 'SHIELD_HEAVY')    t.shields.HEAVY += qty;
+  else if (itemId === 'SHIELD_SUPER')    t.shields.SUPER += qty;
+  else t.inventory[itemId] = (t.inventory[itemId] || 0) + qty;
+  renderShop();
+}
+
+document.getElementById('shop-done-btn').addEventListener('click', () => {
+  openShopFor(shopBuyer + 1);
+});
+
+/* ------------------------------------------------------------
+   Results screen
+   ------------------------------------------------------------ */
+function showResults() {
+  showScreen('results-screen');
+  const body = document.getElementById('results-body');
+  const titleEl = document.getElementById('results-title');
+
+  // Champion = highest wins, with ties producing no champion
+  let topWins = -1;
+  let champion = null;
+  let tiedAtTop = false;
+  for (const t of tanks) {
+    if (t.wins > topWins) { topWins = t.wins; champion = t; tiedAtTop = false; }
+    else if (t.wins === topWins) { tiedAtTop = true; }
+  }
+  if (tiedAtTop) champion = null;
+
+  titleEl.textContent = champion ? `${champion.name} IS CHAMPION` : 'TOURNAMENT TIED';
+
+  // Build stat blocks for each player
+  function playerBlock(idx) {
+    const t = tanks[idx];
+    const s = tournamentStats[idx];
+    const accuracy = s.shotsFired > 0 ? Math.round((s.hits / s.shotsFired) * 100) : 0;
+    const type = gameConfig.playerTypes[idx] || 'HUMAN';
+    const typeLabel = type === 'HUMAN' ? '' : ` [${type.replace('_', ' ')}]`;
+    const isChamp = champion && champion.id === idx;
+
+    // Top 3 most-used weapons
+    const weaponEntries = Object.entries(s.weaponsUsed)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+    const weaponLines = weaponEntries.length > 0
+      ? weaponEntries.map(([id, n]) => `${WEAPONS[id] ? WEAPONS[id].name : id} ×${n}`).join(', ')
+      : 'none';
+
+    return `
+      <div class="player-result ${isChamp ? 'champion' : ''}">
+        <div class="player-result-header">
+          <span class="p${idx + 1}-color">${t.name}${typeLabel}</span>
+          <span>${t.wins} ${t.wins === 1 ? 'win' : 'wins'}</span>
+        </div>
+        <div class="stat-grid">
+          <div class="stat"><span class="stat-label">Final Cash</span><span class="stat-val">$${t.cash}</span></div>
+          <div class="stat"><span class="stat-label">Shots Fired</span><span class="stat-val">${s.shotsFired}</span></div>
+          <div class="stat"><span class="stat-label">Hits</span><span class="stat-val">${s.hits}</span></div>
+          <div class="stat"><span class="stat-label">Accuracy</span><span class="stat-val">${accuracy}%</span></div>
+          <div class="stat"><span class="stat-label">Damage Dealt</span><span class="stat-val">${s.damageDealt}</span></div>
+          <div class="stat"><span class="stat-label">Damage Taken</span><span class="stat-val">${s.damageReceived}</span></div>
+        </div>
+        <div class="favorite-weapons">Top weapons: ${weaponLines}</div>
+      </div>
+    `;
+  }
+
+  let blocksHtml = '';
+  for (let i = 0; i < tanks.length; i++) blocksHtml += playerBlock(i);
+
+  body.innerHTML = `
+    ${blocksHtml}
+    <div style="margin-top:12px; color: var(--ega-darkgray); font-size: 11px; text-align: center;">
+      ${tanks.length} players · ${gameConfig.totalRounds} rounds · Starting cash $${gameConfig.startingCash}
+      · Terrain: ${settings.terrainStyle} · Palette: ${settings.palette}
+    </div>
+  `;
+
+  if (champion) SOUNDS.win();
+}
+
+document.getElementById('results-restart-btn').addEventListener('click', () => {
+  showScreen('start-screen');
+});
+
+/* ------------------------------------------------------------
+   Main loop
+   ------------------------------------------------------------ */
+function isOverlayVisible() {
+  return ALL_OVERLAYS.some(id => document.getElementById(id).style.display !== 'none');
+}
+
+function loop() {
+  if (isOverlayVisible()) {
+    requestAnimationFrame(loop);
+    return;
+  }
+  pollInput();
+  if (projectiles.length > 0) {
+    // Two physics steps per frame for smoother arcs
+    for (let step = 0; step < 2; step++) {
+      for (const p of projectiles) {
+        if (!p.dead) stepProjectile(p);
+      }
+    }
+    // Remove dead projectiles
+    const before = projectiles.length;
+    projectiles = projectiles.filter(p => !p.dead);
+    // If projectiles all vanished off-screen (no impact triggered detonation
+    // path), end the turn here.
+    if (before > 0 && projectiles.length === 0 && pendingDetonation === 0 && !dirtSettling && inputLocked && hfSpawnsPending <= 0) {
+      inputLocked = false;
+      if (!checkWin()) endTurn();
+    }
+  }
+  if (!dirtSettling && !explosionInProgress) render();
+  requestAnimationFrame(loop);
+}
+
+/* ------------------------------------------------------------
+   Boot
+   ------------------------------------------------------------ */
+
+// Responsive scaling — fit the game in the viewport while keeping a clean
+// integer scale (so EGA pixels stay crisp, no half-pixel blur).
+function fitGameToViewport() {
+  const touch = document.body.classList.contains('touch-mode');
+
+  // Frame dimensions before scaling (canvas + HUD + weapon bar + border).
+  // In touch mode the compact-chrome CSS shrinks the HUD, so the frame is
+  // shorter and the canvas can scale up further.
+  const FRAME_W = 644;                  // 640 + 2px border each side
+  const FRAME_H = touch ? 438 : 460;    // 400 canvas + chrome + borders
+  const margin  = touch ? 8 : 16;       // breathing room around the edges
+
+  // When touch controls are showing, the left/right clusters need real estate
+  // on either side of the game so thumbs don't cover the battlefield.
+  // Left cluster ~126px, right ~94px, plus edge margins and a small gap.
+  const touchSideReserve = touch ? 250 : 0;
+
+  const availW = window.innerWidth  - margin - touchSideReserve;
+  const availH = window.innerHeight - margin;
+
+  // How much we *could* scale up before we run out of room on either axis.
+  const maxScale = Math.min(availW / FRAME_W, availH / FRAME_H);
+
+  let scale;
+  if (maxScale >= 1) {
+    // Desktop / tablet case — fits at 1× or larger.
+    // Prefer integer scales for crisp EGA pixels (no resampling blur).
+    const intScale = Math.floor(maxScale);
+    if (intScale >= 3) {
+      // Big monitor: allow fractional up to 4.5×.
+      scale = Math.min(maxScale, 4.5);
+    } else if (touch) {
+      // Touch devices (mostly iPads landing here): allow fractional so the
+      // game uses the width between the control clusters fully.
+      scale = Math.min(maxScale, 3);
+    } else {
+      // Desktop: integer scale (1× or 2×) — preserves crisp pixels.
+      scale = intScale;
+    }
+  } else {
+    // Phone / very small window — fractional scaling. Quantize to 0.01 (not
+    // 0.05) since there's no pixel-crispness benefit at fractional scales and
+    // coarser steps throw away several percent of usable screen.
+    scale = Math.max(0.3, Math.floor(maxScale * 100) / 100);
+  }
+
+  document.documentElement.style.setProperty('--game-scale', String(scale));
+}
+
+window.addEventListener('resize', fitGameToViewport);
+
+// PWA: register the service worker for offline play. Silently skipped when
+// unsupported or when running from file:// (local testing).
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+loadSettings();
+applyTouchMode();       // set touch-mode class before first layout fit
+fitGameToViewport();
+bindStartScreen();
+bindSettingsScreen();
+bindInstructionsScreen();
+bindPauseScreen();
+bindTouchControls();
+updateFullscreenButton();
+showScreen('start-screen');
+loop();
+</script>
+</body>
+</html>
