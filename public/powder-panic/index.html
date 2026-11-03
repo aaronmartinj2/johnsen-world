@@ -421,6 +421,7 @@ body.inbar #toast{z-index:30}
           <button class="btn mode" data-mode="olympics" id="olyBtn"><span>7. Olympics</span><small id="bOly"></small></button>
           <button class="btn mode" data-mode="backcountry" id="bcBtn"><span>8. Backcountry</span><small id="bBC"></small></button>
           <button class="btn mode" data-mode="worldcup" id="wcBtn"><span>9. World Cup</span><small id="bWC"></small></button>
+          <button class="btn mode" data-mode="downhill" id="dhBtn"><span>0. Downhill</span><small id="bDH"></small></button>
         </div>
         <div class="mrow"><button class="btn practice" id="practiceBtn">Practice: learn the moves</button><button class="btn practice" id="ranksBtn">Rankings</button></div>
         <div class="mrow" id="resortRow" style="grid-template-columns:1fr 1fr"><button class="btn practice" id="resortBtn">Resort: build your mountain</button><button class="btn practice" id="barBtn">The Bar</button><button class="btn practice hidden" id="cabinBtn">Your Cabin</button></div>
@@ -773,6 +774,65 @@ const CFG = {
                                               // full miss. Forgives a late turn (test skiers: a sloppy one misses 0.1 flags a run, was 0.6; a rough one 0.4, was 3).
                                               // Never worth aiming for (it saves well under 0.1 s a gate), so the fast lines, goals and Olympic times don't move.
   TREE_SLALOM: { gates: 28, spacing: 160, offset: 38, corridor: 105, penalty: 5, amp: 90,  wave: 380, forestTries: 3, forestChance: 0.55, courseV: 2 },
+  // Downhill: one long fixed course (the same every run, so times compare), pure speed. Distances are meters down the course from
+  // the top. Wide control gates: two blue panels, go between them (miss one and it's a DNF). Tuck is the whole game: it adds a lot
+  // of speed, but in a tuck you can only steer 30 degrees (a hard turn or a brake comes out of it). Speed builds and bleeds slowly
+  // (momentum), so a turn costs a little and a crash costs a lot. Along the way: rollers (the snow rises and falls), the big jump
+  // (it launches you; the longer the air, the more speed it bleeds unless you hold the tuck; land pointing down the hill), a
+  // compression (the slope bottoms out hard: carve through it at speed and you catch an edge) and the glide (a long flat where only
+  // a tuck holds speed). Tuned with test skiers on course 2: a near-perfect run (tucked all the way but for the Elbow, the inside lines)
+  // is about 61.6 s, a good one (standing up for the bigger turns, a wobbly line) about 64 s, one that never tucks about 97 s. Top speed about 147 km/h.
+  DOWNHILL: { courseV: 2, start: 30, len: 2020,   // (course 2: the Elbow, the ice, the second jump, the fog bank, a gentler glide)
+      // the start banner and the finish line (m)
+    corridor: 230, amp: 170, wave: 1150, forestTries: 2, forestChance: 0.42,   // the course: half-width (px), its bends (px out; px per radian), the forest beside it
+    gates: [180, 420, 640, 860, 1150, 1380, 1640, 1900], gateOff: 125, half: 78,   // control gates (m), how far each sits off the middle of the course (alternating sides, px), half the gap between its panels (px)
+    tuck: 1.55, vmax: 420, accel: 150, decel: 110, tuckTurn: 1,   // the tuck's speed multiplier (the other events use TUCK_MULT), top speed (px/s), speed gained / bled (px/s^2), the most you steer in a tuck (|direction|)
+    slope: [[0, 0.85], [60, 1.0], [300, 1.08], [560, 1.0], [800, 1.1], [1000, 1.0], [1220, 1.0], [1280, 1.15], [1310, 0.76], [1640, 0.76], [1700, 1.06], [2020, 1.06]],   // how steep (x speed), at each meter (straight lines between)
+    rollers: [560, 800, 40, 0.14],   // from, to (m), one roller every this many m, how much they add and take away (share of speed)
+    jump: { m: 1000, minV: 100, air: 0.0042, h: 0.075, bleed: 95, tuckBleed: 22, land: 1 },   // the big jump: launches above minV (px/s); air time and height per px/s; speed lost per s in the air (px/s), in a tuck; land with |direction| up to land
+    comp: { m: 1300, v: 300, turn: 2 },   // the compression: carving |direction| >= turn through it faster than v (px/s) catches an edge
+    glide: [1310, 1640],   // the glide (m): a sign says tuck (a tucked skier holds about 100 km/h through it, upright about 65)
+    // The Elbow: a sharp named corner. Between m0 and m1 the course swings `shift` px sideways (eased), with the netting pulled in to
+    // `half` px either side of it from n0 to n1 (so you can't line up wide first). A tucked 30-degree turn can't make it: stand up,
+    // carve it at 60, tuck again. The 1,150 m gate sits at its exit. clean: through it with no crash, faster than this (px/s): the commentator notices.
+    elbow: { m0: 1068, m1: 1158, shift: 850, n0: 1030, n1: 1175, half: 120, ease: 30, clean: 250 },
+    // The ice: turns slide. A change of direction takes effect over `lag` s, carrying you on the way you were heading; no speed lost.
+    ice: [1720, 1800], iceLag: 0.25,
+    // The second jump: a smaller kicker just before the 1,640 m gate (land, then turn straight away)
+    jump2: { m: 1600, minV: 100, air: 0.0021, h: 0.035 },
+    // The fog bank (m): always there, whatever the weather. Inside it you see only `see` of the screen ahead of you.
+    fog: [1820, 1915], see: 0.33,
+    // Commentary: one line at a time under the HUD, `show` s, at most one every `gap` s, never over a split (it waits for the split
+    // to go). {v}: a number. Each trigger's lines take turns.
+    say: { show: 1.6, gap: 3, crash: 120, air: 1.4, nets: 20 },
+    commentary: {
+      top: ['New top speed: {v} km/h!', '{v} km/h! Fastest you\'ve ever gone!', 'Look at that speed: {v} km/h!'],
+      air: ['Huge air!', 'Flying off the big jump!', 'Massive jump, and a clean landing!'],
+      nets: ['Inches from the nets!', 'Brushing the netting!', 'What a tight line!'],
+      elbow: ['Through the Elbow, perfect line!', 'Nailed the Elbow!', 'Textbook through the Elbow!'],
+      split: ['Fastest split today!', 'Green at the split: flying!', 'Up on the time!'],
+      crash: ['Big crash! Down at speed!', 'Into the snow at full speed!', 'Oh, that hurts!'],
+      last: ['Tuck and pray!', 'Two hundred meters to go!', 'All the way to the line!'] },
+    tumble: 2.2,   // a crash: this many more seconds on the ground at top speed (less when slower)
+    kmh: 0.36,     // km/h per px/s (10 px a meter)
+    pay: 1,        // (sponsor pay: as a Slalom finish)
+    // The feel of speed. lines: streaks in the snow from lines[0] km/h, longest and densest at lines[1]; lineN: streaks at full speed;
+    // lineLen: their length (px) at the start and at full speed. spray: snow off the skis (particles per px/s per second); burst: on
+    // each turn in a tuck. cam: where the skier sits on screen (share of the height from the top) slow, and at top speed (lower down
+    // the hill shows more: 0.28 to 0.10 is 25% more snow ahead), from camFrom km/h, eased at camRate per s. shake: a 1 px shake above
+    // this (km/h). wind: the roar's volume and pitch (Hz), from slow to top speed (silent in the air, faded out in a crash).
+    feel: { lines: [100, 150], lineN: 34, lineLen: [8, 46], spray: 0.16, burst: 12, cam: [0.28, 0.10], camFrom: 80, camRate: 1.4, shake: 140,
+            wind: { from: 40, vol: [0, 0.07], f: [380, 1500] } },
+    // Split times: four timing points (m). Compared with your best run's splits (normal runs), or the leader's (the World Cup and the
+    // Olympics: the fastest rival time so far, spread over the course like a reference near-perfect run, splitShape: the share of the
+    // final time at each split). splitShow: seconds a split stays up.
+    splits: [500, 950, 1450, 1800], splitShow: 2.2, splitShape: [0.214, 0.419, 0.702, 0.901],
+    // Safety netting along both edges: touch it and you crash. At the gates in inner (indexes), the netting comes in on the side you
+    // come from, to `gap` px outside that gate's near panel: hugging the panel is the short (fast) line, a hair from the nets
+    // (test skiers: about 0.25 s faster over the three, 62.05 s against 62.3 s; a wobbly line through them misses a gate or hits the nets).
+    // before / after: how far (px) above and below the gate it eases in and out. pad: the skier's half-width against it.
+    nets: { inner: [2, 3, 6], gap: 25, before: 700, after: 260, pad: 4 },
+    sponsors: ['FROSTBYTE', 'SUMMIT COLA', 'PEAK OPTICS', 'TALLY HO WAX', 'ALPENGLOW', 'RIDGELINE'] },   // made-up sponsors on the finish banners
   CAM_Y_FRAC: 0.28,             // skier's vertical screen position
 
   // ---------------------------- Terrain Park ----------------------------
@@ -844,7 +904,7 @@ const CFG = {
   // one (a little late and a little off on each gate, tucking on the straighter bits) 26-27.5 / 29.4-32.7 (25-25.5 / 27.4-28.2 if it
   // tucks all the way), and one that never tucks about 40 / 43. So a steady skier makes the easier goal with room for a missed flag
   // (or a crash), and the harder one takes a clean, fast run.
-  GOAL_TIMES: { slalom: [35, 24], tree: [40, 27] },
+  GOAL_TIMES: { slalom: [35, 24], tree: [40, 27], downhill: [71.5, 63.5] },
   SLALOM_BETS: { slalom: 28, slalomHard: 24, slalomClean: 26, treeHard: 29, weather: 30 },   // (weather: Pete's fog-or-snow bet)   // Whisky Pete's slalom bets at the Bar (s): under 28 (a steady run makes it), under 24 (hard), every flag and under 26 (hard), Tree Slalom under 29 (hard)
   // ---------------------------- Sponsors and the Pro Shop ----------------------------
   PAY: { perM: 1 / 40, scoreDiv: 250, pipeScoreDiv: 400, finish: 25, clean: 15, lodge: 40, newGoal: 25 },   // cash per run, before the sponsor multiplier
@@ -926,6 +986,7 @@ const CFG = {
       menu: { bpm: 100, root: 60, scale: 'maj', lead: 0, bass: 0 },
       freestyle: { bpm: 132, root: 62, scale: 'min', lead: 1, bass: 1 },
       slalom: { bpm: 120, root: 64, scale: 'maj', lead: 2, bass: 0 },
+      downhill: { bpm: 152, root: 62, scale: 'maj', lead: 4, bass: 3 },
       tree: { bpm: 116, root: 57, scale: 'min', lead: 3, bass: 2 },
       park: { bpm: 140, root: 65, scale: 'maj', lead: 4, bass: 1 },
       pipe: { bpm: 144, root: 59, scale: 'min', lead: 1, bass: 3 },
@@ -1052,7 +1113,7 @@ const CFG = {
   NIGHT_LAMP_R: 110,            // headlamp radius at night (px)
 
   // ---------------------------- Ghost (Slalom, Tree Slalom) ----------------------------
-  COURSE_SEED: { slalom: 424242, tree: 515151 },   // fixed course layouts so the ghost lines up
+  COURSE_SEED: { slalom: 424242, tree: 515151, downhill: 636363 },   // fixed course layouts so the ghost lines up
   GHOST_DT: 1 / 30,             // seconds between recorded samples (every other frame at 60 fps)
   GHOST_ALPHA: 0.42,            // ghost see-through amount
 
@@ -1563,7 +1624,9 @@ const CFG = {
   // ---------------------------- Rankings and Olympics ----------------------------
   RANK_SIZE: 5,                 // entries kept per event
   OLY_RANK_SIZE: 3,             // entries kept for the Olympics
-  OLY_EVENTS: ['slalom', 'park', 'pipe', 'bigair'],   // Olympic events, in order
+  OLY_EVENTS: ['slalom', 'downhill', 'park', 'pipe', 'bigair'],   // Olympic events, in order
+  OLY_DH_PAR: 64.5,               // Downhill: a final time of this (s) = 1,000 Olympic points (a good run) ...
+  OLY_DH_PER_S: 43,             // ... and each second faster or slower is worth this many (a near-perfect 62 s: about 1,130; capped at OLY_SLALOM_MAX)
   OLY_SLALOM_PAR: 23.5,         // a final Slalom time of this (s) = 1,000 Olympic points ...
   OLY_SLALOM_PER_S: 57,         // ... and every second faster or slower is worth this many points, so the fastest runs pull ahead:
                                 // near-perfect 20.45 s = 1,174, good 22.6 s = 1,051, steady 26.75 s = 815, a missed flag (+5 s) = -285
@@ -1579,7 +1642,7 @@ const CFG = {
   // at or over it. Test players (one run each): strong 24.6-25.6 s, 23,000-27,000, 53,000-79,000, Big Air 0-12,400 (7 runs in 10 over
   // 4,000); a steady one skis about 26.75 s; rough 36-57 s, 17,700-20,300, 11,000-19,800, 0-5,100. So a strong player qualifies in a
   // couple of tries, a steady one needs a good run in each event, and a rough one doesn't (the Slalom keeps them out).
-  OLY_STANDARDS: { slalom: 27, park: 22000, pipe: 30000, bigair: 4000 },
+  OLY_STANDARDS: { slalom: 27, downhill: 67.5, park: 22000, pipe: 30000, bigair: 4000 },
   OLY_MEDAL_PLACES: 3,          // places that win a medal: 1 gold, 2 silver, 3 bronze (in each event and overall)
   OLY_RIVAL_SPREAD: 0.08,       // each day a rival's event scores vary by up to this share above or below their base (date-seeded: same field for every account)
   OLY_RIVAL_TIME_SPREAD: 0.03,  // ...and their Slalom time by up to this share (the Slalom event medal goes by time)
@@ -1594,25 +1657,31 @@ const CFG = {
   // can't be beaten (ties go to you). Margaux, the Slalom specialist, is the fastest skier in the field (19.8-21.1 s).
   // Three runs an event (OLY_RUNS) with the best two counting: the rivals' best two improve on one run, so Sven's Slalom went 20.75 to 20.82 s
   // to keep a near-perfect Games winning overall gold about two days in three (67% over a year of fields; strong 2nd-3rd, rough 6th-8th).
+  // Downhill (one run, s): a near-perfect run is about 62 s, a good one 65. Margaux and Sven are fastest; Biscuit is fast but a third of his
+  // runs end in a crash (dhCrash); Tomasz never crashes. With Downhill a fifth event, re-tuned with test players: Sven's Downhill
+  // (62.2 s on course 2) keeps a near-perfect Games winning overall gold about two times in three; a strong one is 2nd-3rd (about 94%).
+  // (Course 2, with the Elbow, the ice, the second jump and a gentler glide, runs about 0.8% faster: every Downhill time was scaled by it.)
   OLY_RIVALS: [
-    { id: 'sven', name: 'Sven Halvorsen', country: 'Norway', spec: 'All-rounder', tag: 'The favorite. Smooth everywhere, never looks like he is trying.', col: '#c41e1e', slalom: 20.82, park: 52000, pipe: 52000, bigair: 6500 },
-    { id: 'kenji', name: 'Kenji Moriyama', country: 'Japan', spec: 'Big Air', tag: 'The big-air kid. Spins until the judges get dizzy.', col: '#f0f0f0', slalom: 23.4, park: 36000, pipe: 30400, bigair: 14000 },
-    { id: 'margaux', name: 'Margaux Delacroix', country: 'France', spec: 'Slalom', tag: 'Slalom racer. Treats every gate like it owes her money.', col: '#2a5ad4', slalom: 20.45, park: 26000, pipe: 24400, bigair: 4500 },
-    { id: 'dusty', name: 'Dusty McAllister', country: 'USA', spec: 'Halfpipe', tag: 'Pipe veteran. Twenty years on the walls and still going.', col: '#1a3a7a', slalom: 28.3, park: 25600, pipe: 60000, bigair: 1250 },
-    { id: 'ingrid', name: 'Ingrid Falk', country: 'Sweden', spec: 'Terrain Park', tag: 'Park rat. Will slide anything with an edge.', col: '#f0c020', slalom: 31.3, park: 58000, pipe: 15200, bigair: 750 },
-    { id: 'biscuit', name: 'Billy "Biscuit" Barnes', country: 'Canada', spec: 'Wild card', tag: 'Sends everything off the big kicker. Lands some of it.', col: '#d42a2a', slalom: 40.9, park: 8000, pipe: 4000, bigair: 8500 },
-    { id: 'tomasz', name: 'Tomasz Wolny', country: 'Poland', spec: 'Steady', tag: 'Never crashes. Never wins either.', col: '#d8d8e0', slalom: 32.5, park: 12000, pipe: 10000, bigair: 1000 },
+    { id: 'sven', name: 'Sven Halvorsen', country: 'Norway', spec: 'All-rounder', tag: 'The favorite. Smooth everywhere, never looks like he is trying.', col: '#c41e1e', slalom: 20.82, downhill: 62.2, park: 52000, pipe: 52000, bigair: 6500 },
+    { id: 'kenji', name: 'Kenji Moriyama', country: 'Japan', spec: 'Big Air', tag: 'The big-air kid. Spins until the judges get dizzy.', col: '#f0f0f0', slalom: 23.4, downhill: 64.1, park: 36000, pipe: 30400, bigair: 14000 },
+    { id: 'margaux', name: 'Margaux Delacroix', country: 'France', spec: 'Slalom', tag: 'Slalom racer. Treats every gate like it owes her money.', col: '#2a5ad4', slalom: 20.45, downhill: 61.8, park: 26000, pipe: 24400, bigair: 4500 },
+    { id: 'dusty', name: 'Dusty McAllister', country: 'USA', spec: 'Halfpipe', tag: 'Pipe veteran. Twenty years on the walls and still going.', col: '#1a3a7a', slalom: 28.3, downhill: 66.5, park: 25600, pipe: 60000, bigair: 1250 },
+    { id: 'ingrid', name: 'Ingrid Falk', country: 'Sweden', spec: 'Terrain Park', tag: 'Park rat. Will slide anything with an edge.', col: '#f0c020', slalom: 31.3, downhill: 68.1, park: 58000, pipe: 15200, bigair: 750 },
+    { id: 'biscuit', name: 'Billy "Biscuit" Barnes', country: 'Canada', spec: 'Wild card', tag: 'Sends everything off the big kicker. Lands some of it.', col: '#d42a2a', slalom: 40.9, downhill: 62.7, dhCrash: 0.3, park: 8000, pipe: 4000, bigair: 8500 },
+    { id: 'tomasz', name: 'Tomasz Wolny', country: 'Poland', spec: 'Steady', tag: 'Never crashes. Never wins either.', col: '#d8d8e0', slalom: 32.5, downhill: 65.1, park: 12000, pipe: 10000, bigair: 1000 },
   ],
 
   // ---------------------------- World Cup ----------------------------
   WORLD_CUP: {
-    start: '2026-10-26',        // day 1 of season 1 (a Monday); every season after it is `len` days, the same for every account
-    len: 28,                    // days in a season: day `games` is the Olympic Games (no race), the last day the Finals
-    games: 14,                  // the Olympic Games: qualify by hitting the Olympic marks (OLY_STANDARDS) in World Cup races before it
+    start: '2026-10-26',        // (the old day-by-day calendar's day 1: kept to carry its results over)
+    len: 28,                    // stops in a season, raced back to back (finish one and the next opens); the last is the Finals
+    games: 14,                  // the Olympic Games come after this stop: qualify by hitting the Olympic marks (OLY_STANDARDS) in World Cup races up to it
+    olyEvery: 2,                // ...in every this many seasons (seasons 1, 3, 5...), so they stay rare
     finalsMult: 2,              // the Finals pay this many times the points and prize money
+    old: { len: 28, games: 14, events: ['slalom', 'tree', 'park', 'pipe', 'bigair', 'backcountry', 'freestyle'], oly: ['slalom', 'park', 'pipe', 'bigair'], bigair2: 0.82 },   // the old calendar (for carrying results over)
     card: { slalom: 27, park: 22000, pipe: 50000, bigair: 8000 },   // the start card: every mark, in normal runs (Slalom time in s, the others scores)
-    events: ['slalom', 'tree', 'park', 'pipe', 'bigair', 'backcountry', 'freestyle'],
-    runs: { slalom: 2, tree: 2, park: 2, pipe: 2, bigair: 1, backcountry: 1, freestyle: 1 },   // runs at a stop (Big Air: one go of three jumps, the best two added)
+    events: ['slalom', 'tree', 'downhill', 'park', 'pipe', 'bigair', 'backcountry', 'freestyle'],
+    runs: 3, count: 2,          // runs at every stop, and how many count (the best, added: times, scores, Big Air jumps, the judges' scores)
     points: [100, 80, 60, 50, 45, 40, 36, 32, 29, 26, 24, 22, 20, 18, 16, 15, 14, 13, 12, 11],   // World Cup points by place (20 skiers: you and 19 rivals)
     prize: [6000, 4000, 2500, 1500, 1000, 750, 600, 500, 450, 400, 350, 300, 275, 250, 225, 200, 175, 150, 125, 100],   // prize money by place, at every stop
     show: 10,                   // places listed in a results table or the standings (plus your row, if you're further down)
@@ -1620,9 +1689,8 @@ const CFG = {
     globePay: { overall: 25000, event: 5000 },   // a globe's purse at the end of the season
     variants: { park: ['night', 0.3], pipe: ['super', 0.3], bigair: ['mega', 0.3] },   // the share of stops held under the lights, on the Superpipe, off the Mega Kicker
     weather: { clear: 5, snow: 3, fog: 2 },   // Slalom, Tree Slalom and Freestyle stops: the weather (weights)
-    bigair2: 0.82,              // a rival's second-best Big Air jump, as a share of their best
     champKeep: 12,              // past seasons listed on the Champions page
-    // The rivals' base results in the events the Olympics don't have (Slalom, Park, Pipe and Big Air come from OLY_RIVALS):
+    // The rivals' base results in the events the Olympics don't have (Slalom, Downhill, Park, Pipe and Big Air come from OLY_RIVALS):
     // tree = one Tree Slalom run (s; a near-perfect line is about 21.3 s, a steady one 31-32 s), backcountry = the judges' score (out of 100), freestyle = a Freestyle score.
     rivals: {
       sven: { tree: 21.0, backcountry: 82, freestyle: 16000 },
@@ -1637,18 +1705,18 @@ const CFG = {
     // halfway point). Their Olympic events are kept under the classic seven's top two (Olympic totals about 2,400-3,700), so with
     // three runs a near-perfect Games still wins gold about two days in three and a strong one is usually 2nd-3rd. slalom / tree: one run (s); park, pipe, bigair: event scores; backcountry: the judges (of 100); freestyle: a score.
     field: [
-      { id: 'lukas', name: 'Lukas Brandstätter', country: 'Austria', spec: 'Slalom', tag: 'Gates are his whole personality.', col: '#e8e8e8', slalom: 20.9, tree: 21.4, park: 21000, pipe: 19000, bigair: 2800, backcountry: 64, freestyle: 9000 },
-      { id: 'noemi', name: 'Noemi Keller', country: 'Switzerland', spec: 'All-rounder', tag: 'Quietly good at everything. Never the headline.', col: '#d8282a', slalom: 23.2, tree: 22.4, park: 36000, pipe: 34000, bigair: 4000, backcountry: 78, freestyle: 15000 },
-      { id: 'matteo', name: 'Matteo Ricci', country: 'Italy', spec: 'Tree Slalom', tag: 'Threads the trees like they owe him money.', col: '#1a8a4a', slalom: 22.3, tree: 20.9, park: 18000, pipe: 15000, bigair: 2500, backcountry: 70, freestyle: 10000 },
-      { id: 'hanna', name: 'Hanna Vogel', country: 'Germany', spec: 'Halfpipe', tag: 'Goes highest out of the pipe. Lands most of it.', col: '#202024', slalom: 25.6, tree: 27.0, park: 30000, pipe: 56000, bigair: 3000, backcountry: 60, freestyle: 12000 },
-      { id: 'eero', name: 'Eero Lahtinen', country: 'Finland', spec: 'Big Air', tag: 'Calm until the kicker. Then very not calm.', col: '#2a4ad0', slalom: 27.0, tree: 29.0, park: 34000, pipe: 26000, bigair: 12500, backcountry: 80, freestyle: 14000 },
-      { id: 'tina', name: 'Tina Kos', country: 'Slovenia', spec: 'Backcountry', tag: 'Reads a face before anyone else has seen it.', col: '#38a0d8', slalom: 24.0, tree: 25.0, park: 24000, pipe: 22000, bigair: 5000, backcountry: 90, freestyle: 13000 },
-      { id: 'mia', name: 'Mia Tane', country: 'New Zealand', spec: 'Terrain Park', tag: 'Rails, boxes, walls: if it\'s metal, she\'s on it.', col: '#101014', slalom: 29.0, tree: 31.0, park: 54000, pipe: 28000, bigair: 4500, backcountry: 72, freestyle: 19000 },
-      { id: 'jack', name: 'Jack "Roo" Holloway', country: 'Australia', spec: 'Freestyle', tag: 'Outruns Big Karl for fun. Says he\'s not scared.', col: '#f0b020', slalom: 26.0, tree: 28.0, park: 34000, pipe: 26000, bigair: 6500, backcountry: 76, freestyle: 23000 },
-      { id: 'sofia', name: 'Sofía Araya', country: 'Chile', spec: 'Big mountain', tag: 'Grew up skiing volcanoes. It shows.', col: '#c82060', slalom: 25.0, tree: 26.0, park: 28000, pipe: 24000, bigair: 5500, backcountry: 84, freestyle: 18000 },
-      { id: 'jiwoo', name: 'Ji-woo Han', country: 'South Korea', spec: 'Park and pipe', tag: 'Spins clean, spins late, spins again.', col: '#f4f4f8', slalom: 27.5, tree: 28.0, park: 40000, pipe: 44000, bigair: 3500, backcountry: 62, freestyle: 13000 },
-      { id: 'petra', name: 'Petra Nováková', country: 'Czechia', spec: 'Steady', tag: 'Top ten everywhere. Podium nowhere. Yet.', col: '#1a3a8a', slalom: 23.5, tree: 24.5, park: 32000, pipe: 30000, bigair: 4500, backcountry: 68, freestyle: 12000 },
-      { id: 'pau', name: 'Pau Ferrer', country: 'Spain', spec: 'Wild card', tag: 'Either wins the day or wins the crash reel.', col: '#e06a1a', slalom: 33.0, tree: 36.0, park: 26000, pipe: 18000, bigair: 9000, backcountry: 74, freestyle: 16000 },
+      { id: 'lukas', name: 'Lukas Brandstätter', country: 'Austria', spec: 'Slalom', tag: 'Gates are his whole personality.', col: '#e8e8e8', slalom: 20.9, downhill: 62.5, tree: 21.4, park: 21000, pipe: 19000, bigair: 2800, backcountry: 64, freestyle: 9000 },
+      { id: 'noemi', name: 'Noemi Keller', country: 'Switzerland', spec: 'All-rounder', tag: 'Quietly good at everything. Never the headline.', col: '#d8282a', slalom: 23.2, downhill: 63.8, tree: 22.4, park: 36000, pipe: 34000, bigair: 4000, backcountry: 78, freestyle: 15000 },
+      { id: 'matteo', name: 'Matteo Ricci', country: 'Italy', spec: 'Tree Slalom', tag: 'Threads the trees like they owe him money.', col: '#1a8a4a', slalom: 22.3, downhill: 63.4, tree: 20.9, park: 18000, pipe: 15000, bigair: 2500, backcountry: 70, freestyle: 10000 },
+      { id: 'hanna', name: 'Hanna Vogel', country: 'Germany', spec: 'Halfpipe', tag: 'Goes highest out of the pipe. Lands most of it.', col: '#202024', slalom: 25.6, downhill: 67.1, tree: 27.0, park: 30000, pipe: 56000, bigair: 3000, backcountry: 60, freestyle: 12000 },
+      { id: 'eero', name: 'Eero Lahtinen', country: 'Finland', spec: 'Big Air', tag: 'Calm until the kicker. Then very not calm.', col: '#2a4ad0', slalom: 27.0, downhill: 67.6, tree: 29.0, park: 34000, pipe: 26000, bigair: 12500, backcountry: 80, freestyle: 14000 },
+      { id: 'tina', name: 'Tina Kos', country: 'Slovenia', spec: 'Backcountry', tag: 'Reads a face before anyone else has seen it.', col: '#38a0d8', slalom: 24.0, downhill: 64.6, tree: 25.0, park: 24000, pipe: 22000, bigair: 5000, backcountry: 90, freestyle: 13000 },
+      { id: 'mia', name: 'Mia Tane', country: 'New Zealand', spec: 'Terrain Park', tag: 'Rails, boxes, walls: if it\'s metal, she\'s on it.', col: '#101014', slalom: 29.0, downhill: 69.1, tree: 31.0, park: 54000, pipe: 28000, bigair: 4500, backcountry: 72, freestyle: 19000 },
+      { id: 'jack', name: 'Jack "Roo" Holloway', country: 'Australia', spec: 'Freestyle', tag: 'Outruns Big Karl for fun. Says he\'s not scared.', col: '#f0b020', slalom: 26.0, downhill: 65.6, tree: 28.0, park: 34000, pipe: 26000, bigair: 6500, backcountry: 76, freestyle: 23000 },
+      { id: 'sofia', name: 'Sofía Araya', country: 'Chile', spec: 'Big mountain', tag: 'Grew up skiing volcanoes. It shows.', col: '#c82060', slalom: 25.0, downhill: 64.2, tree: 26.0, park: 28000, pipe: 24000, bigair: 5500, backcountry: 84, freestyle: 18000 },
+      { id: 'jiwoo', name: 'Ji-woo Han', country: 'South Korea', spec: 'Park and pipe', tag: 'Spins clean, spins late, spins again.', col: '#f4f4f8', slalom: 27.5, downhill: 68.1, tree: 28.0, park: 40000, pipe: 44000, bigair: 3500, backcountry: 62, freestyle: 13000 },
+      { id: 'petra', name: 'Petra Nováková', country: 'Czechia', spec: 'Steady', tag: 'Top ten everywhere. Podium nowhere. Yet.', col: '#1a3a8a', slalom: 23.5, downhill: 64.4, tree: 24.5, park: 32000, pipe: 30000, bigair: 4500, backcountry: 68, freestyle: 12000 },
+      { id: 'pau', name: 'Pau Ferrer', country: 'Spain', spec: 'Wild card', tag: 'Either wins the day or wins the crash reel.', col: '#e06a1a', slalom: 33.0, downhill: 63.2, dhCrash: 0.2, tree: 36.0, park: 26000, pipe: 18000, bigair: 9000, backcountry: 74, freestyle: 16000 },
     ],
     venues: ['Kettle Crest', 'Bluebird Basin', 'Sawtooth Bowl', 'Larch Ridge', 'Hoarfrost Valley', 'Cinder Cone', 'Pika Peak', 'Stormking', 'Glacier Lily', 'Cougar Bowl',
       'Marmot Pass', 'Silver Fir', 'Thunder Notch', 'Huckleberry Hill', 'Raven Ridge', 'Granite Falls', 'Snowberry', 'Windy Gap', 'Ptarmigan Peak', 'Elk Meadow',
@@ -2036,7 +2104,7 @@ const PALS = {
 };
 const SKCACHE = {};
 function skierSprite(o) {
-  const key = `${o.dir || 0}|${o.tuck ? 1 : 0}|${o.trick || ''}|${o.crash ? 1 : 0}|${o.pal}|${o.face ?? ''}|${o.grab || ''}|${o.lean || 0}|${o.balance ? 1 : 0}`;
+  const key = `${o.dir || 0}|${o.tuck === 'dh' ? 2 : o.tuck ? 1 : 0}|${o.trick || ''}|${o.crash ? 1 : 0}|${o.pal}|${o.face ?? ''}|${o.grab || ''}|${o.lean || 0}|${o.balance ? 1 : 0}`;
   if (SKCACHE[key]) return SKCACHE[key];
   const s = spr(32, 32, P => {
     const pal = PALS[o.pal];
@@ -2052,7 +2120,7 @@ function skierSprite(o) {
     const cx = 16, fy = 25, d = o.dir || 0;
     let a1 = d * Math.PI / 6, a2 = a1, L = d, cr = 0, arms = 'normal', back = false;
     if (o.face !== undefined) { const a = o.face * Math.PI / 4; a1 = a2 = a; L = Math.round(Math.sin(a) * 3); back = o.face >= 3 && o.face <= 5; }
-    if (o.tuck) { cr = 3; arms = 'tuck'; }
+    if (o.tuck) { cr = o.tuck === 'dh' ? 5 : 3; arms = o.tuck === 'dh' ? 'dhtuck' : 'tuck'; }   // ('dh': the Downhill's deep racing tuck)
     if (o.grab) { cr = 3; arms = 'grab_' + o.grab; }
     if (o.balance) arms = 'wide';
     switch (o.trick) {
@@ -2091,6 +2159,10 @@ function skierSprite(o) {
       P(bx - 5, 13 + cr - 1, 2, 4, pal.jacket); P(bx + 3, 13 + cr - 1, 2, 4, pal.dark);
       P(bx - 5, 16 + cr - 1, 2, 2, (pal.glove || GLOVE)); P(bx + 3, 16 + cr - 1, 2, 2, (pal.glove || GLOVE));
       P.line(bx - 4, 16 + cr, bx - 11, 11, pole); P.line(bx + 4, 16 + cr, bx + 11, 11, pole);
+    } else if (arms === 'dhtuck') {   // hands together out front, poles tucked under the arms
+      P(bx - 5, 12 + cr, 2, 4, pal.jacket); P(bx + 3, 12 + cr, 2, 4, pal.dark);
+      P.line(bx - 3, 16 + cr, bx - 10, 9 + cr, pole); P.line(bx + 3, 16 + cr, bx + 10, 9 + cr, pole);
+      P(bx - 3, 16 + cr, 6, 2, (pal.glove || GLOVE));
     } else if (arms === 'wide') {
       P(bx - 10, 11, 6, 2, pal.jacket); P(bx + 4, 11, 6, 2, pal.dark);
       P(bx - 12, 11, 2, 2, (pal.glove || GLOVE)); P(bx + 10, 11, 2, 2, (pal.glove || GLOVE));
@@ -2219,12 +2291,97 @@ const W_CORRIDOR = { mogul: 70, rock: 15, small: 15 };   // (no longer placed: t
 const TRICK_KEYS = { left: 'daffy', right: 'heli', up: 'spread', down: 'cross' };
 const TRICK_NAMES = { daffy: 'Daffy', heli: 'Helicopter', spread: 'Spread Eagle', cross: 'Iron Cross' };
 
+const SL_MODES = ['slalom', 'tree', 'downhill'];   // the timed courses
+const isSl = m => SL_MODES.includes(m);
 function courseX(y) {
   const C = G.course;
   if (!C || y < C.firstGate - 150) return 0;
-  return Math.sin((y - (C.firstGate - 150)) / C.wave) * C.amp;
+  return Math.sin((y - (C.firstGate - 150)) / C.wave) * C.amp + (C.dh ? dhElbowX(y) : 0);
+}
+// The Downhill's Elbow: how far the course has swung sideways at y (eased in and out)
+function dhElbowX(y) { const E = CFG.DOWNHILL.elbow, M = CFG.PX_PER_M, k = clamp((y - E.m0 * M) / ((E.m1 - E.m0) * M), 0, 1); return E.shift * k * k * (3 - 2 * k); }
+// The Downhill course's half-width at y: narrow round the Elbow
+function dhCorr(y) {
+  const D = CFG.DOWNHILL, E = D.elbow, M = CFG.PX_PER_M, m = y / M; if (m < E.n0 - E.ease || m > E.n1 + E.ease) return D.corridor;
+  const k = m < E.n0 ? (m - (E.n0 - E.ease)) / E.ease : m > E.n1 ? 1 - (m - E.n1) / E.ease : 1; return D.corridor + (E.half - D.corridor) * k * k * (3 - 2 * k);
 }
 
+// Downhill: how steep the course is at y (x the target speed), rollers included
+function dhSlope(y) {
+  const D = CFG.DOWNHILL, m = y / CFG.PX_PER_M, P = D.slope; let v = P[P.length - 1][1];
+  if (m <= P[0][0]) v = P[0][1];
+  else for (let i = 1; i < P.length; i++) if (m <= P[i][0]) { const [a, va] = P[i - 1], [b, vb] = P[i]; v = va + (vb - va) * (m - a) / Math.max(1, b - a); break; }
+  const R = D.rollers; if (m >= R[0] && m < R[1]) v *= 1 + R[3] * Math.sin((m - R[0]) / R[2] * Math.PI * 2);
+  return v;
+}
+const dhKmh = v => Math.round(Math.max(0, v) * CFG.DOWNHILL.kmh);
+// The commentator: one line at a time, never too often, never over a split (it waits for the split to go)
+function dhSay(key, v) {
+  const H2 = G.dh, D = CFG.DOWNHILL; if (!H2 || G.demo) return false;
+  const busy = H2.show && G.time < H2.show.until, at = busy ? H2.show.until : G.time;
+  if (at - H2.cmAt < D.say.gap || H2.cmQ) return false;
+  const list = D.commentary[key], n = H2.cmN[key] = ((H2.cmN[key] ?? -1) + 1) % list.length, text = list[n].replace('{v}', v);
+  if (busy) { H2.cmQ = { text, at }; H2.cmAt = at; } else { H2.cm = { text, until: G.time + D.say.show }; H2.cmAt = G.time; }
+  (H2.saidList = H2.saidList || []).push(key);
+  return true;
+}
+// The safety netting's x at y, on a side (-1 left, 1 right): the course's edge, eased in where it comes in at a gate
+function dhNet(y, side) {
+  const D = CFG.DOWNHILL, N = D.nets, edge = courseX(y) + side * dhCorr(y); let x = edge;
+  for (const b of (G.dh && G.dh.bulges) || []) {
+    if (b.side !== side || y < b.y - N.before || y > b.y + N.after) continue;
+    const k = y < b.y ? (y - (b.y - N.before)) / N.before : 1 - (y - b.y) / N.after, e = k * k * (3 - 2 * k), bx = edge + (b.x - edge) * e;
+    x = side < 0 ? Math.max(x, bx) : Math.min(x, bx);
+  }
+  return x;
+}
+// The splits to beat this run: your best run's (normal runs), or the leader's (the World Cup and the Olympics). null: nothing yet.
+function dhRef() {
+  const D = CFG.DOWNHILL, lead = dhLeader();
+  if (lead) return { kind: 'leader', t: lead, sp: D.splitShape.map(f => Math.round(lead * f * 100) / 100) };
+  const b = loadBest(); return Array.isArray(b.downhillSplits) && b.downhillSplits.length === D.splits.length && b.downhillC === D.courseV ? { kind: 'best', t: b.downhill, sp: b.downhillSplits } : null;
+}
+// The World Cup or Olympic leader so far: the fastest rival run up to this run (null in a normal run)
+function dhLeader() {
+  let runs = null, n = 0;
+  if (G.wc && G.wc.stop) { n = G.wc.runs.length; runs = wcField(G.wc.stop).map(R => (R.runs || []).slice(0, n + 1)); }
+  else if (G.oly && G.oly.field) { n = G.oly.cur && G.oly.cur.ev === 'downhill' ? G.oly.cur.runs.length : 0; runs = G.oly.field.map(R => R.runs.downhill.slice(0, n + 1)); }
+  if (!runs) return null;
+  const t = runs.flat().filter(v => typeof v === 'number'); return t.length ? Math.min(...t) : null;
+}
+// The board at the finish: your time and place as you cross
+function dhBoard(total) {
+  const t = Math.round(total * 100) / 100, H2 = G.dh;
+  if (G.wc || G.oly) {
+    const n = G.wc ? G.wc.runs.length : G.oly.cur && G.oly.cur.ev === 'downhill' ? G.oly.cur.runs.length : 0;
+    const rows = G.wc ? wcField(G.wc.stop).map(R => R.runs.slice(0, n + 1)) : G.oly.field.map(R => R.runs.downhill.slice(0, n + 1));
+    const best = rows.map(r => r.filter(v => typeof v === 'number')).filter(r => r.length).map(r => Math.min(...r)), place = 1 + best.filter(v => v < t).length;
+    H2.board = { t, place, lead: place === 1, line: place === 1 ? 'Leader!' : `${ordinal(place)}, +${(t - Math.min(...best)).toFixed(2)}` };
+  } else {
+    const b = loadBest(), list = (loadRanks().downhill || []).map(e => e.v), place = 1 + list.filter(v => v < t).length, gap = b.downhill ? t - b.downhill : null;
+    H2.board = { t, place, lead: false, line: `${ordinal(place)} on this device${gap === null ? '' : gap < 0 ? `, best by ${(-gap).toFixed(2)}` : `, +${gap.toFixed(2)}`}` };
+  }
+  H2.finT = G.time;
+  [[1180, 0], [1320, 0.07], [1180, 0.2], [1320, 0.27], [1180, 0.4], [1320, 0.47]].forEach(([f, d]) => beep(f, 0.16, 'triangle', 0.05, null, d));   // cowbells
+}
+// The wind's roar: one looping noise through a band-pass filter, its volume and pitch set by speed (Sound off: silent)
+let DHW = null;
+function dhWindTick() {
+  const D = CFG.DOWNHILL, s = G.sk, on = !!(G.dh && G.state === 'playing' && s && !s.air && !s.crashed && !muted && !G.quiet);
+  const v = s && G.dh ? (s.air ? Math.hypot(s.avx || 0, s.avy || 0) : s.speed) : 0, k = clamp((dhKmh(v) - D.feel.wind.from) / (dhKmh(D.vmax) - D.feel.wind.from), 0, 1), W2 = D.feel.wind;
+  const want = on ? W2.vol[0] + (W2.vol[1] - W2.vol[0]) * k : 0;
+  G.dhWind = want;   // (what the roar is set to: for the tests)
+  if (!DHW && want > 0 && actx) {
+    try {
+      const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain(); src.buffer = buf; src.loop = true; f.type = 'bandpass'; f.Q.value = 0.8; g.gain.value = 0;
+      src.connect(f).connect(g).connect(actx.destination); src.start(); DHW = { src, f, g, want: 0 };
+    } catch (e) { DHW = null; }
+  }
+  if (!DHW) return;
+  DHW.want = want;
+  const t = actx.currentTime; DHW.g.gain.setTargetAtTime(want, t, s && s.crashed ? 0.4 : 0.12); DHW.f.frequency.setTargetAtTime(W2.f[0] + (W2.f[1] - W2.f[0]) * k, t, 0.15);
+}
 function genCell(cx, cy) {
   const out = [], x0 = cx * CELL, y0 = cy * CELL;
   if (y0 < 0 && (G.mode === 'climb' || G.upper)) return climbCell(cx, cy);   // the mountain above the usual start
@@ -2281,7 +2438,7 @@ function genCell(cx, cy) {
     for (const o of out) if (o.type === 'ramp') addRampZone(o);
     for (let i = out.length - 1; i >= 0; i--) { const o = out[i]; if (OBJ[o.type] && OBJ[o.type].block && inRampZone(o.x, o.y)) out.splice(i, 1); }
   } else {
-    const C = G.course, tree = G.mode === 'tree';
+    const C = G.course, tree = G.mode === 'tree' || G.mode === 'downhill';   // (the Downhill runs through the forest too, on a wide course)
     const tries = tree ? C.forestTries : 1;
     for (let i = 0; i < tries; i++) {
       const x = x0 + 4 + r() * (CELL - 8), y = y0 + 4 + r() * (CELL - 8);
@@ -2368,7 +2525,7 @@ function pruneCells() {
 
 function resetWorld(mode) {
   Object.assign(G, {
-    mode, seed: (mode === 'slalom' || mode === 'tree') ? CFG.COURSE_SEED[mode] : (Math.random() * 1e9) | 0, npcs: [], tracks: [], floaters: [], debris: [], burning: [], pur: null, yellow: [], yellowWarned: false,
+    mode, seed: isSl(mode) ? CFG.COURSE_SEED[mode] : (Math.random() * 1e9) | 0, npcs: [], tracks: [], floaters: [], debris: [], burning: [], pur: null, yellow: [], yellowWarned: false,
     score: 0, elapsed: 0, penalty: 0, trickBonus: 0, passed: 0, missed: 0, brushed: 0, gateIdx: 0, started: false, moving: false, finished: false,
     npcT: 2, shake: 0, gotT: 0, gotStage: 0, lastChomp: -1, course: null,
   });
@@ -2392,6 +2549,15 @@ function resetWorld(mode) {
     }
     C.finishY = C.gates[C.gates.length - 1].y + 240;
   }
+  G.dhOut = false;
+  if (mode === 'downhill') {
+    const D = CFG.DOWNHILL, C = G.course = Object.assign({ dh: true }, D), M = CFG.PX_PER_M;
+    C.startY = D.start * M; C.firstGate = C.startY + 150; C.finishY = D.len * M; C.count = D.gates.length; C.penalty = 0; C.brush = 0;
+    C.gates = D.gates.map((m, i) => { const y = m * M, el = m >= D.elbow.n0 && m <= D.elbow.n1; return { y, x: Math.round(courseX(y) + (el ? 0 : (i % 2 ? 1 : -1) * D.gateOff)), state: 'pending', dh: true }; });   // (the Elbow's exit gate: across the middle of the narrow course)
+    G.dh = { top: 0, jumped: false, comp: false, jumpY: D.jump.m * M, jump2Y: D.jump2.m * M, compY: D.comp.m * M, landed: false, sp: [], show: null, snow: [], camF: CFG.CAM_Y_FRAC, lastDir: 0, board: null, ref: null,
+      cm: null, cmAt: -9, cmQ: null, cmN: {}, said: {}, bestTop: loadBest().downhillTop || 0, elbowCrash: false,
+      bulges: D.nets.inner.map(i => { const g = C.gates[i], p = C.gates[i - 1], side = Math.sign(p.x - g.x) || 1; return { y: g.y, side, x: g.x + side * (D.half + D.nets.gap) }; }) };
+  } else G.dh = null;
   G.rampZones = [];
   G.park = mode === 'park' ? buildPark() : null;
   G.bc = mode === 'backcountry' ? buildBC() : null;
@@ -2414,7 +2580,7 @@ function camFollow() {
   G.camX = Math.round(G.sk.x * fx - W / 2);
   // In Big Air, pull the camera up so the skier stays on screen at the peak
   const lift = (G.sk.air ? G.sk.z * 0.8 : 0) + (G.dropCam ? 26 : 0) + (G.patrolCam || 0) + (G.wakeCam || 0);
-  G.camY = Math.round(G.sk.y - lift - H * CFG.CAM_Y_FRAC);
+  G.camY = Math.round(G.sk.y - lift - H * (G.dh ? G.dh.camF : CFG.CAM_Y_FRAC));   // (the Downhill: further down the hill at speed)
 }
 
 /* ------------------------------ effects ------------------------------ */
@@ -2443,9 +2609,10 @@ function doubleUp(o) {
   G.runFlags.chains = (G.runFlags.chains || 0) + 1;
 }
 function crash(o, msg) {
-  const s = G.sk;
+  const s = G.sk, v0 = s.air ? Math.hypot(s.avx || 0, s.avy || 0) : s.speed;
   s.chainUntil = 0;
-  s.crashed = true; s.crashT = CFG.CRASH_TIME * (G.pads && !G.demo ? CFG.CRASH_PADS.getUp : 1); s.speed = 0; s.air = false; s.z = 0; s.trick = null; s.trickT = 0;
+  s.crashed = true; s.crashT = CFG.CRASH_TIME * (G.pads && !G.demo ? CFG.CRASH_PADS.getUp : 1) + (G.dh ? CFG.DOWNHILL.tumble * clamp(v0 / CFG.DOWNHILL.vmax, 0, 1) : 0);
+  if (G.dh && dhKmh(v0) > CFG.DOWNHILL.say.crash) dhSay('crash');   // (a Downhill crash at speed: a long tumble) s.speed = 0; s.air = false; s.z = 0; s.trick = null; s.trickT = 0;
   if (o) { s.ignore = o; s.justIgnored = true; }
   G.shake = 0.25; SFX.crash();
   floater(s.x, s.y - 34, msg || pick(['Ouch!', 'Oof!', 'Yard sale!', 'Bonk!']), '#b01010');
@@ -2534,6 +2701,7 @@ function action(k, repeat) {
   if (repeat && !(canStep && (k === 'left' || k === 'right'))) return;
   if (s.crashed) { getUp(k === 'left' ? -3 : k === 'right' ? 3 : k === 'down' ? 0 : s.lastSide * 3); return; }
   if (s.air) return;
+  if (G.dh && s.tuck && (k === 'left' || k === 'right') && Math.abs(s.dir + (k === 'left' ? -1 : 1)) > CFG.DOWNHILL.tuckTurn && Math.abs(s.dir + (k === 'left' ? -1 : 1)) > Math.abs(s.dir)) return;   // (Downhill: a tuck only steers a little)
   if (k === 'left') { if (s.dir > -3) s.dir--; else sidestep(-1); }
   else if (k === 'right') { if (s.dir < 3) s.dir++; else sidestep(1); }
   else if (k === 'down') s.dir = 0;
@@ -2726,19 +2894,29 @@ function update(dt) {
     const ad = Math.abs(s.dir);
     let vx = 0, vy = 0;
     s.walking = false;
+    if (s.air && G.dh) {   // Downhill air: speed bleeds away, much less in a tuck
+      const sp = Math.hypot(s.avx, s.avy), nv = Math.max(0, sp - (s.tuck ? CFG.DOWNHILL.jump.tuckBleed : CFG.DOWNHILL.jump.bleed) * dt), k = sp ? nv / sp : 0;
+      s.avx *= k; s.avy *= k; s.speed = nv;
+    }
     if (s.air) { vx = s.avx; vy = s.avy; }
     else if (!s.crashed) {
-      let target = CFG.BASE_SPEED * CFG.ANGLE_FACTOR[ad] * (s.tuck && ad < 3 ? CFG.TUCK_MULT : 1) * (G.vibes ? CFG.ROOTBEER.speed : 1) * (G.raceSkis ? CFG.RACE_SKI_SPEED : 1);
+      const D = G.dh ? CFG.DOWNHILL : null;
+      if (D && s.tuck && ad > D.tuckTurn) { if (ad >= 3) { s.tuck = false; $('tuckBtn').classList.remove('on'); } else s.dir = Math.sign(s.dir) * D.tuckTurn; }   // in a tuck you only steer a little; a brake stands you up
+      const adx = Math.abs(s.dir);
+      let target = CFG.BASE_SPEED * CFG.ANGLE_FACTOR[adx] * (s.tuck && adx < 3 ? (D ? D.tuck : CFG.TUCK_MULT) : 1) * (G.vibes ? CFG.ROOTBEER.speed : 1) * (G.raceSkis ? CFG.RACE_SKI_SPEED : 1);
+      if (D) target = Math.min(D.vmax, target * dhSlope(s.y));
       if (G.practice) target *= CFG.PRACTICE_SPEED;
       if (G.mode === 'bigair' && G.bigair && G.bigair.kicker && s.y < G.bigair.kicker.lipY) target *= CFG.BA_RUNWAY_SPEED;   // steep in-run
       if (G.mode === 'backcountry' && s.inPowder) target *= ad ? CFG.BC_POWDER_TURN : CFG.BC_POWDER_SPEED;   // deep powder
-      const rate = target > s.speed ? CFG.ACCEL : CFG.DECEL;
+      const rate = G.dh ? (target > s.speed ? CFG.DOWNHILL.accel : CFG.DOWNHILL.decel) : target > s.speed ? CFG.ACCEL : CFG.DECEL;
       s.speed += clamp(target - s.speed, -rate * dt, rate * dt);
       if (ad === 3) {
         if (G.held.up && s.speed < 25) { s.walking = true; s.speed = 0; vy = -CFG.WALK_SPEED; }
         else if (Hold.stand && G.held.left !== G.held.right && s.speed < 25) { s.walking = true; s.speed = 0; vx = (G.held.right ? 1 : -1) * CFG.HOLD.stand.side; }   // (phones, stopped: stepping across)
         else { vx = Math.sign(s.dir) * s.speed * 0.35; vy = s.speed * 0.7; }
-      } else { const th = s.dir * Math.PI / 6; vx = Math.sin(th) * s.speed; vy = Math.cos(th) * s.speed; }
+      } else { let th = s.dir * Math.PI / 6;
+        if (G.dh) { const I = CFG.DOWNHILL.ice, m = s.y / CFG.PX_PER_M; if (m >= I[0] && m < I[1] && s.iceTh !== undefined) th = s.iceTh + (th - s.iceTh) * Math.min(1, dt / CFG.DOWNHILL.iceLag); s.iceTh = th; }   // (the ice: turns slide, late)
+        vx = Math.sin(th) * s.speed; vy = Math.cos(th) * s.speed; }
     }
     s.vx = vx; s.vy = vy;
     const px = s.x, py = s.y;
@@ -2791,8 +2969,14 @@ function update(dt) {
 
   if (G.course) {
     const C = G.course;
+    if (G.dh && dhTick(py0, dt)) return;
     while (G.gateIdx < C.gates.length && s.y >= C.gates[G.gateIdx].y) {
       const g = C.gates[G.gateIdx];
+      if (g.dh) {   // Downhill: between the panels, or out
+        if (Math.abs(s.x - g.x) <= C.half) { const b = G.dh.bulges.find(b => b.y === g.y); if (b && Math.abs(s.x - (g.x + b.side * C.half)) < CFG.DOWNHILL.say.nets) dhSay('nets');
+          g.state = 'passed'; G.passed++; G.gateIdx++; SFX.gate(); continue; }
+        g.state = 'missed'; G.missed++; G.gateIdx++; dhOut(); return;
+      }
       const sg = g.side === 'L' ? -1 : 1, out = (s.x - g.x) * sg;   // round the outside: left of a left flag, right of a right one
       const ok = out > 0, brushed = !ok && C.brush && out > -C.brush;   // just inside it: brushed the flag, still made it
       g.state = ok || brushed ? 'passed' : 'missed';
@@ -2962,6 +3146,57 @@ function drawGateLanes() {
     for (let k = 0; k < 4; k++) { ctx.fillRect(cx - 4 + k, y - 4 + k, 1, 2); ctx.fillRect(cx + 4 - k, y - 4 + k, 1, 2); }
   }
 }
+// Downhill: the course's snow (rollers, the jump's landing, the compression, the glide), under everything
+function drawDHFlat() {
+  const D = CFG.DOWNHILL, M = CFG.PX_PER_M;
+  const band = (y, h, col) => { const sy = Math.round(y - RCY); if (sy < -h || sy > H) return; const cx = Math.round(courseX(y) - RCX), half = dhCorr(y); ctx.fillStyle = col; ctx.fillRect(cx - half, sy, half * 2, h); };
+  for (let m = D.rollers[0]; m < D.rollers[1]; m += D.rollers[2]) { band(m * M + D.rollers[2] * M * 0.25, 10, '#e6edf6'); band(m * M + D.rollers[2] * M * 0.25 + 10, 6, '#d6e0ec'); }   // rollers: a lit face, a shadow
+  for (let k = 0; k < 4; k++) band(D.comp.m * M - 6 + k * 3, 3, ['#dfe7f1', '#cfd9e6', '#c3cfde', '#dfe7f1'][k]);   // the compression
+  for (let m = D.glide[0]; m < D.glide[1]; m += 30) band(m * M, 1, '#e8eef6');   // the glide's groomed lines
+  for (let y = D.ice[0] * M; y < D.ice[1] * M; y += 6) { const sy = Math.round(y - RCY); if (sy < -6 || sy > H) continue; const L = Math.round(dhNet(y, -1) - RCX) + 3, R = Math.round(dhNet(y, 1) - RCX) - 3;   // the ice: glassy blue-white, with glints
+    ctx.fillStyle = (y / 6) % 2 ? '#dcecfa' : '#d2e6f8'; ctx.fillRect(L, sy, R - L, 6); ctx.fillStyle = '#ffffff'; for (let x = L + ((y * 7) % 40); x < R; x += 53) ctx.fillRect(x, sy + 2, 9, 1); }
+  // the safety netting either side, the whole way down: orange mesh on poles
+  const y0 = Math.max(G.course.startY - 40, RCY - 10), y1 = Math.min(G.course.finishY + 400, RCY + H + 10);
+  for (let y = Math.floor(y0 / 4) * 4; y < y1; y += 4) for (const side of [-1, 1]) {
+    const x = Math.round(dhNet(y, side) - RCX), sy = Math.round(y - RCY);
+    ctx.fillStyle = (y / 4) % 2 ? '#f07a1a' : '#f4a050'; ctx.fillRect(x - 1, sy, 3, 4); ctx.fillStyle = '#c85a10'; ctx.fillRect(x + (y / 4) % 2 - 1, sy + 1, 1, 2);
+    if (y % 48 === 0) { ctx.fillStyle = '#4a4a54'; ctx.fillRect(x - 1, sy - 6, 2, 10); }
+  }
+}
+// A control gate: two blue panels on poles (green once you're through, grey if missed)
+function drawDHGate(g) {
+  const col = g.state === 'passed' ? '#2a9a4a' : g.state === 'missed' ? '#9aa2ac' : '#1a4ad8', dark = g.state === 'pending' ? '#0c2a8a' : '#5a6270';
+  for (const sd of [-1, 1]) {
+    const x = Math.round(g.x + sd * G.course.half - RCX), y = Math.round(g.y - RCY);
+    ctx.fillStyle = '#3a3a44'; ctx.fillRect(x - 6, y - 22, 1, 22); ctx.fillRect(x + 5, y - 22, 1, 22);
+    ctx.fillStyle = col; ctx.fillRect(x - 5, y - 21, 10, 13); ctx.fillStyle = dark; ctx.fillRect(x - 5, y - 9, 10, 1);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 3, y - 18, 6, 2);
+  }
+}
+// The big jump: a snow ramp across the course, with blue dye on its lip
+function drawDHJump(small) {
+  const y = small ? G.dh.jump2Y : G.dh.jumpY, cx = Math.round(courseX(y) - RCX), sy = Math.round(y - RCY), w = dhCorr(y) - 20, h = small ? 6 : 10;
+  ctx.fillStyle = '#c8d4e4'; ctx.fillRect(cx - w, sy - h, w * 2, h);
+  ctx.fillStyle = '#e8eef6'; ctx.fillRect(cx - w, sy - h, w * 2, 3);
+  ctx.fillStyle = '#9fb4cf'; ctx.fillRect(cx - w, sy - 1, w * 2, 1);
+  ctx.fillStyle = '#2a6ae8'; for (let x = -w; x < w; x += 8) ctx.fillRect(cx + x, sy - 2, 4, 2);
+}
+// The start hut beside the start gate
+function drawDHHut() {
+  const y = G.course.startY, cx = Math.round(courseX(y) - RCX) - CFG.DOWNHILL.corridor + 20, sy = Math.round(y - RCY);
+  ctx.fillStyle = '#7a4a24'; ctx.fillRect(cx - 18, sy - 26, 36, 22); ctx.fillStyle = '#5a3418'; ctx.fillRect(cx - 18, sy - 6, 36, 2);
+  ctx.fillStyle = '#d42a2a'; ctx.fillRect(cx - 21, sy - 31, 42, 6); ctx.fillStyle = '#a01a1a'; ctx.fillRect(cx - 21, sy - 26, 42, 1);
+  ctx.fillStyle = '#bcdcf8'; ctx.fillRect(cx - 12, sy - 20, 9, 7); ctx.fillRect(cx + 3, sy - 20, 9, 7);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(cx - 21, sy - 31, 42, 1);
+  text('START', cx, sy - 34, '#000080', 8);
+}
+function drawDHSign(y, t) {
+  const cx = Math.round(courseX(y) - RCX) + dhCorr(y) - 10, sy = Math.round(y - RCY);
+  ctx.fillStyle = '#3a3a44'; ctx.fillRect(cx - 1, sy - 16, 2, 16);
+  ctx.font = 'bold 8px "Courier New", monospace'; const w = Math.ceil(ctx.measureText(t).width) + 6;
+  ctx.fillStyle = '#f0c020'; ctx.fillRect(cx - w, sy - 26, w, 11); ctx.fillStyle = '#202028'; ctx.fillRect(cx - w, sy - 16, w, 1);
+  text(t, cx - w / 2, sy - 18, '#202028', 8);
+}
 function drawBanner(y, label, checker) {
   const cx = courseX(y) - RCX, sy = y - RCY, half = 84;
   ctx.fillStyle = '#c8d4e4';
@@ -2989,6 +3224,8 @@ function render() {
   const s = G.sk;
   let ox = 0, oy = 0;
   if (G.shake > 0) { ox = Math.round(Math.random() * 4 - 2); oy = Math.round(Math.random() * 4 - 2); }
+  else if (G.dh && G.state === 'playing' && !s.crashed && dhKmh(s.air ? 0 : s.speed) > CFG.DOWNHILL.feel.shake) { ox = Math.round(Math.random() * 2 - 1); oy = Math.round(Math.random() * 2 - 1); }   // (flat out: a slight shake)
+  dhWindTick();
   RCX = G.camX + ox; RCY = G.camY + oy;
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
 
@@ -3020,13 +3257,19 @@ function render() {
   flat.sort((a, b) => a.y - b.y);
   for (const f of flat) drawS(SPR[f.o.type], f.o.x, f.o.y);
   if (G.mode === 'climb' || G.upper) climbFlat();
-  if (G.course) drawGateLanes();
+  if (G.course && !G.course.dh) drawGateLanes();
+  if (G.dh) { drawDHFlat(); drawDHSplits(); drawDHSpeed(); }
 
   if (G.course) {
     const C = G.course;
     if (Math.abs(C.startY - RCY - H / 2) < H) items.push({ y: C.startY, k: 'banner', label: 'START', checker: false });
     if (Math.abs(C.finishY - RCY - H / 2) < H) items.push({ y: C.finishY, k: 'banner', label: 'FINISH', checker: true });
     for (const g of C.gates) if (g.y > RCY - 20 && g.y < RCY + H + 40) items.push({ y: g.y, k: 'gate', g });
+    if (G.dh) { const J = G.dh.jumpY; if (Math.abs(J - RCY - H / 2) < H) items.push({ y: J, k: 'dhjump' });
+      if (Math.abs(C.startY - RCY - H / 2) < H) items.push({ y: C.startY - 6, k: 'dhhut' });
+      if (Math.abs(C.finishY - RCY - H / 2) < H * 1.5) items.push({ y: C.finishY + 160, k: 'dhfinish' });
+      if (Math.abs(G.dh.jump2Y - RCY - H / 2) < H) items.push({ y: G.dh.jump2Y, k: 'dhjump', small: true });
+      for (const [m, t] of [[CFG.DOWNHILL.comp.m - 25, 'COMPRESSION'], [CFG.DOWNHILL.glide[0] - 5, 'GLIDE: TUCK!'], [CFG.DOWNHILL.jump.m - 45, 'JUMP'], [CFG.DOWNHILL.elbow.n0 - 15, 'THE ELBOW'], [CFG.DOWNHILL.ice[0] - 10, 'ICE!'], [CFG.DOWNHILL.jump2.m - 25, 'JUMP']]) { const y = m * CFG.PX_PER_M; if (Math.abs(y - RCY - H / 2) < H) items.push({ y, k: 'dhsign', t }); } }
   }
   if (park) parkItems(items);
   if (G.lodge && Math.abs(G.lodge.y - RCY - H / 2) < H) items.push({ y: G.lodge.y + 30, k: 'lodge' });
@@ -3068,6 +3311,11 @@ function render() {
     } else if (it.k === 'bakicker') { drawBigairKicker();
     } else if (it.k === 'baland') { drawLandingZone(it.y);
     } else if (it.k === 'bamark') { text(`${it.m} m`, -RCX, it.y - RCY - 4, '#808080', 8);
+    } else if (it.k === 'gate' && it.g.dh) { drawDHGate(it.g);
+    } else if (it.k === 'dhjump') { drawDHJump(it.small);
+    } else if (it.k === 'dhhut') { drawDHHut();
+    } else if (it.k === 'dhfinish') { drawDHFinish();
+    } else if (it.k === 'dhsign') { drawDHSign(it.y, it.t);
     } else if (it.k === 'gate') {
       const bt = it.g.brushT !== undefined ? G.time - it.g.brushT : 9;   // a brushed flag wobbles for a moment
       drawS(SPR.flag[it.g.side + it.g.state], it.g.x + (bt < 0.7 ? Math.round(Math.sin(bt * 40) * 2.5 * (1 - bt / 0.7)) : 0), it.g.y);
@@ -3097,7 +3345,7 @@ function render() {
       else if (s.air && s.trick) S = skierSprite({ dir: s.dir, trick: s.trick, pal: 'hero' });
       else if (s.air) S = skierSprite({ face: ((Math.round(s.facing / 45) % 8) + 8) % 8, grab: s.grabbing ? s.grabType : null, pal: 'hero' });
       else if (s.switch) S = skierSprite({ face: ((Math.round((s.dir * 30 + 180) / 45) % 8) + 8) % 8, pal: 'hero' });
-      else S = skierSprite({ dir: s.dir, tuck: (s.tuck && Math.abs(s.dir) < 2 && !s.air) || (s.buttering && Math.abs(s.dir) < 2), pal: 'hero' });
+      else S = skierSprite({ dir: s.dir, tuck: G.dh && s.tuck && Math.abs(s.dir) < 2 ? 'dh' : (s.tuck && Math.abs(s.dir) < 2 && !s.air) || (s.buttering && Math.abs(s.dir) < 2), pal: 'hero' });
       const sway = G.vibes && !s.air && !s.crashed ? Math.sin(G.time * 3) * CFG.ROOTBEER.sway : 0;
       if (s.air && !s.crashed) drawRot(S, s.x, s.y - zd, s.pitch, airScale(zd)); else drawS(S, s.x + sway, s.y - zd);
       if (G.mode === 'backcountry' && s.inPowder && !s.air && !s.crashed) { ctx.fillStyle = 'rgba(244,248,253,0.92)'; ctx.fillRect(Math.round(s.x - RCX) - 9, Math.round(s.y - RCY) - 3, 18, 5); }
@@ -3163,7 +3411,9 @@ function render() {
     }
   }
   if (G.pur && !G.pur.demo && G.state === 'playing') drawPurMarker();
+  if (G.dh) drawDHFog();
   if (Hold.active && G.state === 'playing') drawHold();   // phones: a faint arc on the side being held
+  if (G.dh) drawDHSplitShow();
 }
 
 /* ------------------------------ terrain park ------------------------------ */
@@ -3295,7 +3545,7 @@ function comboBank() {
   if (!c.active) return;
   const mult = Math.min(c.count, CFG.COMBO_MAX_MULT), total = Math.round(c.base * mult);
   G.score += total;
-  if (c.count >= 2 && G.mode !== 'slalom' && G.mode !== 'tree') {
+  if (c.count >= 2 && !isSl(G.mode)) {
     floater(s.x, s.y - 54, `COMBO x${mult}! +${total.toLocaleString()}`, '#a00000'); SFX.combo();
     if (total >= 2500) crowd(Math.min(1, total / 8000));
   }
@@ -3394,6 +3644,14 @@ const GOALS = {
     { id: 'bonus2', text: 'Earn 1 second of trick bonus in one run' },
     { id: 'flip', text: 'Land a flip on the course' },
   ],
+  downhill: [
+    { id: 'allFlags', text: 'Finish a Downhill' },
+    { id: 'noCrash', text: 'Finish without crashing' },
+    { id: 'fast', text: `Final time under ${CFG.GOAL_TIMES.downhill[0]} seconds` },
+    { id: 'faster', text: `Final time under ${CFG.GOAL_TIMES.downhill[1]} seconds` },
+    { id: 'kmh120', text: 'Hit 120 km/h' },
+    { id: 'jump', text: 'Land the big jump in a tuck' },
+  ],
   tree: [
     { id: 'allFlags', text: 'Finish without missing a flag' },
     { id: 'noCrash', text: 'Finish without crashing' },
@@ -3423,7 +3681,7 @@ const GOALS = {
     { id: 'doubleCork', text: 'Land a double cork' },
   ],
 };
-const GOAL_TABS = [['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Trees'], ['park', 'Park'], ['pipe', 'Halfpipe'], ['bigair', 'Big Air'], ['backcountry', 'Backcountry']];
+const GOAL_TABS = [['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Trees'], ['downhill', 'Downhill'], ['park', 'Park'], ['pipe', 'Halfpipe'], ['bigair', 'Big Air'], ['backcountry', 'Backcountry']];
 let goalTab = 'freestyle';
 function goalText(mode, id) { return ((GOALS[mode] || []).find(g => g.id === id) || { text: id }).text; }
 function goalsDone(b, mode) {
@@ -3754,6 +4012,7 @@ function parkLand() {
   s.air = false; s.z = 0;
   if (G.mode === 'backcountry' && bcLandCheck()) return;
   s.softSaved = false;
+  if (G.dh && !dhLandOk()) { crash(null, 'Landed sideways!'); return; }
   const bail = s.trickT > 0 ? 'Wipeout!' : "Didn't let go!";
   if (!softSave()) { crash(null, bail); return; }
   if (s.railOut && !s.spun) { s.facing = 0; s.rot = 0; }
@@ -4612,7 +4871,7 @@ function runPay() {
   if (!lv) return null;
   const P = CFG.PAY; let base = 0;
   if (G.mode === 'freestyle') base = (G.finalDist || 0) * P.perM + G.score / P.scoreDiv + (G.escaped === 'summit' ? P.lodge * CFG.SUMMIT.pay : G.escaped === 'legend' ? P.lodge * 3 : G.escaped ? P.lodge : 0);
-  else if (G.mode === 'slalom' || G.mode === 'tree') base = G.finished ? P.finish + (G.missed ? 0 : P.clean) : 0;
+  else if (isSl(G.mode)) base = G.finished ? P.finish + (G.missed ? 0 : P.clean) : 0;
   else if (G.mode === 'park') base = G.score / P.scoreDiv;
   else if (G.mode === 'pipe') base = G.score / P.pipeScoreDiv;
   else if (G.mode === 'bigair') base = (G.bigair ? G.bigair.best : 0) / P.scoreDiv;
@@ -5044,7 +5303,7 @@ function holdTick(dt) {
     if (CFG.HOLD.stand.modes.includes(G.mode) && s.speed < CFG.HOLD.stand.v) holdStand();   // ... down to a stop: you stand there
     return; }
   Hold.assist = null;
-  if (one && G.course) {   // Slalom and Tree Slalom: holding the side of the next flag carves round it
+  if (one && G.course && !G.course.dh) {   // Slalom and Tree Slalom: holding the side of the next flag carves round it
     const g = G.course.gates[G.gateIdx], sg = g ? (g.side === 'L' ? -1 : 1) : 0;
     if (one.gate === undefined) one.gate = sg === one.side ? G.gateIdx : -1;   // a press for the next flag (the right side) gets the help
     if (one.gate >= 0 && G.gateIdx > one.gate) {   // passed it, still holding: straighten out (switch sides for the next one)
@@ -5054,7 +5313,7 @@ function holdTick(dt) {
     if (one.gate >= 0 && g) { const d = slAssistDir(s, g, sg); Hold.assist = { gate: G.gateIdx, x: g.x + sg * CFG.HOLD.assist.margin, y: g.y };
       if (d !== s.dir) { s.dir = d; if (d) s.lastSide = Math.sign(d); } Hold.backT = 0; return; }
   }
-  if (one) { const d = Math.sign(one.side) * holdStep(one); if (d !== s.dir) { s.dir = d; s.lastSide = Math.sign(d); } Hold.backT = 0; return; }
+  if (one) { const d = Math.sign(one.side) * (G.dh && s.tuck ? Math.min(holdStep(one), CFG.DOWNHILL.tuckTurn) : holdStep(one)); if (d !== s.dir) { s.dir = d; s.lastSide = Math.sign(d); } Hold.backT = 0; return; }
   if (s.dir) { Hold.backT += dt; if (Hold.backT >= CFG.HOLD.back) { Hold.backT = 0; s.dir -= Math.sign(s.dir); } }   // let go: back toward straight down
 }
 // The line round the next flag (as a good key player skis it): head for a point just outside the flag, straight down if it's nearly
@@ -5354,8 +5613,8 @@ const SONG_NAMES = { menu: 'Lodge Lounge', freestyle: 'Powder Run', slalom: 'Gat
   bigair: 'Send It', backcountry: 'Off Piste', practice: 'First Chair',
   jb_chairlift: 'Chairlift Shuffle', jb_stomp: 'Big Karl Stomp', jb_neon: 'Night Park Neon', jb_apres: 'Apres Glow', jb_widow: 'Widowmaker', jb_rain: 'PNW Rain', saloon: 'Saloon Rag', tune: 'Your Tune' };
 const JUKEBOX_SONGS = ['jb_chairlift', 'jb_stomp', 'jb_neon', 'jb_apres', 'jb_widow', 'jb_rain'];
-const JUKEBOX_SLOTS = [['menu', 'Menu'], ['bar', 'The Bar'], ['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Tree Slalom'], ['park', 'Terrain Park'], ['pipe', 'Halfpipe'], ['bigair', 'Big Air'], ['backcountry', 'Backcountry']];
-const BUILTIN_SONGS = ['menu', 'freestyle', 'slalom', 'tree', 'park', 'pipe', 'bigair', 'backcountry', 'practice'];
+const JUKEBOX_SLOTS = [['menu', 'Menu'], ['bar', 'The Bar'], ['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Tree Slalom'], ['downhill', 'Downhill'], ['park', 'Terrain Park'], ['pipe', 'Halfpipe'], ['bigair', 'Big Air'], ['backcountry', 'Backcountry']];
+const BUILTIN_SONGS = ['menu', 'freestyle', 'slalom', 'tree', 'downhill', 'park', 'pipe', 'bigair', 'backcountry', 'practice'];
 function jukeData(b) { b.jukebox = b.jukebox || {}; b.jukebox.owned = b.jukebox.owned || []; b.jukebox.pick = b.jukebox.pick || {}; return b.jukebox; }
 const slotDefault = slot => slot === 'bar' ? 'menu' : slot;
 function jukeResolve(slot) {
@@ -5396,7 +5655,7 @@ function setSound(on) {
 }
 
 /* ------------------------------ weather ------------------------------ */
-const WEATHER_MODES = ['freestyle', 'slalom', 'tree'];
+const WEATHER_MODES = ['freestyle', 'slalom', 'tree', 'downhill'];
 const WEATHER_NAMES = { clear: 'Clear skies', snow: 'Snowfall', fog: 'Fog', night: 'Night run' };
 function pickWeather() {
   if (ACCT.weather !== 'random') return ACCT.weather;
@@ -5477,12 +5736,12 @@ function drawGhost(g) {
 /* ------------------------------ rankings ------------------------------ */
 // A new slalom course: your best time and ghost from an older course are set aside. The best is kept as "old course" (shown, never
 // compared with new times); the ghost goes. Bests and ghosts carry the course they were set on. Goals and medals already earned stay.
-const slCfg = m => m === 'tree' ? CFG.TREE_SLALOM : CFG.SLALOM;
+const slCfg = m => m === 'tree' ? CFG.TREE_SLALOM : m === 'downhill' ? CFG.DOWNHILL : CFG.SLALOM;
 function slCourseMigrate(b) {
   let ch = false;
-  for (const m of ['slalom', 'tree']) {
+  for (const m of SL_MODES) {
     const V = slCfg(m).courseV;
-    if (b[m] && b[m + 'C'] !== V) { b[m + 'Old'] = b[m]; delete b[m]; ch = true; }
+    if (b[m] && b[m + 'C'] !== V) { b[m + 'Old'] = b[m]; delete b[m]; if (m === 'downhill') delete b.downhillSplits; ch = true; }
     if (b[m + 'C'] !== undefined && !b[m] && b[m + 'C'] !== V) { delete b[m + 'C']; ch = true; }
     if (b.ghosts && b.ghosts[m] && b.ghosts[m].c !== V) { delete b.ghosts[m]; ch = true; }
   }
@@ -5491,7 +5750,7 @@ function slCourseMigrate(b) {
 // ...and Slalom and Tree Slalom rankings from an older course are moved to their own lists (kept in the save, not listed)
 function slRanksTidy() {
   const R = loadRanks(); let ch = false;
-  for (const m of ['slalom', 'tree']) {
+  for (const m of SL_MODES) {
     const V = slCfg(m).courseV, list = R[m] || [], old = list.filter(e => e.c !== V);
     if (!old.length) continue;
     R[m + 'Old'] = (R[m + 'Old'] || []).concat(old.map(e => Object.assign({ c: 1 }, e))); R[m] = list.filter(e => e.c === V); ch = true;
@@ -5501,17 +5760,17 @@ function slRanksTidy() {
 // Device-wide top lists shared by the three accounts. Entries keep the account slot, so a rename
 // shows the new name and a reset removes them.
 const RANK_KEY = 'powderpanic.rankings.v1';
-const EVENT_NAMES = { freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', olympics: 'Olympics',
+const EVENT_NAMES = { freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', downhill: 'Downhill', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', olympics: 'Olympics',
   parkNight: 'Night Park', superpipe: 'Superpipe', megakicker: 'Mega Kicker', backcountry: 'Backcountry', rampage: "Big Karl's Rampage", tube: 'Tube Race', toboggan: 'Toboggan Run', snowmo: 'Sno-Park Hill Climb', road: 'Mountain Road' };
-const RANK_TABS = [['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Trees'], ['park', 'Park'], ['parkNight', 'Night Park'], ['pipe', 'Halfpipe'], ['superpipe', 'Superpipe'],
+const RANK_TABS = [['freestyle', 'Freestyle'], ['slalom', 'Slalom'], ['tree', 'Trees'], ['downhill', 'Downhill'], ['park', 'Park'], ['parkNight', 'Night Park'], ['pipe', 'Halfpipe'], ['superpipe', 'Superpipe'],
   ['bigair', 'Big Air'], ['megakicker', 'Mega Kicker'], ['backcountry', 'Backcountry'], ['olympics', 'Olympics'], ['rampage', 'Arcade'], ['tube', 'Tube Race'], ['toboggan', 'Toboggan'], ['snowmo', 'Hill Climb']];
-const lowerIsBetter = ev => ev === 'slalom' || ev === 'tree' || ev === 'tube';
+const lowerIsBetter = ev => isSl(ev) || ev === 'tube';
 function loadRanks() { try { return JSON.parse(Store.get(RANK_KEY)) || {}; } catch (e) { return {}; } }
 function saveRanks(r) { try { Store.set(RANK_KEY, JSON.stringify(r)); } catch (e) { /* storage unavailable */ } }
 function rankValue() {
   if (G.mode === 'road' || G.mode === 'climb') return null;
   if (G.mode === 'snowmo') return G.sm && smMarkM(G.sm) > 0 ? smMarkM(G.sm) : null;
-  if (G.mode === 'slalom' || G.mode === 'tree') return G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null;
+  if (isSl(G.mode)) return G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null;
   if (G.mode === 'backcountry') return G.bc && G.bc.total > 0 ? G.bc.total : null;
   const v = G.mode === 'bigair' ? (G.bigair ? G.bigair.best : 0) : G.score;
   return v > 0 ? v : null;
@@ -5592,7 +5851,7 @@ function launchMode(mode) {
   if (mode !== 'olympics') { startGame(mode); return; }
   const b = loadBest(), q = olyStatus(b);
   if (!wcHasCard(b)) {   // (the Olympics and their Practice Heats need a World Cup start card)
-    showInfo('Olympics: World Cup start card needed', `<p class="tag">The Olympics are on day ${CFG.WORLD_CUP.games} of each World Cup season. To get in, you need a World Cup start card, then the Olympic marks in first-half World Cup races.</p>${wcCardHTML(b)}`);
+    showInfo('Olympics: World Cup start card needed', `<p class="tag">The Olympics come every other World Cup season, after stop ${CFG.WORLD_CUP.games}. To get in, you need a World Cup start card, then the Olympic marks in first-half World Cup races.</p>${wcCardHTML(b)}`);
     return;
   }
   olyStart();
@@ -5601,24 +5860,28 @@ function launchMode(mode) {
 const MEDAL = ['', 'gold', 'silver', 'bronze'];
 const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 const fmtSec = t => { const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s < 10 ? '0' : ''}${s.toFixed(2)}`; };
+const TIME_EV = ev => ev === 'slalom' || ev === 'tree' || ev === 'downhill';   // events decided by time (lower is better)
+const olyDhPts = t => Math.max(0, Math.min(CFG.OLY_SLALOM_MAX, Math.round(1000 - (t - CFG.OLY_DH_PAR) * CFG.OLY_DH_PER_S)));
 const olySlalomPts = t => Math.max(0, Math.min(CFG.OLY_SLALOM_MAX, Math.round(1000 - (t - CFG.OLY_SLALOM_PAR) * CFG.OLY_SLALOM_PER_S)));
 // The Olympic field for a Games day: the top CFG.WORLD_CUP.olyField rivals in that season's World Cup standings after the first half,
 // counting the rivals only (so it's the same field for every account). Kept for each season.
 const OLY_RIVALS_BY = new Map();
-function olyRivals(day = barToday()) {
-  const g = olyCycle(day).games, w = wcDay(g), C = wcCfg(); if (OLY_RIVALS_BY.has(w.s)) return OLY_RIVALS_BY.get(w.s);
-  const pts = {}; for (const st of wcCalendar(w.s)) { if (!st || st.games || st.idx >= C.games) continue; for (const r of wcStopTable(st, null)) pts[r.id] = (pts[r.id] || 0) + r.pts; }
+function olyRivals(key = olyCycle().games) {   // key: a Games ('S' and its season)
+  const s = Number(String(key).slice(1)) || 1, C = wcCfg(), w = { s }; if (OLY_RIVALS_BY.has(w.s)) return OLY_RIVALS_BY.get(w.s);
+  const pts = {}; for (const st of wcCalendar(w.s)) { if (!st || st.idx > C.games) continue; for (const r of wcStopTable(st, null)) pts[r.id] = (pts[r.id] || 0) + r.pts; }
   const order = wcRivals().map((R, i) => [R, pts[R.id] || 0, i]).sort((a, c) => (c[1] - a[1]) || (a[2] - c[2]));
   const out = order.slice(0, C.olyField).map(([R, p]) => Object.assign({}, R, { wcPts: p }));
   OLY_RIVALS_BY.set(w.s, out); return out;
 }
-// base: the rivals' base levels with no daily spread (used to recheck medals from before rivals existed; day '' = the classic seven)
-function olyField(day = barToday(), base = false) {
+// base: the rivals' base levels with no spread (used to recheck medals from before rivals existed; day '' = the classic seven).
+// day: the Games' key ('S' and the season)
+function olyField(day = olyCycle().games, base = false) {
   let h = 2166136261; for (const c of 'oly' + day) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
   const rng = mulberry(h >>> 0), S = CFG.OLY_RIVAL_SPREAD, TS = CFG.OLY_RIVAL_TIME_SPREAD, jit = s => base ? 1 : 1 + (rng() * 2 - 1) * s, N = CFG.OLY_RUNS;
   return (day ? olyRivals(day) : CFG.OLY_RIVALS).map(R => {
     const runs = { slalom: Array.from({ length: N }, () => Math.round(R.slalom * jit(TS) * 100) / 100) };
     for (const ev of ['park', 'pipe', 'bigair']) runs[ev] = Array.from({ length: N }, () => Math.max(0, Math.round(R[ev] * jit(S))));
+    runs.downhill = Array.from({ length: N }, () => { const out = !base && rng() < (R.dhCrash || 0), t = Math.round(R.downhill * jit(TS) * 100) / 100; return out ? null : t; });
     const raw = {}, pts = {}, best = {};
     for (const ev of CFG.OLY_EVENTS) { const b = olyBest(ev, runs[ev]); raw[ev] = b.v; best[ev] = b.idx; pts[ev] = olyEvPts(ev, b.avg); }
     return Object.assign({}, R, { time: raw.slalom, runs, best, raw, pts, total: CFG.OLY_EVENTS.reduce((a, ev) => a + pts[ev], 0) });
@@ -5627,16 +5890,16 @@ function olyField(day = barToday(), base = false) {
 // The best k of an event's runs (null: a run that didn't finish). v: the event result (the k added together; Slalom: null
 // if fewer than k finished), avg: their average (for the Olympic points), idx: which runs count.
 function olyBest(ev, list, k = CFG.OLY_COUNT) {
-  const ok = list.map((v, i) => [v, i]).filter(([v]) => typeof v === 'number').sort((a, c) => ev === 'slalom' ? a[0] - c[0] : c[0] - a[0]);
+  const T = TIME_EV(ev), ok = list.map((v, i) => [v, i]).filter(([v]) => typeof v === 'number').sort((a, c) => T ? a[0] - c[0] : c[0] - a[0]);
   const need = Math.min(k, list.length), top = ok.slice(0, need), idx = top.map(x => x[1]);
-  if (ev === 'slalom' && top.length < need) return { v: null, avg: null, idx };
+  if (T && top.length < need) return { v: null, avg: null, idx };
   const sum = top.reduce((a, x) => a + x[0], 0);
-  return { v: ev === 'slalom' ? Math.round(sum * 100) / 100 : sum, avg: need ? sum / need : 0, idx };
+  return { v: T ? Math.round(sum * 100) / 100 : sum, avg: need ? sum / need : 0, idx };
 }
-const olyEvPts = (ev, avg) => avg === null || avg === undefined ? 0 : ev === 'slalom' ? olySlalomPts(avg) : Math.min(CFG.OLY_EVENT_CAP, Math.round(avg * CFG.OLY_WEIGHT[ev]));
-const olyRunFmt = (ev, v) => v === null || v === undefined ? 'DNF' : ev === 'slalom' ? fmtSec(v) : Math.round(v).toLocaleString();
+const olyEvPts = (ev, avg) => avg === null || avg === undefined ? 0 : ev === 'slalom' ? olySlalomPts(avg) : ev === 'downhill' ? olyDhPts(avg) : Math.min(CFG.OLY_EVENT_CAP, Math.round(avg * CFG.OLY_WEIGHT[ev]));
+const olyRunFmt = (ev, v) => v === null || v === undefined ? 'DNF' : TIME_EV(ev) ? fmtSec(v) : Math.round(v).toLocaleString();
 // A results row: the event result, with each run underneath (the ones that count ticked)
-const olyRowFmt = ev => r => `${olyRunFmt(ev, ev === 'slalom' ? r.time : r.raw)}${r.runs ? `<small>${r.runs.map((v, i) => `${(r.idx || []).includes(i) ? '✓' : ''}${olyRunFmt(ev, v)}`).join(' · ')}</small>` : ''}`;
+const olyRowFmt = ev => r => `${olyRunFmt(ev, TIME_EV(ev) ? r.time : r.raw)}${r.runs ? `<small>${r.runs.map((v, i) => `${(r.idx || []).includes(i) ? '✓' : ''}${olyRunFmt(ev, v)}`).join(' · ')}</small>` : ''}`;
 const olyMe = () => ACCT.names[ACCT.active - 1] || 'You';
 // Ties go to you
 const olyTie = (a, b) => (a.me ? -1 : b.me ? 1 : 0);
@@ -5646,10 +5909,10 @@ function olyEventTable(O, ev, n) {
   const mine = O.results.find(r => r.ev === ev) || (O.cur && O.cur.ev === ev ? O.cur : null);
   const rows = O.field.map(R => {
     const b = n ? olyBest(ev, R.runs[ev].slice(0, n), Math.min(CFG.OLY_COUNT, n)) : { v: R.raw[ev], idx: R.best[ev] };
-    return { id: R.id, name: R.name, country: R.country, col: R.col, pts: R.pts[ev], raw: b.v, time: ev === 'slalom' ? b.v : null, runs: n ? R.runs[ev].slice(0, n) : R.runs[ev], idx: b.idx };
+    return { id: R.id, name: R.name, country: R.country, col: R.col, pts: R.pts[ev], raw: b.v, time: TIME_EV(ev) ? b.v : null, runs: n ? R.runs[ev].slice(0, n) : R.runs[ev], idx: b.idx };
   });
-  if (mine) rows.push({ me: true, name: olyMe(), pts: mine.pts, raw: mine.raw, time: ev === 'slalom' ? (typeof mine.t === 'number' ? Math.round(mine.t * 100) / 100 : null) : null, runs: mine.runs, idx: mine.idx });
-  const key = r => ev === 'slalom' ? (r.time === null ? Infinity : r.time) : -(r.raw || 0);
+  if (mine) rows.push({ me: true, name: olyMe(), pts: mine.pts, raw: mine.raw, time: TIME_EV(ev) ? (typeof mine.t === 'number' ? Math.round(mine.t * 100) / 100 : null) : null, runs: mine.runs, idx: mine.idx });
+  const key = r => TIME_EV(ev) ? (r.time === null ? Infinity : r.time) : -(r.raw || 0);
   rows.sort((a, b) => (key(a) - key(b)) || olyTie(a, b));
   rows.forEach((r, i) => { r.place = i + 1; });
   return rows;
@@ -5664,22 +5927,25 @@ function olyStandings(O) {
   return rows;
 }
 // ---- one official Games per day; medals saved to the account ----
-// ---- the Olympic cycle: every OLY_CYCLE.len days, the same for everyone ----
+// ---- the Olympic cycle: from your World Cup (every other season, after stop 14) ----
 const olyDayNum = day => { const [y, m, d] = String(day).split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / 864e5); };
 const olyDayStr = n => { const d = new Date(n * 864e5); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`; };
 const olyDayName = day => { const [y, m, d] = String(day).split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); };
-// kind: 'off' (a normal day), 'qual' (a qualifying day) or 'games'. games: the date of this cycle's Games (its first Games day),
-// which is also the key for this cycle's qualifying; toGames: days until it; qualFrom / qualTo: the qualifying days.
-function olyCycle(day = barToday()) {   // (the World Cup season: the first half qualifies, day `games` is the Games, the rest is off)
-  const C = CFG.WORLD_CUP, w = wcDay(day), s = w.idx > C.games ? w.s + 1 : w.s, n = olyDayNum(day), g = olyDayNum(wcDate(s, C.games));
-  return { kind: w.idx === C.games ? 'games' : w.idx < C.games ? 'qual' : 'off', pos: w.idx, games: olyDayStr(g), toGames: g - n,
-    qualFrom: wcDate(s, 1), qualTo: wcDate(s, C.games - 1), needQual: true };
+// kind: 'qual' (the first half of an Olympic season), 'games' (the Games are next on your World Cup) or 'off'. s: your World Cup season,
+// gs: the season of the coming Games, games: their key ('S' + gs, also the key for their qualifying), toGames: World Cup stops to go.
+function olyCycle(b = loadBest()) {   // (from your World Cup: every other season, after stop `games`)
+  const C = wcCfg(), p = wcPos(b), s = p.s; let kind = 'off', gs = s;
+  if (wcOlySeason(s) && p.n < C.games) kind = 'qual';
+  else if (p.games) kind = 'games';
+  else { gs = s + 1; while (!wcOlySeason(gs)) gs++; }
+  const toGames = kind === 'qual' ? C.games - p.n : kind === 'games' ? 0 : (C.len - p.n) + (gs - s - 1) * C.len + C.games;
+  return { kind, s, gs, pos: p.n, games: 'S' + gs, toGames, needQual: true };
 }
 // Your qualifying for a Games: the best result in each event from its qualifying days (b.olyQ, kept for the coming Games only)
 function olyQual(b, cyc = olyCycle()) { const Q = b.olyQ; return Q && Q.games === cyc.games && Q.best ? Q : { games: cyc.games, best: {} }; }
-const olyStdMet = (ev, v) => typeof v === 'number' && (ev === 'slalom' ? v <= CFG.OLY_STANDARDS.slalom : v >= CFG.OLY_STANDARDS[ev]);
-const olyStdText = ev => ev === 'slalom' ? `under ${fmtSec(CFG.OLY_STANDARDS.slalom)}` : `${CFG.OLY_STANDARDS[ev].toLocaleString()}+`;
-const olyQualFmt = (ev, v) => ev === 'slalom' ? fmtSec(v) : Math.round(v).toLocaleString();
+const olyStdMet = (ev, v) => typeof v === 'number' && (TIME_EV(ev) ? v <= CFG.OLY_STANDARDS[ev] : v >= CFG.OLY_STANDARDS[ev]);
+const olyStdText = ev => TIME_EV(ev) ? `under ${fmtSec(CFG.OLY_STANDARDS[ev])}` : `${CFG.OLY_STANDARDS[ev].toLocaleString()}+`;
+const olyQualFmt = (ev, v) => TIME_EV(ev) ? fmtSec(v) : Math.round(v).toLocaleString();
 function olyQualCount(b, cyc = olyCycle()) { const Q = olyQual(b, cyc); return CFG.OLY_EVENTS.filter(ev => olyStdMet(ev, Q.best[ev])).length; }
 function olyQualifiedFor(b, cyc = olyCycle()) { return !cyc.needQual || olyQualCount(b, cyc) === CFG.OLY_EVENTS.length; }
 // A finished normal run on a qualifying day: keep your best in that event. Not practice, demo, the Olympics or the variants.
@@ -5695,7 +5961,7 @@ function olyQualRecord(b) {
 }
 // Seeding: your best qualifying results, as Olympic points, against the rivals' base results. For show: it doesn't change points.
 function olySeeds(b, cyc = olyCycle()) {
-  const Q = olyQual(b, cyc).best, pts = ev => typeof Q[ev] !== 'number' ? 0 : ev === 'slalom' ? olySlalomPts(Q[ev]) : Math.min(CFG.OLY_EVENT_CAP, Math.round(Q[ev] * CFG.OLY_WEIGHT[ev]));
+  const Q = olyQual(b, cyc).best, pts = ev => typeof Q[ev] !== 'number' ? 0 : olyEvPts(ev, Q[ev]);
   const mine = CFG.OLY_EVENTS.reduce((a, ev) => a + pts(ev), 0);
   const rows = olyField(cyc.games, true).map(R => ({ id: R.id, v: R.total })).concat([{ me: true, v: mine }]);
   rows.sort((a, c) => (c.v - a.v) || (a.me ? -1 : c.me ? 1 : 0));
@@ -5711,16 +5977,16 @@ function olyMenuLabel(b) {
   const c = olyCycle(), N = CFG.OLY_EVENTS.length;
   if (c.kind === 'games') {
     if (!olyQualifiedFor(b, c)) return 'Not qualified this time';
-    if (olyOfficialLeft(b) > 0) return 'Today: the Olympics!';
-    return olyDayData(b).res === 'dnf' ? "Today's Games: DNF (heats only)" : "Today's Games: done (heats only)";
+    if (olyOfficialLeft(b) > 0) return 'Next: the Olympics!';
+    return olyDayData(b).res === 'dnf' ? 'Games: DNF (heats only)' : 'Games: done (heats only)';
   }
-  if (c.kind === 'qual') { const n = olyQualCount(b, c); return n >= N ? `Qualified! Games ${c.toGames === 1 ? 'tomorrow' : `in ${c.toGames} days`}` : `Qualifying: ${n} of ${N} marks (World Cup)`; }
-  return `Olympics in ${c.toGames} days`;
+  if (c.kind === 'qual') { const n = olyQualCount(b, c); return n >= N ? `Qualified! Games after World Cup stop ${wcCfg().games}` : `Qualifying: ${n} of ${N} marks (World Cup)`; }
+  return `Next Olympics: season ${c.gs}`;
 }
 // The qualifying box on the Olympics card: each standard, met or not, with your best
 function olyQualHTML(b, c) {
   const Q = olyQual(b, c).best, n = olyQualCount(b, c), N = CFG.OLY_EVENTS.length;
-  const when = c.kind === 'qual' ? `Qualifying for the Olympics on ${olyDayName(c.games)} is open ${c.qualFrom === c.qualTo ? 'today' : `${olyDayName(c.qualFrom)} to ${olyDayName(c.qualTo)}`}` : `Qualifying for the Olympics on ${olyDayName(c.games)} opens ${olyDayName(c.qualFrom)}`;
+  const when = c.kind === 'qual' ? `Qualifying for the season ${c.gs} Olympics is open: World Cup stops 1 to ${wcCfg().games}` : c.kind === 'games' ? `Qualifying for the season ${c.gs} Olympics is closed` : `Qualifying for the next Olympics (season ${c.gs}) opens at the start of that World Cup season`;
   return `<div class="oqual"><b>${when}.</b> Meet every standard in a World Cup race in the first half of the season. ${n} of ${N} met.<ul>` +
     CFG.OLY_EVENTS.map(ev => { const ok = olyStdMet(ev, Q[ev]); return `<li class="${ok ? 'ok' : ''}"><span>${ok ? '☑' : '☐'} ${EVENT_NAMES[ev]}: ${olyStdText(ev)}</span><small>${typeof Q[ev] === 'number' ? `best ${olyQualFmt(ev, Q[ev])}` : c.kind === 'qual' ? 'no run yet' : ''}</small></li>`; }).join('') + '</ul></div>';
 }
@@ -5730,7 +5996,7 @@ function medalAdd(b, ev, pl, v, day, old) {
   c[Math.min(3, pl) - 1]++;
   M.h.unshift(Object.assign({ d: day, ev, pl, v }, old ? { old: 1 } : {})); M.h.length = Math.min(M.h.length, 30);
 }
-const MEDAL_SLOTS = [['overall', 'Overall'], ['slalom', 'Slalom'], ['park', 'Terrain Park'], ['pipe', 'Halfpipe'], ['bigair', 'Big Air']];
+const MEDAL_SLOTS = [['overall', 'Overall'], ['slalom', 'Slalom'], ['downhill', 'Downhill'], ['park', 'Terrain Park'], ['pipe', 'Halfpipe'], ['bigair', 'Big Air']];
 // Medals from before the rival field: each Olympics top-3 entry this account has on this device is checked once against the
 // rivals' base levels. If it would have finished in the top 3 overall, the account keeps that overall medal.
 const OLY_FIELD_AT_MIGRATION = [4500, 3860, 3300, 3028, 2568, 2019, 1548];
@@ -5747,7 +6013,7 @@ function olyMedalMigrate(b) {
 }
 function olyFanfare() { [[523, 0], [659, 0.12], [784, 0.24], [1047, 0.38], [784, 0.58], [1047, 0.7]].forEach(([f, d], i) => beep(f, i === 5 ? 0.45 : 0.14, 'square', 0.05, null, d)); }
 function olyStart(heat) {
-  const b = loadBest(), day = barToday(), c = olyCycle(day), official = olyOfficialLeft(b) > 0;
+  const b = loadBest(), c = olyCycle(b), day = c.games, official = olyOfficialLeft(b) > 0;
   G.oly = { step: 0, results: [], total: 0, pay: 0, quitArm: 0, done: false, day, official, started: false, field: olyField(day), medals: [], cyc: c,
     seeds: official && c.needQual ? olySeeds(b, c) : null };
   // Games day without qualifying: the Games go on without you (see the field's results, then a Practice Heat if you like)
@@ -5757,17 +6023,18 @@ function olyStart(heat) {
   }
   showOlyCard();
 }
-function baMaxAttempts() { return G.oly ? 1 : CFG.BA_ATTEMPTS; }
+function baMaxAttempts() { return G.oly || G.wc ? 1 : CFG.BA_ATTEMPTS; }   // (the Olympics and the World Cup: one jump a run)
 // One run's result (Slalom: null if it didn't finish)
 function olyRunValue(ev) {
-  if (ev === 'slalom') { if (!G.finished) return { v: null, label: 'did not finish' }; const t = Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100; return { v: t, label: `${fmtTime(t)}${G.missed ? `, ${G.missed} missed` : ''}` }; }
+  if (TIME_EV(ev)) { if (!G.finished) return { v: null, label: G.dhOut ? 'missed a gate' : 'did not finish' }; const t = Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100; return { v: t, label: `${fmtTime(t)}${G.missed ? `, ${G.missed} missed` : ''}` }; }
   const sc = ev === 'bigair' ? (G.bigair ? G.bigair.best : 0) : G.score;
   return { v: sc, label: `${sc.toLocaleString()} pts` };
 }
-function olyCurCalc(c, k) { const b = olyBest(c.ev, c.runs, k === undefined ? Math.min(CFG.OLY_COUNT, c.runs.length) : k); c.idx = b.idx; c.raw = b.v; c.t = c.ev === 'slalom' ? b.v : undefined; c.pts = olyEvPts(c.ev, b.avg); return c; }
+function olyCurCalc(c, k) { const b = olyBest(c.ev, c.runs, k === undefined ? Math.min(CFG.OLY_COUNT, c.runs.length) : k); c.idx = b.idx; c.raw = b.v; c.t = TIME_EV(c.ev) ? b.v : undefined; c.pts = olyEvPts(c.ev, b.avg); return c; }
 const olyRunNo = mode => (G.oly && G.oly.cur && G.oly.cur.ev === mode ? G.oly.cur.runs.length : 0) + 1;
 // A run's over: onto the event; after the last run (or a skipped one), the event's result
 function olyRunDone() {
+  G.oly.chair = !!(G.dh && G.dh.board && G.dh.board.lead);
   const O = G.oly, ev = CFG.OLY_EVENTS[O.step], r = olyRunValue(ev), pay = runPay();
   O.pay += pay ? pay.amt : 0;
   if (!O.cur || O.cur.ev !== ev) O.cur = { ev, runs: [], labels: [] };
@@ -5777,13 +6044,13 @@ function olyRunDone() {
 function olyEventDone() {
   const O = G.oly, c = olyCurCalc(O.cur, CFG.OLY_COUNT);
   O.results.push({ ev: c.ev, runs: c.runs.slice(), labels: c.labels.slice(), idx: c.idx, raw: c.raw, t: c.t, pts: c.pts,
-    label: `${c.ev === 'slalom' ? (c.raw === null ? 'DNF' : fmtSec(c.raw)) : c.raw.toLocaleString()} (best ${CFG.OLY_COUNT} of ${c.runs.length})` });
+    label: `${TIME_EV(c.ev) ? (c.raw === null ? 'DNF' : fmtSec(c.raw)) : c.raw.toLocaleString()} (best ${CFG.OLY_COUNT} of ${c.runs.length})` });
   O.total += c.pts; O.step++; O.cur = null;
   if (O.step >= CFG.OLY_EVENTS.length) olyFinish();
   showOlyCard();
 }
 // Skip run 3: your best two stand
-function olySkipPress() { const O = G.oly; if (!O || !O.cur || G.state !== 'olycard' || O.cur.runs.length < CFG.OLY_COUNT || O.cur.runs.length >= CFG.OLY_RUNS) return; olyEventDone(); }
+function olySkipPress() { if (G.wc) { wcSkipPress(); return; } const O = G.oly; if (!O || !O.cur || G.state !== 'olycard' || O.cur.runs.length < CFG.OLY_COUNT || O.cur.runs.length >= CFG.OLY_RUNS) return; olyEventDone(); }
 function olyFinish() {
   const O = G.oly; O.done = true;
   O.place = rankAdd('olympics', O.total, { nw: 1 });   // the device's Olympics top 3: a high-score list (no longer decides medals)
@@ -5797,7 +6064,7 @@ function olyFinish() {
   const could = CFG.OLY_EVENTS.filter(ev => O.evPlaces[ev] <= CFG.OLY_MEDAL_PLACES).map(ev => ({ ev, pl: O.evPlaces[ev] }));
   if (O.myPlace <= CFG.OLY_MEDAL_PLACES) could.push({ ev: 'overall', pl: O.myPlace });
   if (O.official) {   // medals only for the day's completed official Games, saved to this account right away
-    for (const m of could) { const r = O.results.find(x => x.ev === m.ev); medalAdd(b, m.ev, m.pl, m.ev === 'overall' ? O.total : m.ev === 'slalom' ? Math.round(r.t * 100) / 100 : r.raw, O.day); }   // (an event's value: its best two added)
+    for (const m of could) { const r = O.results.find(x => x.ev === m.ev); medalAdd(b, m.ev, m.pl, m.ev === 'overall' ? O.total : TIME_EV(m.ev) ? Math.round(r.t * 100) / 100 : r.raw, O.day); }   // (an event's value: its best two added)
     O.medals = could;
     if (b.olyDay && b.olyDay.day === olyDayData(b).day) { b.olyDay.res = 'done'; b.olyDay.place = O.myPlace; }
   } else O.wouldHave = could;
@@ -5828,23 +6095,23 @@ function showOlyCard() {
   const O = G.oly;
   G.state = 'olycard'; O.quitArm = 0;
   overlays('olycard'); $('touch').classList.add('hidden'); $('hud').classList.add('hidden');
-  const c = O.cyc || olyCycle(O.day), b = loadBest(), N = CFG.OLY_EVENTS.length;
+  const c = O.cyc || olyCycle(), b = loadBest(), N = CFG.OLY_EVENTS.length;
   $('ocSkip').classList.add('hidden');
-  const nextGames = c.kind === 'games' ? olyCycle(olyDayStr(olyDayNum(c.games) + CFG.WORLD_CUP.len)).games : c.games;
+  const nextS = c.kind === 'games' ? c.gs + wcCfg().olyEvery : c.gs;   // (the season of the next Games after these)
   $('ocBadge').className = 'ocbadge ' + (O.official || O.watch ? 'off' : 'heat');
   $('ocBadge').textContent = O.watch ? `Official Games, ${fmtDay(O.day)}: you didn't qualify` : O.official ? `Official Games, ${fmtDay(O.day)}: medals count`
-    : c.kind === 'games' && olyQualifiedFor(b, c) ? "Practice Heat: today's official Games is done. Heats win no medals."
-    : `Practice Heat: no medals. The next Olympics is ${olyDayName(c.kind === 'games' ? nextGames : c.games)}.`;
+    : c.kind === 'games' && olyQualifiedFor(b, c) ? "Practice Heat: these Games' official run is done. Heats win no medals."
+    : `Practice Heat: no medals. The next Olympics: World Cup season ${nextS}.`;
   $('ocPodium').classList.toggle('hidden', !O.done);
   $('ocQuit').textContent = O.done ? 'Menu' : O.started ? 'Leave Olympics' : 'Back';
   if (O.watch) {   // the Games without you: the field's results
     $('ocTitle').textContent = "Olympics: today's results";
     $('ocMedal').innerHTML = ''; $('ocLines').innerHTML = ''; $('ocTotal').textContent = '';
-    const evRows = ev => O.field.map(R => ({ id: R.id, name: R.name, country: R.country, col: R.col, raw: R.raw[ev], time: ev === 'slalom' ? R.time : null }))
-      .sort((a, z) => ev === 'slalom' ? (a.time ?? Infinity) - (z.time ?? Infinity) : z.raw - a.raw).map((r, i) => Object.assign(r, { place: i + 1 }));
-    $('ocTables').innerHTML = `<div><h4>Event winners</h4><ol class="otab">${CFG.OLY_EVENTS.map(ev => { const w = evRows(ev)[0]; return `<li><span class="pl"><i class="md gold" aria-label="gold"></i></span><span class="nm">${EVENT_NAMES[ev]}<small>${escHTML(w.name)}</small></span><b>${ev === 'slalom' ? fmtSec(w.time) : w.raw.toLocaleString()}</b></li>`; }).join('')}</ol></div>` +
+    const evRows = ev => O.field.map(R => ({ id: R.id, name: R.name, country: R.country, col: R.col, raw: R.raw[ev], time: TIME_EV(ev) ? R.raw[ev] : null }))
+      .sort((a, z) => TIME_EV(ev) ? (a.time ?? Infinity) - (z.time ?? Infinity) : z.raw - a.raw).map((r, i) => Object.assign(r, { place: i + 1 }));
+    $('ocTables').innerHTML = `<div><h4>Event winners</h4><ol class="otab">${CFG.OLY_EVENTS.map(ev => { const w = evRows(ev)[0]; return `<li><span class="pl"><i class="md gold" aria-label="gold"></i></span><span class="nm">${EVENT_NAMES[ev]}<small>${escHTML(w.name)}</small></span><b>${TIME_EV(ev) ? fmtSec(w.time) : w.raw.toLocaleString()}</b></li>`; }).join('')}</ol></div>` +
       `<div><h4>Final standings</h4>${olyRowsHTML(O.final, r => r.pts.toLocaleString(), true)}</div>`;
-    $('ocNote').innerHTML = `${escHTML(O.final[0].name.replace(/".*?"\s*/, '').split(' ')[0])} wins gold. You didn't qualify this time. Qualifying for the next Olympics (${olyDayName(nextGames)}) opens ${olyDayName(olyCycle(nextGames).qualFrom)}. You can still ski a Practice Heat.`;
+    $('ocNote').innerHTML = `${escHTML(O.final[0].name.replace(/".*?"\s*/, '').split(' ')[0])} wins gold. You didn't qualify this time. Qualifying for the next Olympics opens at the start of World Cup season ${nextS}. You can still ski a Practice Heat.`;
     $('ocNext').classList.remove('hidden'); $('ocNext').textContent = 'Practice Heat';
     drawPodium(O);
   } else if (!O.started) {   // Today's field
@@ -5856,8 +6123,8 @@ function showOlyCard() {
     const order = S ? O.field.slice().sort((a, z) => S.seed[z.id] - S.seed[a.id]) : O.field;   // start order: the top seed goes last
     $('ocTables').innerHTML = '<ul class="ofield">' + (S ? order.map(R => [S.seed[R.id], li(R)]).concat([[S.me, meLi]]).sort((a, z) => z[0] - a[0]).map(x => x[1]).join('') : order.map(li).join('')) + '</ul>';
     $('ocNote').textContent = O.official
-      ? `${N} events, ${NUM_WORD[CFG.OLY_RUNS]} runs each (the best ${NUM_WORD[CFG.OLY_COUNT]} count), against ${O.field.length} rivals: the top of the World Cup at halfway. Top ${CFG.OLY_MEDAL_PLACES} in an event or overall wins a medal. One official Games each Olympics: it counts from the moment the Slalom starts, and leaving partway is a DNF.${S ? ' Seeds come from your best qualifying runs; the top seed goes last. Seeds are for pride only: they don\'t change points.' : ''}`
-      : `Heats pay your sponsor and count for your best and the Olympics top 3, but win no medals. The Olympics come once a World Cup season, on day ${CFG.WORLD_CUP.games}.`;
+      ? `${N} events, ${NUM_WORD[CFG.OLY_RUNS]} runs each (the best ${NUM_WORD[CFG.OLY_COUNT]} count), against ${O.field.length} rivals: the top of the World Cup at halfway. Top ${CFG.OLY_MEDAL_PLACES} in an event or overall wins a medal. One official Games each Olympics: it counts from the moment the first event starts, and leaving partway is a DNF.${S ? ' Seeds come from your best qualifying runs; the top seed goes last. Seeds are for pride only: they don\'t change points.' : ''}`
+      : `Heats pay your sponsor and count for your best and the Olympics top 3, but win no medals. The Olympics come every other World Cup season, after stop ${CFG.WORLD_CUP.games}.`;
     $('ocNext').classList.remove('hidden'); $('ocNext').textContent = `Start: ${EVENT_NAMES[CFG.OLY_EVENTS[0]]} (run 1 of ${CFG.OLY_RUNS})`;
   } else if (O.cur && !O.done) {   // an event in progress: its runs so far, where that puts you, the next run (or skip it)
     const cu = O.cur, ev = cu.ev, n = cu.runs.length, placeOf = e => olyEventTable(O, e).find(r => r.me).place;
@@ -5868,7 +6135,7 @@ function showOlyCard() {
     $('ocTotal').textContent = O.results.length ? `Running total ${O.total.toLocaleString()}` : '';
     $('ocTitle').textContent = `${O.official ? 'Olympics' : 'Practice Heat'}: ${EVENT_NAMES[ev]}, run ${n} of ${CFG.OLY_RUNS} done`;
     $('ocMedal').innerHTML = '';
-    $('ocNote').innerHTML = `${n >= CFG.OLY_COUNT ? `Your best ${NUM_WORD[CFG.OLY_COUNT]}: <b>${olyRunFmt(ev, ev === 'slalom' ? cu.t : cu.raw)}</b>` : `Run ${n}: <b>${olyRunFmt(ev, cu.runs[0])}</b>`}. You're ${ordinal(me.place)} in the ${EVENT_NAMES[ev]} after run ${n}.${n >= CFG.OLY_COUNT ? ` Your best ${NUM_WORD[CFG.OLY_COUNT]} stand if you skip the last run.` : ''}`;
+    $('ocNote').innerHTML = `${n >= CFG.OLY_COUNT ? `Your best ${NUM_WORD[CFG.OLY_COUNT]}: <b>${olyRunFmt(ev, TIME_EV(ev) ? cu.t : cu.raw)}</b>` : `Run ${n}: <b>${olyRunFmt(ev, cu.runs[0])}</b>`}. You're ${ordinal(me.place)} in the ${EVENT_NAMES[ev]} after run ${n}.${n >= CFG.OLY_COUNT ? ` Your best ${NUM_WORD[CFG.OLY_COUNT]} stand if you skip the last run.` : ''}`;
     $('ocNext').classList.remove('hidden'); $('ocNext').textContent = `Run ${n + 1} of ${CFG.OLY_RUNS}`;
     if (n >= CFG.OLY_COUNT) { $('ocSkip').classList.remove('hidden'); $('ocSkip').textContent = `Skip run ${n + 1}`; }
   } else {
@@ -5895,6 +6162,7 @@ function showOlyCard() {
       $('ocNext').classList.remove('hidden'); $('ocNext').textContent = `Next event: ${EVENT_NAMES[CFG.OLY_EVENTS[O.step]]} (run 1 of ${CFG.OLY_RUNS})`;
     }
   }
+  if (O.chair && O.cur && O.cur.ev === 'downhill') { $('ocNote').innerHTML = "<b>You're in the leader's chair</b> (the fastest Downhill run so far). " + $('ocNote').innerHTML; }
   { const dbody = $('olycard').querySelector('.dbody'); if (dbody) dbody.scrollTop = 0; }   // (the top of the card: the podium and the medals)
   setTimeout(() => { if (!isTouch) (O.done && !O.watch ? $('ocQuit') : $('ocNext')).focus({ preventScroll: true }); }, 0);
 }
@@ -5946,86 +6214,112 @@ function olyQuitPress() {
 }
 
 /* ------------------------------ the World Cup ------------------------------
-   A season is CFG.WORLD_CUP.len days, the same calendar for everyone (by the date): days 1-13 the first half (one stop a day),
-   day 14 the Olympic Games (no race), days 15-27 the second half, day 28 the Finals (double points). Seven events. The rivals
-   race every stop whether you do or not; a missed day scores you zero. Getting in takes a start card (the marks in
-   CFG.WORLD_CUP.card, from normal runs); getting into the Olympics takes the Olympic marks, hit in first-half World Cup races.
-   Saved per account in b.wc: card (the date it came), cardBest (your best toward it), res (your official result per stop date),
-   settled (seasons whose globes are done), won (the globes: [{ s, g: ['overall', 'slalom', ...] }]). */
+   A season is CFG.WORLD_CUP.len stops, raced back to back: finish one and the next opens (no waiting for tomorrow). Stops 1 to
+   `games` are the first half; in an Olympic season (every `olyEvery` seasons: 1, 3, 5...) the Olympic Games come after stop
+   `games`, and you qualify by hitting every Olympic mark in those first-half races. The last stop is the Finals (double points).
+   Eight events, `runs` runs at every stop, the best `count` count. The rivals race every stop; a season is dealt and seeded from
+   its number, so it's the same season for every account. Getting in takes a start card (the marks in CFG.WORLD_CUP.card, from
+   normal runs). Saved per account in b.wc: card (the date it came), cardBest (your best toward it), prog ({ s: your season,
+   n: its stops done }), res (your official result at each stop, by "season.stop"), gm (Olympic seasons whose Games you passed on or
+   didn't qualify for), old (season 1's first stops, carried over from the old day-by-day calendar), settled (seasons whose globes
+   are done), won (the globes: [{ s, g: ['overall', 'slalom', ...] }]). */
 const wcCfg = () => CFG.WORLD_CUP;
-const WC_TIME = ev => ev === 'slalom' || ev === 'tree';   // lower is better
-function wcData(b) { if (!b.wc || typeof b.wc !== 'object') b.wc = {}; const D = b.wc; D.cardBest = D.cardBest || {}; D.res = D.res || {}; D.won = D.won || []; D.settled = D.settled || []; return D; }
+const WC_TIME = ev => TIME_EV(ev);   // lower is better
+const wcKey = (s, idx) => `${s}.${idx}`;
+const wcOlySeason = s => (s - 1) % wcCfg().olyEvery === 0;   // a season with the Olympic Games in it
+function wcData(b) {
+  if (!b.wc || typeof b.wc !== 'object') b.wc = {}; const D = b.wc; D.cardBest = D.cardBest || {}; D.res = D.res || {}; D.won = D.won || []; D.settled = D.settled || []; D.gm = D.gm || {};
+  if (!D.prog) wcMigrate(b, D);
+  return D;
+}
 const wcHasCard = (b = loadBest()) => !!(b.wc && b.wc.card);
-// The season and its day (1 to len) for a date. Season 1 starts on CFG.WORLD_CUP.start.
-function wcDay(day = barToday()) { const C = wcCfg(), n = olyDayNum(day) - olyDayNum(C.start), s = Math.floor(n / C.len) + 1; return { s, idx: n - (s - 1) * C.len + 1, day }; }
-const wcDate = (s, idx) => olyDayStr(olyDayNum(wcCfg().start) + (s - 1) * wcCfg().len + idx - 1);
 const wcHash = str => { let h = 2166136261; for (const c of str) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
 const wcFmt = (ev, v) => v === null || v === undefined ? 'DNF' : WC_TIME(ev) ? fmtSec(v) : ev === 'backcountry' ? (+v).toFixed(1) : Math.round(v).toLocaleString();
 const wcCardMet = (ev, v) => typeof v === 'number' && (WC_TIME(ev) ? v <= wcCfg().card[ev] : v >= wcCfg().card[ev]);
 const wcCardText = ev => WC_TIME(ev) ? `${fmtSec(wcCfg().card[ev])} or faster` : `${wcCfg().card[ev].toLocaleString()}+`;
-const wcShortDay = day => { const [y, m, d] = String(day).split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
-const wcStopNo = idx => idx < wcCfg().games ? idx : idx - 1;   // (no stop on Games day)
-const WC_STOPS = () => wcCfg().len - 1;
+// Where you are: the season, its stops done, the next stop, and whether the Olympic Games are next
+function wcPos(b) {
+  const C = wcCfg(), D = wcData(b), s = D.prog.s, n = D.prog.n;
+  return { s, n, idx: n + 1, games: wcOlySeason(s) && n === C.games && !wcGamesDone(b, s) };
+}
+// A season's Games are settled: raced (the one official Games), passed on, or not qualified for
+function wcGamesDone(b, s) { const D = b.wc || {}, od = b.olyDay; return !!((D.gm && D.gm[s]) || (od && od.day === 'S' + s && od.n >= CFG.OLY_OFFICIAL_PER_DAY)); }
 // ---- the calendar: dealt from the season number, the same for everyone ----
 const WC_CAL = new Map();
+function wcDeal(rng, list) {   // shuffled, keeping the same event off back-to-back stops where it can
+  let a = list;
+  for (let k = 0; k < 80; k++) { a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } if (a.every((e, i) => !i || e !== a[i - 1])) break; }
+  return a;
+}
+function wcStopMake(C, rng, s, idx, ev, venue) {
+  const V = C.variants[ev], variant = V && rng() < V[1] ? V[0] : null, wsum = Object.values(C.weather).reduce((a, x) => a + x, 0);
+  let weather = 'clear'; if (WEATHER_MODES.includes(ev)) { let r = rng() * wsum; for (const k in C.weather) { r -= C.weather[k]; if (r <= 0) { weather = k; break; } } }
+  return { s, idx, ev, venue, variant, weather, face: Math.floor(rng() * BACKCOUNTRY_FACES.length), finals: idx === C.len, mult: idx === C.len ? C.finalsMult : 1 };
+}
 function wcCalendar(s) {
   if (WC_CAL.has(s)) return WC_CAL.get(s);
-  const C = wcCfg(), rng = mulberry(wcHash('wc-season' + s)), all = C.events, pick = () => all[Math.floor(rng() * all.length)];
+  const C = wcCfg(), rng = mulberry(wcHash('wc-races' + s)), all = C.events, pick = () => all[Math.floor(rng() * all.length)];
   const fill = (list, n) => { while (list.length < n) list.push(pick()); return list.slice(0, n); };
-  const deal = list => {   // shuffled, keeping the same event off back-to-back days where it can
-    let a = list;
-    for (let k = 0; k < 80; k++) { a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } if (a.every((e, i) => !i || e !== a[i - 1])) break; }
-    return a;
-  };
-  const nFirst = C.games - 1, nSecond = C.len - C.games - 1;
-  const first = deal(fill(CFG.OLY_EVENTS.concat(CFG.OLY_EVENTS, all.filter(e => !CFG.OLY_EVENTS.includes(e))), nFirst));   // the Olympic four twice each before the Games
-  const second = deal(fill(all.slice(), nSecond)), finals = pick();
-  const evs = first.concat([null], second, [finals]);
+  const first = wcDeal(rng, fill(CFG.OLY_EVENTS.concat(CFG.OLY_EVENTS, all.filter(e => !CFG.OLY_EVENTS.includes(e))), C.games));   // the Olympic events twice each in the first half
+  const second = wcDeal(rng, fill(all.slice(), C.len - C.games - 1)), finals = pick();
   const venues = C.venues.slice(); for (let i = venues.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [venues[i], venues[j]] = [venues[j], venues[i]]; }
-  const wsum = Object.values(C.weather).reduce((a, x) => a + x, 0);
-  const cal = [null];
-  evs.forEach((ev, i) => {
-    const idx = i + 1, day = wcDate(s, idx);
-    if (!ev) { cal.push({ s, idx, day, games: true }); return; }
-    const V = C.variants[ev], variant = V && rng() < V[1] ? V[0] : null;
-    let weather = 'clear'; if (WEATHER_MODES.includes(ev)) { let r = rng() * wsum; for (const k in C.weather) { r -= C.weather[k]; if (r <= 0) { weather = k; break; } } }
-    cal.push({ s, idx, day, ev, venue: venues[(i - (i >= C.games ? 1 : 0)) % venues.length], variant, weather, face: Math.floor(rng() * BACKCOUNTRY_FACES.length), finals: idx === C.len, mult: idx === C.len ? C.finalsMult : 1 });
-  });
+  const cal = [null]; first.concat(second, [finals]).forEach((ev, i) => cal.push(wcStopMake(C, rng, s, i + 1, ev, venues[i % venues.length])));
   WC_CAL.set(s, cal); return cal;
+}
+// Your season's calendar: season 1 starts with the stops carried over from the old calendar (if you raced any), and makes sure a
+// Downhill is still to come in the first half (so the Olympic marks can all be hit)
+function wcSeasonCal(b, s) {
+  const base = wcCalendar(s), D = wcData(b), old = s === 1 && D.old && D.old.length ? D.old : null; if (!old) return base;
+  const cal = base.map((st, i) => i >= 1 && i <= old.length ? old[i - 1] : st), C = wcCfg();
+  const half = () => cal.slice(1, C.games + 1);
+  for (const ev of CFG.OLY_EVENTS) {
+    if (half().some(st => st.ev === ev)) continue;
+    for (let i = old.length + 1; i <= C.games; i++) { const e2 = cal[i].ev; if (half().filter(x => x.ev === e2).length > 1 || !CFG.OLY_EVENTS.includes(e2)) { cal[i] = Object.assign({}, cal[i], { ev, variant: null, weather: WEATHER_MODES.includes(ev) ? cal[i].weather : 'clear' }); break; } }
+  }
+  return cal;
 }
 const wcConditions = st => st.ev === 'backcountry' ? `the ${BACKCOUNTRY_FACES[st.face % BACKCOUNTRY_FACES.length].name} face`
   : st.variant ? { night: 'under the lights (Night Park)', super: 'on the Superpipe', mega: 'off the Mega Kicker' }[st.variant] : WEATHER_MODES.includes(st.ev) ? WEATHER_NAMES[st.weather] : 'clear skies';
-const wcFormat = ev => ({ slalom: 'two runs, times added', tree: 'two runs, times added', park: 'best of two runs', pipe: 'best of two runs', bigair: 'best two of three jumps, added',
-  backcountry: 'one run, the judges score it', freestyle: 'one run: your score when Big Karl catches you or you reach a lodge' })[ev];
-// ---- the rivals at a stop: date-seeded, the same for every account ----
+const wcFormat = (ev, st) => st && st.legacy ? 'raced on the old calendar'
+  : `${NUM_WORD[wcCfg().runs]} ${ev === 'bigair' ? 'jumps' : 'runs'}, the best ${NUM_WORD[wcCfg().count]} count (${WC_TIME(ev) ? 'times' : ev === 'backcountry' ? "the judges' scores" : 'scores'} added)${ev === 'freestyle' ? '. A run ends when Big Karl catches you or you reach a lodge' : ''}`;
+// ---- the rivals at a stop: seeded by the season and stop, the same for every account ----
 // Every World Cup rival: the Olympic regulars (with their World Cup events) and the World Cup regulars
 let WC_RIVALS = null;
 const wcRivals = () => WC_RIVALS || (WC_RIVALS = CFG.OLY_RIVALS.map(R => Object.assign({}, R, wcCfg().rivals[R.id] || {})).concat(wcCfg().field));
+const wcBest = (ev, runs) => olyBest(ev, runs, wcCfg().count);
+// One rival's run: their base result with the day's spread (a Downhill run can end in a crash: null)
+function wcRivalRun(R, ev, rng) {
+  const S = CFG.OLY_RIVAL_SPREAD, TS = CFG.OLY_RIVAL_TIME_SPREAD, base = R[ev], j = s => 1 + (rng() * 2 - 1) * s;
+  if (ev === 'downhill') { const out = rng() < (R.dhCrash || 0); const t = Math.round(base * j(TS) * 100) / 100; return out ? null : t; }
+  return WC_TIME(ev) ? Math.round(base * j(TS) * 100) / 100 : ev === 'backcountry' ? Math.min(100, Math.round(base * j(S) * 10) / 10) : Math.round(base * j(S));
+}
 function wcField(st) {
-  const C = wcCfg(), rng = mulberry(wcHash('wc' + st.day)), S = CFG.OLY_RIVAL_SPREAD, TS = CFG.OLY_RIVAL_TIME_SPREAD, j = s => 1 + (rng() * 2 - 1) * s;
+  if (st.legacy) return wcFieldOld(st);
+  const C = wcCfg(), rng = mulberry(wcHash('wcr' + st.s + '.' + st.idx));
   return wcRivals().map(R => {
-    const base = R[st.ev];
-    const v = WC_TIME(st.ev) ? Math.round((base * j(TS) + base * j(TS)) * 100) / 100
-      : st.ev === 'bigair' ? Math.round(base * j(S) + base * C.bigair2 * j(S))
-      : st.ev === 'backcountry' ? Math.min(100, Math.round(base * j(S) * 10) / 10) : Math.round(base * j(S));
-    return { id: R.id, name: R.name, country: R.country, col: R.col, v };
+    const runs = []; for (let i = 0; i < C.runs; i++) runs.push(wcRivalRun(R, st.ev, rng));
+    const bb = wcBest(st.ev, runs), v = bb.v === null ? null : st.ev === 'backcountry' ? Math.round(bb.v * 10) / 10 : bb.v;
+    return { id: R.id, name: R.name, country: R.country, col: R.col, v, runs, idx: bb.idx };
   });
 }
-// One stop's results: the rivals plus you (mine: { v }, or null when you didn't race or didn't finish), with places and points
+// One stop's results: the rivals plus you (mine: { v, runs, idx }, or null when you didn't race or didn't finish), with places and points
 function wcStopTable(st, mine) {
   const C = wcCfg(), rows = wcField(st);
-  if (mine && typeof mine.v === 'number') rows.push({ me: true, name: olyMe(), v: mine.v });
-  const t = WC_TIME(st.ev); rows.sort((a, c) => (t ? a.v - c.v : c.v - a.v) || olyTie(a, c));
-  rows.forEach((r, i) => { r.place = i + 1; r.pts = (C.points[i] || 0) * (st.mult || 1); r.prize = (C.prize[i] || 0) * (st.mult || 1); });
+  if (mine && typeof mine.v === 'number') rows.push({ me: true, name: olyMe(), v: mine.v, runs: mine.runs, idx: mine.idx });
+  const t = WC_TIME(st.ev), key = r => r.v === null ? (t ? Infinity : -Infinity) : r.v;
+  rows.sort((a, c) => (t ? key(a) - key(c) : key(c) - key(a)) || olyTie(a, c));
+  rows.forEach((r, i) => { const ok = r.v !== null; r.place = i + 1; r.pts = ok ? (C.points[i] || 0) * (st.mult || 1) : 0; r.prize = ok ? (C.prize[i] || 0) * (st.mult || 1) : 0; });
   return rows;
 }
-// The last day (1 to len) of season s that counts: past days, plus today once your official race is over
-function wcUpto(b, s) { const w = wcDay(); if (s < w.s) return wcCfg().len; if (s > w.s) return 0; const r = wcData(b).res[w.day]; return w.idx - 1 + (r && r.fin ? 1 : 0); }
+// A results row: the stop's result, with each run underneath (the ones that count ticked)
+const wcRowFmt = ev => r => `${wcFmt(ev, r.v)}${r.runs ? `<small>${r.runs.map((v, i) => `${(r.idx || []).includes(i) ? '✓' : ''}${wcFmt(ev, v)}`).join(' · ')}</small>` : ''}`;
+// The stops of season s that count so far
+function wcUpto(b, s) { const p = wcPos(b); return s < p.s ? wcCfg().len : s > p.s ? 0 : p.n; }
 function wcStandings(b, s, upto = wcUpto(b, s)) {
   const D = wcData(b), tot = {}, evp = {};
-  for (const st of wcCalendar(s)) {
-    if (!st || st.games || st.idx > upto) continue;
-    const r = D.res[st.day];
+  for (const st of wcSeasonCal(b, s)) {
+    if (!st || st.idx > upto) continue;
+    const r = D.res[wcKey(s, st.idx)];
     for (const row of wcStopTable(st, r && !r.dnf ? r : null)) { const k = row.me ? 'me' : row.id; tot[k] = (tot[k] || 0) + row.pts; const E = evp[st.ev] = evp[st.ev] || {}; E[k] = (E[k] || 0) + row.pts; }
   }
   const mk = m => { const rows = wcRivals().map(R => ({ id: R.id, name: R.name, country: R.country, col: R.col, pts: m[R.id] || 0 })); rows.push({ me: true, name: olyMe(), pts: m.me || 0 });
@@ -6034,16 +6328,16 @@ function wcStandings(b, s, upto = wcUpto(b, s)) {
   return out;
 }
 // You lead the season: the red bib
-function wcLeads(b = loadBest()) { if (!wcHasCard(b)) return false; const w = wcDay(), St = wcStandings(b, w.s); return !!(St.upto > 0 && St.overall[0].me && St.overall[0].pts > 0); }
+function wcLeads(b = loadBest()) { if (!wcHasCard(b)) return false; const St = wcStandings(b, wcPos(b).s); return !!(St.upto > 0 && St.overall[0].me && St.overall[0].pts > 0); }
 function wcBibApply(b) {
   const want = !G.demo && wcLeads(b); if (!PALS.hero || !!PALS.hero.bib === want) return;
   PALS.hero.bib = want; for (const k in SKCACHE) if (k.includes('|hero|')) delete SKCACHE[k];
 }
-// ---- the globes: when a season's over (or you've raced its Finals), each table you top is a globe ----
+// ---- the globes: when a season's Finals are done, each table you top is a globe ----
 function wcSettle(b) {
-  const D = wcData(b), w = wcDay(), C = wcCfg(), got = [];
+  const D = wcData(b), C = wcCfg(), got = [];
   if (!D.card) return got;
-  const seasons = [...new Set(Object.keys(D.res).map(d => wcDay(d).s))].sort((a, c) => a - c);
+  const seasons = [...new Set(Object.keys(D.res).map(k => Number(String(k).split('.')[0])).filter(Boolean))].sort((a, c) => a - c);
   for (const s of seasons) {
     if (D.settled.includes(s) || wcUpto(b, s) < C.len) continue;
     const St = wcStandings(b, s, C.len), g = [];
@@ -6057,16 +6351,65 @@ function wcSettle(b) {
   }
   return got;
 }
+// The stop you're on is done: on to the next (after the Finals: the globes, then a new season)
+function wcAdvance(b) {
+  const D = wcData(b), C = wcCfg(); D.prog.n++;
+  if (D.prog.n < C.len) return [];
+  const got = wcSettle(b); D.prog = { s: D.prog.s + 1, n: 0 }; return got;
+}
 function wcGlobes(b) { const n = { overall: 0 }; for (const e of wcCfg().events) n[e] = 0; for (const x of wcData(b).won) for (const k of x.g) n[k] = (n[k] || 0) + 1; return n; }
 const wcGlobeName = k => k === 'overall' ? 'the Crystal Globe' : `the ${EVENT_NAMES[k]} globe`;
 // The champions of past seasons (rivals too), newest first
 function wcChampions(b) {
-  const w = wcDay(), out = [];
-  for (let s = w.s - 1; s >= Math.max(1, w.s - wcCfg().champKeep); s--) {
+  const s0 = wcPos(b).s, out = [];
+  for (let s = s0 - 1; s >= Math.max(1, s0 - wcCfg().champKeep); s--) {
     const St = wcStandings(b, s, wcCfg().len);
     out.push({ s, overall: St.overall[0], ev: Object.fromEntries(wcCfg().events.map(e => [e, St.ev[e][0]])) });
   }
   return out;
+}
+// ---- the old day-by-day calendar (one stop a day): kept only to carry its results over ----
+function wcOldCalendar(s) {
+  const C = wcCfg(), L = C.old, rng = mulberry(wcHash('wc-season' + s)), all = L.events, pick = () => all[Math.floor(rng() * all.length)];
+  const fill = (list, n) => { while (list.length < n) list.push(pick()); return list.slice(0, n); };
+  const first = wcDeal(rng, fill(L.oly.concat(L.oly, all.filter(e => !L.oly.includes(e))), L.games - 1));
+  const second = wcDeal(rng, fill(all.slice(), L.len - L.games - 1)), finals = pick();
+  const evs = first.concat([null], second, [finals]);
+  const venues = C.venues.slice(); for (let i = venues.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [venues[i], venues[j]] = [venues[j], venues[i]]; }
+  const wsum = Object.values(C.weather).reduce((a, x) => a + x, 0), cal = [null];
+  evs.forEach((ev, i) => {
+    const idx = i + 1, day = olyDayStr(olyDayNum(C.start) + (s - 1) * L.len + idx - 1);
+    if (!ev) { cal.push({ idx, day, games: true }); return; }
+    const V = C.variants[ev], variant = V && rng() < V[1] ? V[0] : null;
+    let weather = 'clear'; if (['freestyle', 'slalom', 'tree'].includes(ev)) { let r = rng() * wsum; for (const k in C.weather) { r -= C.weather[k]; if (r <= 0) { weather = k; break; } } }
+    cal.push({ idx, day, ev, venue: venues[(i - (i >= L.games ? 1 : 0)) % venues.length], variant, weather, face: Math.floor(rng() * BACKCOUNTRY_FACES.length), mult: idx === L.len ? C.finalsMult : 1 });
+  });
+  return cal;
+}
+function wcFieldOld(st) {   // (the old format: two runs added, best of two, two Big Air jumps added, one run)
+  const L = wcCfg().old, rng = mulberry(wcHash('wc' + st.legacy)), S = CFG.OLY_RIVAL_SPREAD, TS = CFG.OLY_RIVAL_TIME_SPREAD, j = s => 1 + (rng() * 2 - 1) * s;
+  return wcRivals().map(R => {
+    const base = R[st.ev];
+    const v = WC_TIME(st.ev) ? Math.round((base * j(TS) + base * j(TS)) * 100) / 100
+      : st.ev === 'bigair' ? Math.round(base * j(S) + base * L.bigair2 * j(S))
+      : st.ev === 'backcountry' ? Math.min(100, Math.round(base * j(S) * 10) / 10) : Math.round(base * j(S));
+    return { id: R.id, name: R.name, country: R.country, col: R.col, v };
+  });
+}
+// Saves from the day-by-day calendar: your results from its latest season carry over, in order, as season 1's first stops
+function wcMigrate(b, D) {
+  const C = wcCfg(), L = C.old, old = Object.keys(D.res).filter(k => /^\d{4}-\d\d-\d\d$/.test(k)).sort(), res = {};
+  D.prog = { s: 1, n: 0 }; D.old = [];
+  const sOf = d => Math.floor((olyDayNum(d) - olyDayNum(C.start)) / L.len) + 1, last = old.length ? Math.max(...old.map(sOf)) : 0;
+  for (const d of old) {
+    if (sOf(d) !== last || D.old.length >= C.games) continue;
+    const st = wcOldCalendar(last).find(x => x && x.day === d); if (!st || st.games) continue;
+    const r = D.res[d], idx = D.old.length + 1;
+    D.old.push(Object.assign({}, st, { s: 1, idx, legacy: d, finals: false, mult: 1 }));
+    res[wcKey(1, idx)] = Object.assign({}, r, { s: 1, fin: true, dnf: !!r.dnf || !r.fin });
+  }
+  D.res = res; D.prog.n = D.old.length;
+  if (b.olyQ && !/^S\d+$/.test(String(b.olyQ.games))) { if (D.old.length) b.olyQ.games = 'S1'; else delete b.olyQ; }   // qualifying from those races: for season 1's Games
 }
 // ---- the start card: hit every mark in normal runs (not practice, the Olympics, the World Cup or the variants) ----
 function wcCardRecord(b) {
@@ -6085,38 +6428,39 @@ function wcCardHTML(b) {
   return `<div class="oqual"><b>The World Cup start card</b>: hit every mark in a normal run (not practice, a heat, or the Night Park, Superpipe or Mega Kicker). ${n} of ${all.length} hit. It's yours for good.<ul>` +
     all.map(ev => { const ok = wcCardMet(ev, D.cardBest[ev]); return `<li class="${ok ? 'ok' : ''}"><span>${ok ? '☑' : '☐'} ${EVENT_NAMES[ev]}: ${wcCardText(ev)}</span><small>${typeof D.cardBest[ev] === 'number' ? `best ${wcFmt(ev, D.cardBest[ev])}` : 'no run yet'}</small></li>`; }).join('') + '</ul></div>';
 }
-// ---- Olympic qualifying: the Olympic marks, hit in first-half World Cup races (kept in b.olyQ for that season's Games) ----
+// ---- Olympic qualifying: the Olympic marks, hit in first-half World Cup races of an Olympic season (kept in b.olyQ for its Games) ----
 function wcOlyMark(b, ev, v) {
-  const cyc = olyCycle(); if (cyc.kind !== 'qual' || !CFG.OLY_EVENTS.includes(ev) || typeof v !== 'number') return null;
+  const cyc = olyCycle(b); if (cyc.kind !== 'qual' || !CFG.OLY_EVENTS.includes(ev) || typeof v !== 'number') return null;
   const Q = b.olyQ = olyQual(b, cyc), old = Q.best[ev], was = olyStdMet(ev, old);
-  if (typeof old !== 'number' || (ev === 'slalom' ? v < old : v > old)) Q.best[ev] = v;
+  if (typeof old !== 'number' || (TIME_EV(ev) ? v < old : v > old)) Q.best[ev] = v;
   return { ev, v, met: olyStdMet(ev, v), fresh: !was && olyStdMet(ev, v), n: olyQualCount(b, cyc), cyc };
 }
 function wcOlyHTML(b) {
-  const c = olyCycle(), Q = olyQual(b, c).best, n = olyQualCount(b, c), N = CFG.OLY_EVENTS.length;
-  return `<div class="oqual"><b>Olympic qualifying</b> for the Games on ${olyDayName(c.games)}: hit every Olympic mark in a World Cup race in the first half (days 1 to ${wcCfg().games - 1}). ${n} of ${N} hit.<ul>` +
+  const c = olyCycle(b), Q = olyQual(b, c).best, n = olyQualCount(b, c), N = CFG.OLY_EVENTS.length;
+  return `<div class="oqual"><b>Olympic qualifying</b> for the Games in season ${c.gs}: hit every Olympic mark in a World Cup race at stops 1 to ${wcCfg().games} (one run is enough). ${n} of ${N} hit.<ul>` +
     CFG.OLY_EVENTS.map(ev => { const ok = olyStdMet(ev, Q[ev]); return `<li class="${ok ? 'ok' : ''}"><span>${ok ? '☑' : '☐'} ${EVENT_NAMES[ev]}: ${olyStdText(ev)}</span><small>${typeof Q[ev] === 'number' ? `best ${olyQualFmt(ev, Q[ev])}` : ''}</small></li>`; }).join('') + '</ul></div>';
 }
 // ---- the menu button and the Resort pop-up ----
 function wcMenuLabel(b) {
   const D = wcData(b); if (!D.card) { const all = Object.keys(wcCfg().card); return `Start card: ${all.filter(e => wcCardMet(e, D.cardBest[e])).length} of ${all.length} marks`; }
-  const w = wcDay(), st = wcCalendar(w.s)[w.idx], r = D.res[w.day];
-  if (st.games) return 'Today: the Olympic Games';
-  if (r && r.fin) return `Today: ${r.dnf ? 'DNF' : `${ordinal(r.place)} (+${r.pts})`}`;
-  return `Today: ${EVENT_NAMES[st.ev]}${st.finals ? ' (Finals)' : ''}`;
+  const p = wcPos(b); if (p.games) return `Season ${p.s}: the Olympic Games are next`;
+  const st = wcSeasonCal(b, p.s)[p.idx];
+  return `Season ${p.s} · Stop ${p.idx} of ${wcCfg().len}: ${EVENT_NAMES[st.ev]}${st.finals ? ' (Finals)' : ''}`;
 }
 function wcResortInfo(b) {
-  const D = wcData(b), w = wcDay(), st = wcCalendar(w.s)[w.idx];
-  let s = `Seven events, one stop a day for ${wcCfg().len} days, against 19 rivals. Places score points (the Finals on day ${wcCfg().len} double), and the standings decide the Crystal Globe and a globe for each event. The Olympic Games are on day ${wcCfg().games}: qualify in the first half.`;
-  s += st.games ? '<br><b>Today: the Olympic Games.</b>' : `<br><b>Today (season ${w.s}, day ${w.idx})</b>: ${EVENT_NAMES[st.ev]} at ${escHTML(st.venue)}${st.finals ? ', the Finals' : ''}.`;
+  const D = wcData(b), C = wcCfg(), p = wcPos(b), st = p.games ? null : wcSeasonCal(b, p.s)[p.idx];
+  let s = `Eight events over ${C.len} stops, raced back to back against 19 rivals: ${NUM_WORD[C.runs]} runs a stop, the best ${NUM_WORD[C.count]} count. Places score points (the Finals at stop ${C.len} double), and the standings decide the Crystal Globe and a globe for each event. Every other season the Olympic Games come after stop ${C.games}: qualify in the first half.`;
+  s += p.games ? `<br><b>Season ${p.s}: the Olympic Games are next.</b>` : `<br><b>Season ${p.s} · Stop ${p.idx} of ${C.len}</b>: ${EVENT_NAMES[st.ev]} at ${escHTML(st.venue)}${st.finals ? ', the Finals' : ''}.`;
   if (!D.card) s += ' <small>You need a start card to race: see the World Cup for the marks.</small>';
   return s;
 }
-// ---- the World Cup card (the Olympics' window): today's stop, the calendar, the standings, the champions ----
+// ---- the World Cup card (the Olympics' window): the next stop, the calendar, the standings, the champions ----
 function wcOpen(view) {
-  const b = loadBest(), got = wcSettle(b); saveBest(b);
-  const w = wcDay(), stop = wcCalendar(w.s)[w.idx];
-  G.oly = null; G.wc = { view: view || 'today', w, stop, runs: [], started: false, done: false, official: false, quitArm: 0, settled: got };
+  const b = loadBest(), D = wcData(b), p0 = wcPos(b), r = D.res[wcKey(p0.s, p0.idx)]; let got = [];
+  if (D.card && !p0.games && r && !r.fin) { r.fin = true; r.dnf = true; r.place = 0; r.pts = 0; got = wcAdvance(b); }   // a race left partway (or a reload): a DNF
+  got = got.concat(wcSettle(b)); saveBest(b);
+  const p = wcPos(b);
+  G.oly = null; G.wc = { view: view || 'today', p, stop: p.games ? null : wcSeasonCal(b, p.s)[p.idx], games: p.games, runs: [], started: false, done: false, official: false, quitArm: 0, settled: got };
   showWcCard();
 }
 // The top of a long table (CFG.WORLD_CUP.show places), and your row if you're further down
@@ -6129,118 +6473,151 @@ function wcPlaceLine(St) {
   if (me.place === 1) return `You lead the World Cup by ${(me.pts - St.overall[1].pts).toLocaleString()} (the red bib is yours).`;
   return `You're ${ordinal(me.place)} overall with ${me.pts.toLocaleString()}, ${(St.overall[0].pts - me.pts).toLocaleString()} behind ${escHTML(St.overall[0].name.replace(/".*?"\s*/, ''))}.`;
 }
+const wcGot = W => W.runs.filter(x => typeof x.v === 'number').length;
 function showWcCard() {
-  const W = G.wc, b = loadBest(), D = wcData(b), C = wcCfg(), w = W.w, st = W.stop, r = D.res[w.day];
-  G.state = 'olycard'; W.quitArm = 0; overlays('olycard'); $('touch').classList.add('hidden'); $('hud').classList.add('hidden'); $('ocSkip').classList.add('hidden');
-  $('ocTitle').textContent = `World Cup: season ${w.s}, day ${w.idx} of ${C.len}`;
+  const W = G.wc, b = loadBest(), D = wcData(b), C = wcCfg(), p = W.p, st = W.stop, cal = wcSeasonCal(b, p.s);
+  G.state = 'olycard'; W.quitArm = 0; W.passArm = 0; overlays('olycard'); $('touch').classList.add('hidden'); $('hud').classList.add('hidden'); $('ocSkip').classList.add('hidden');
+  $('ocTitle').textContent = W.games ? `World Cup: season ${p.s}, the Olympic Games` : `World Cup: season ${p.s} · stop ${st.idx} of ${C.len}`;
   $('ocPodium').classList.add('hidden'); $('ocLines').innerHTML = ''; $('ocTotal').textContent = '';
-  const tabs = `<div class="wctabs">${[['today', 'Today'], ['cal', 'Calendar'], ['stand', 'Standings'], ['champs', 'Champions']].map(([k, l]) => `<button type="button" class="btn sm" data-wcv="${k}" aria-pressed="${W.view === k}">${l}</button>`).join('')}</div>`;
-  let badge = '', heat = false, body = '', tables = '', note = '', next = null;
-  const St = wcStandings(b, w.s), stopLine = s2 => `<div class="wcstop"><b>${EVENT_NAMES[s2.ev]}</b> at <b>${escHTML(s2.venue)}</b>${s2.finals ? ' <span class="topseed">Finals: double points</span>' : ''}<br><small>Stop ${wcStopNo(s2.idx)} of ${WC_STOPS()}, ${wcConditions(s2)}. ${wcFormat(s2.ev).replace(/^./, c => c.toUpperCase())}.</small></div>`;
+  const tabs = `<div class="wctabs">${[['today', W.done ? 'Results' : 'Next'], ['cal', 'Calendar'], ['stand', 'Standings'], ['champs', 'Champions']].map(([k, l]) => `<button type="button" class="btn sm" data-wcv="${k}" aria-pressed="${W.view === k}">${l}</button>`).join('')}</div>`;
+  let badge = '', heat = false, body = '', tables = '', note = '', next = null, skip = null;
+  const sNow = wcPos(b).s, St = wcStandings(b, W.done ? st.s : sNow), stopLine = s2 => `<div class="wcstop"><b>${EVENT_NAMES[s2.ev]}</b> at <b>${escHTML(s2.venue)}</b>${s2.finals ? ' <span class="topseed">Finals: double points</span>' : ''}<br><small>Stop ${s2.idx} of ${C.len}, ${wcConditions(s2)}. ${wcFormat(s2.ev, s2).replace(/^./, c => c.toUpperCase())}.</small></div>`;
   for (const x of W.settled || []) body += `<div class="mwon wcglobe">Season ${x.s} is over: ${x.g.map(wcGlobeName).join(', ')} ${x.g.length > 1 ? 'are' : 'is'} yours! +$${x.pay.toLocaleString()}</div>`;
+  const pNow = wcPos(b);
   if (W.view === 'cal') {
-    badge = `Season ${w.s}: ${olyDayName(wcDate(w.s, 1))} to ${olyDayName(wcDate(w.s, C.len))}`;
-    tables = '<ol class="wccal">' + wcCalendar(w.s).slice(1).map(s2 => {
-      const cls = [s2.idx === w.idx ? 'today' : '', s2.idx < w.idx ? 'past' : '', s2.games ? 'games' : '', s2.finals ? 'finals' : ''].join(' ').trim(), mine = D.res[s2.day];
-      const what = s2.games ? '<b>Olympic Games</b>' : `<b>${EVENT_NAMES[s2.ev]}</b>${s2.finals ? ' (Finals)' : ''}<small>${escHTML(s2.venue)}</small>`;
-      const res = s2.games ? '' : mine && mine.fin ? (mine.dnf ? 'DNF' : `${ordinal(mine.place)} +${mine.pts}`) : s2.idx < w.idx || (s2.idx === w.idx && mine) ? (D.card ? '-' : '') : '';
-      return `<li class="${cls}"><span class="d">${s2.idx}<small>${wcShortDay(s2.day)}</small></span><span class="e">${what}</span><b>${res}</b></li>`;
+    badge = `Season ${pNow.s}: ${pNow.n} of ${C.len} stops raced${wcOlySeason(pNow.s) ? `, the Olympics after stop ${C.games}` : ', no Olympics this season'}`;
+    const games = wcOlySeason(pNow.s) ? `<li class="games${pNow.games ? ' today' : ''}"><span class="d">★</span><span class="e"><b>Olympic Games</b><small>after stop ${C.games}</small></span><b>${D.gm[pNow.s] === 'pass' ? 'passed' : D.gm[pNow.s] === 'noqual' ? 'not in' : wcGamesDone(b, pNow.s) ? 'raced' : ''}</b></li>` : '';
+    tables = '<ol class="wccal">' + wcSeasonCal(b, pNow.s).slice(1).map(s2 => {
+      const cls = [s2.idx === pNow.idx && !pNow.games ? 'today' : '', s2.idx <= pNow.n ? 'past' : '', s2.finals ? 'finals' : ''].join(' ').trim(), mine = D.res[wcKey(pNow.s, s2.idx)];
+      const res = mine && mine.fin ? (mine.dnf ? 'DNF' : `${ordinal(mine.place)} +${mine.pts}`) : s2.idx <= pNow.n ? '-' : '';
+      return `<li class="${cls}"><span class="d">${s2.idx}</span><span class="e"><b>${EVENT_NAMES[s2.ev]}</b>${s2.finals ? ' (Finals)' : ''}<small>${escHTML(s2.venue)}</small></span><b>${res}</b></li>` + (s2.idx === C.games ? games : '');
     }).join('') + '</ol>';
-    note = `Points: ${C.points.join(', ')} for 1st to ${ordinal(C.points.length)}, doubled at the Finals. Miss a day and you score nothing; the rivals race every stop.`;
+    note = `Points: ${C.points.join(', ')} for 1st to ${ordinal(C.points.length)}, doubled at the Finals. Race the stops in order: finish one and the next opens.`;
   } else if (W.view === 'stand') {
-    badge = St.upto ? `Standings after day ${St.upto}` : 'Standings: nothing raced yet this season';
-    tables = `<div><h4>Overall</h4>${wcRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div><div><h4>Event standings</h4><ol class="otab wcev">` +
-      C.events.map(e => { const T = St.ev[e], me = T.find(x => x.me), lead = T[0]; return `<li class="${lead.me && lead.pts ? 'me' : ''}"><span class="pl">${EVENT_NAMES[e]}</span><span class="nm">${lead.pts ? escHTML(lead.name) + (lead.me ? ' (you)' : '') : 'no races yet'}<small>you: ${me.pts ? `${ordinal(me.place)}, ${me.pts}` : '0'}</small></span><b>${lead.pts}</b></li>`; }).join('') + '</ol></div>';
-    note = wcPlaceLine(St) + ' The leader wears the red bib. Top a table at the end of the season and its globe is yours.';
+    const S2 = wcStandings(b, pNow.s);
+    badge = S2.upto ? `Season ${pNow.s} standings after stop ${S2.upto}` : `Season ${pNow.s} standings: nothing raced yet`;
+    tables = `<div><h4>Overall</h4>${wcRowsHTML(S2.overall, x => x.pts.toLocaleString(), false)}</div><div><h4>Event standings</h4><ol class="otab wcev">` +
+      C.events.map(e => { const T = S2.ev[e], me = T.find(x => x.me), lead = T[0]; return `<li class="${lead.me && lead.pts ? 'me' : ''}"><span class="pl">${EVENT_NAMES[e]}</span><span class="nm">${lead.pts ? escHTML(lead.name) + (lead.me ? ' (you)' : '') : 'no races yet'}<small>you: ${me.pts ? `${ordinal(me.place)}, ${me.pts}` : '0'}</small></span><b>${lead.pts}</b></li>`; }).join('') + '</ol></div>';
+    note = wcPlaceLine(S2) + ' The leader wears the red bib. Top a table at the end of the season and its globe is yours.';
   } else if (W.view === 'champs') {
     const n = wcGlobes(b), mine = Object.entries(n).filter(([, k]) => k);
     badge = mine.length ? `Your globes: ${mine.map(([k, c]) => `${k === 'overall' ? 'Crystal Globe' : EVENT_NAMES[k]} ${c}`).join(', ')}` : 'No globes yet';
     const ch = wcChampions(b);
     tables = ch.length ? '<ol class="otab wcchamp">' + ch.map(x => `<li class="${x.overall.me ? 'me' : ''}"><span class="pl">S${x.s}</span><span class="nm">${escHTML(x.overall.name)}${x.overall.me ? ' (you)' : ''}<small>${C.events.map(e => `${EVENT_NAMES[e]}: ${x.ev[e].me ? 'you' : escHTML(x.ev[e].name.replace(/".*?"\s*/, '').split(' ')[0])}`).join(' · ')}</small></span><b>${x.overall.pts}</b></li>`).join('') + '</ol>'
-      : '<p class="tag">No season has finished yet. The first champions are crowned on day ' + C.len + '.</p>';
+      : `<p class="tag">No season has finished yet. The first champions are crowned at the Finals (stop ${C.len}).</p>`;
     note = `Globes pay $${C.globePay.overall.toLocaleString()} (the Crystal Globe) and $${C.globePay.event.toLocaleString()} (an event globe). They stand on the window sills at the Bar and in your Cabin.`;
   } else if (!D.card) {
     badge = 'Start card needed'; heat = true;
-    body += wcCardHTML(b) + (st.games ? '<div class="wcstop"><b>Today: the Olympic Games</b></div>' : stopLine(st));
-    note = 'The rivals race every stop with or without you: the Calendar and Standings show how the season is going.';
-  } else if (st.games) {
-    const q = olyQualifiedFor(b);
-    badge = `Day ${C.games}: the Olympic Games. No World Cup race today.`;
-    body += wcOlyHTML(b); note = q ? "You qualified in the first half. Today's the day." : "You didn't hit every Olympic mark in the first half, so the Games go on without you. The second half starts tomorrow.";
-    next = 'Go to the Olympics';
+    body += wcCardHTML(b) + (W.games ? '' : stopLine(st));
+    note = 'With a start card you race the stops back to back: finish one and the next opens.';
+  } else if (W.games) {
+    const c = olyCycle(b), q = olyQualifiedFor(b, c);
+    badge = `Season ${p.s}: the Olympic Games, after stop ${C.games}`;
+    body += wcOlyHTML(b);
+    if (q) { note = `You qualified in the first half. Race the Games now, or pass and go on to stop ${C.games + 1} (you'd miss these Games: the next are in season ${p.s + C.olyEvery}).`; next = 'Go to the Olympics'; skip = 'Pass on the Games'; }
+    else { note = `You didn't hit every Olympic mark in the first half, so the Games go on without you. The next Olympics are in season ${p.s + C.olyEvery}.`; next = `On to stop ${C.games + 1}`; }
+    tables = `<div><h4>World Cup overall</h4>${wcRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div>`;
   } else {
-    const need = C.runs[st.ev] || 1;
+    const need = C.runs, lab = i => st.ev === 'bigair' ? `Jump ${i + 1}` : `Run ${i + 1}`;
     body += stopLine(st);
     if (W.started && !W.done) {
       badge = W.official ? 'Official race: counts for points' : 'Practice: no points'; heat = !W.official;
-      $('ocLines').innerHTML = W.runs.map((x, i) => `<li><span>${st.ev === 'bigair' ? 'Jumps' : `Run ${i + 1}`}: ${escHTML(x.label)}</span><b>${wcFmt(st.ev, x.v)}</b></li>`).join('');
-      next = `Run ${W.runs.length + 1} of ${need}`; note = 'Leaving now counts as a DNF for the official race.';
-    } else if (W.done || (r && r.fin)) {
-      const tab = W.done ? W.table : wcStopTable(st, r.dnf ? null : r), me = tab.find(x => x.me);
-      if (W.done) $('ocLines').innerHTML = W.runs.map((x, i) => `<li><span>${st.ev === 'bigair' ? 'Jumps' : need > 1 ? `Run ${i + 1}` : 'Run'}: ${escHTML(x.label)}</span><b>${wcFmt(st.ev, x.v)}</b></li>`).join('');
-      if (W.done && !W.official) { badge = 'Practice: no points'; heat = true; }
-      else badge = r && r.fin ? `Today's official race: ${r.dnf ? 'DNF' : `${ordinal(r.place)}, +${r.pts} points${r.prize ? `, $${r.prize.toLocaleString()}` : ''}`}` : '';
-      tables = `<div><h4>${EVENT_NAMES[st.ev]} at ${escHTML(st.venue)}</h4>${wcRowsHTML(tab, x => wcFmt(st.ev, x.v), true)}</div><div><h4>World Cup overall</h4>${wcRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div>`;
+      const bb = wcBest(st.ev, W.runs.map(x => x.v));
+      $('ocLines').innerHTML = W.runs.map((x, i) => `<li class="orun"><span>${lab(i)}: ${escHTML(x.label)}${bb.idx.includes(i) && W.runs.length >= C.count ? ' <b class="ok">✓ counts</b>' : ''}</span><b>${wcFmt(st.ev, x.v)}</b></li>`).join('');
+      next = `${st.ev === 'bigair' ? 'Jump' : 'Run'} ${W.runs.length + 1} of ${need}`;
+      if (wcGot(W) >= C.count) { skip = `Skip ${st.ev === 'bigair' ? 'jump' : 'run'} ${W.runs.length + 1}`; note = `Your best ${NUM_WORD[C.count]}: <b>${wcFmt(st.ev, bb.v)}</b>. One more to better it, or skip it and keep these. `; }
+      note += W.official ? 'Leaving now counts as a DNF for this stop.' : '';
+    } else if (W.done) {
+      const tab = W.table, me = tab.find(x => x.me), r = W.official ? D.res[wcKey(st.s, st.idx)] : null;
+      const bb = wcBest(st.ev, W.runs.map(x => x.v));
+      $('ocLines').innerHTML = W.runs.map((x, i) => `<li class="orun"><span>${lab(i)}: ${escHTML(x.label)}${bb.idx.includes(i) && !W.dnf ? ' <b class="ok">✓ counts</b>' : ''}</span><b>${wcFmt(st.ev, x.v)}</b></li>`).join('');
+      if (!W.official) { badge = 'Practice: no points'; heat = true; }
+      else badge = `Stop ${st.idx}, official: ${r.dnf ? 'DNF' : `${ordinal(r.place)}, +${r.pts} points${r.prize ? `, $${r.prize.toLocaleString()}` : ''}`}`;
+      tables = `<div><h4>${EVENT_NAMES[st.ev]} at ${escHTML(st.venue)}</h4>${wcRowsHTML(tab, wcRowFmt(st.ev), true)}</div><div><h4>World Cup overall</h4>${wcRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div>`;
       if (me && me.place <= 3) { $('ocPodium').classList.remove('hidden'); drawPodium({ final: tab }); }
-      const om = W.oly; note = (W.done && !W.official && me ? `That would have been ${ordinal(me.place)}. ` : '') + (om && om.fresh ? `<b>Olympic mark hit: ${EVENT_NAMES[om.ev]}!</b> ${om.n} of ${CFG.OLY_EVENTS.length}. ` : '') + wcPlaceLine(St);
-      next = 'Practice this stop';
+      const om = W.oly; note = (!W.official && me ? `That would have been ${ordinal(me.place)}. ` : '') + (om && om.fresh ? `<b>Olympic mark hit: ${EVENT_NAMES[om.ev]}!</b> ${om.n} of ${CFG.OLY_EVENTS.length}. ` : '') + wcPlaceLine(St);
+      if (W.official) { const n2 = wcPos(b); next = n2.s > st.s ? `Start season ${n2.s}` : n2.games ? 'Next: the Olympic Games' : `Next: stop ${n2.idx}, ${EVENT_NAMES[wcSeasonCal(b, n2.s)[n2.idx].ev]}`; }
+      else { next = `Race it: ${EVENT_NAMES[st.ev]}`; skip = 'Practice again'; }
     } else {
-      badge = r ? "Today's official race: DNF (you left)" : 'Official race today: one entry. It counts from the first run; leaving partway is a DNF.';
-      next = r ? 'Practice this stop' : `Race: ${EVENT_NAMES[st.ev]}${need > 1 ? ` (run 1 of ${need})` : ''}`;
+      badge = `Official race: ${NUM_WORD[need]} runs, the best ${NUM_WORD[C.count]} count. It counts from the first run; leaving partway is a DNF.`;
+      next = `Race: ${EVENT_NAMES[st.ev]} (${st.ev === 'bigair' ? 'jump' : 'run'} 1 of ${need})`; skip = 'Practice first';
       tables = `<div><h4>World Cup overall</h4>${wcRowsHTML(St.overall, x => x.pts.toLocaleString(), false)}</div>`;
       note = wcPlaceLine(St);
     }
-    if (w.idx < C.games && !(W.started && !W.done)) body += wcOlyHTML(b);
+    if (wcOlySeason(st.s) && st.idx <= C.games && !(W.started && !W.done)) body += wcOlyHTML(b);
+    else if (!wcOlySeason(st.s) && !(W.started && !W.done)) body += `<div class="oqual">No Olympics this season. Next Games: season ${st.s + 1}.</div>`;
   }
+  if (W.chair && W.view === 'today' && W.runs.length) note = "<b>You're in the leader's chair</b> (the fastest Downhill run so far). " + note;
   $('ocBadge').className = 'ocbadge ' + (heat ? 'heat' : 'off'); $('ocBadge').textContent = badge;
   $('ocMedal').innerHTML = tabs + body; $('ocTables').innerHTML = tables; $('ocNote').innerHTML = note;
   $('ocNext').classList.toggle('hidden', !next); if (next) $('ocNext').textContent = next;
-  $('ocQuit').textContent = W.started && !W.done ? 'Leave the race' : 'Menu';
+  $('ocSkip').classList.toggle('hidden', !skip || W.view !== 'today' || !D.card); if (skip) $('ocSkip').textContent = skip;
+  $('ocQuit').textContent = W.started && !W.done && W.official ? 'Leave the race' : 'Menu';
   const dbody = $('olycard').querySelector('.dbody'); if (dbody) dbody.scrollTop = 0;   // (the top of the card: the badge and the tabs)
   setTimeout(() => { if (!isTouch && G.state === 'olycard') (next ? $('ocNext') : $('ocQuit')).focus({ preventScroll: true }); }, 0);
 }
 function wcNextPress() {
   const W = G.wc, b = loadBest(), D = wcData(b); if (!W || !D.card) return;
   if (W.view !== 'today') { W.view = 'today'; showWcCard(); return; }
-  if (W.stop.games) { G.wc = null; launchMode('olympics'); return; }
-  if (!W.started) {   // a new go at today's stop: the official race the first time, practice after
-    W.official = !D.res[W.w.day]; W.runs = []; W.done = false; W.started = true; W.table = null; W.oly = null; W.settled = [];
-    if (W.official) { D.res[W.w.day] = { s: W.w.s, ev: W.stop.ev, dnf: true, fin: false }; saveBest(b); }   // used the moment it starts (a reload can't undo it)
+  if (W.games) {
+    if (olyQualifiedFor(b, olyCycle(b))) { G.wc = null; launchMode('olympics'); return; }
+    D.gm[W.p.s] = 'noqual'; saveBest(b); wcOpen(); return;   // not qualified: on to the second half
   }
+  if (W.done && W.official) { wcOpen(); return; }   // on to the next stop
+  if (W.started && !W.done) { startGame(W.stop.ev, true); return; }   // the next run
+  wcBegin(false);
+}
+// A go at the stop: the official race (once), or practice (as often as you like, no points)
+function wcBegin(practice) {
+  const W = G.wc, b = loadBest(), D = wcData(b);
+  W.official = !practice; W.runs = []; W.done = false; W.dnf = false; W.started = true; W.table = null; W.oly = null; W.settled = [];
+  if (W.official) { D.res[wcKey(W.p.s, W.p.idx)] = { s: W.p.s, ev: W.stop.ev, dnf: true, fin: false }; saveBest(b); }   // used the moment it starts (a reload can't undo it)
   startGame(W.stop.ev, true);
+}
+// The card's second button: skip the last run, practice first (or again), or pass on the Games (press twice)
+function wcSkipPress() {
+  const W = G.wc; if (!W || G.state !== 'olycard' || W.view !== 'today') return;
+  if (W.games) {
+    if (W.passArm && performance.now() - W.passArm < 3000) { const b = loadBest(); wcData(b).gm[W.p.s] = 'pass'; saveBest(b); wcOpen(); return; }
+    W.passArm = performance.now(); $('ocSkip').textContent = 'Press again to pass'; return;
+  }
+  if (W.started && !W.done) { if (wcGot(W) >= wcCfg().count) { wcFinish(); showWcCard(); } return; }
+  if (!W.started && (!W.done || !W.official)) wcBegin(true);
 }
 function wcQuitPress() {
   const W = G.wc;
   if (!W || !W.started || W.done || !W.official) { showMenu(); return; }
-  if (W.quitArm && performance.now() - W.quitArm < 3000) { const b = loadBest(), r = wcData(b).res[W.w.day]; if (r) { r.fin = true; r.dnf = true; r.place = 0; r.pts = 0; } saveBest(b); showMenu(); return; }
+  if (W.quitArm && performance.now() - W.quitArm < 3000) { const b = loadBest(), r = wcData(b).res[wcKey(W.p.s, W.p.idx)]; if (r && !r.fin) { r.fin = true; r.dnf = true; r.place = 0; r.pts = 0; wcAdvance(b); } saveBest(b); showMenu(); return; }
   W.quitArm = performance.now();
   if (G.state === 'olycard') $('ocQuit').textContent = 'Click again to leave';
-  else { if (G.state === 'paused') $('pMenuBtn').textContent = 'Click again to leave'; toast("Press again to leave. Today's official race will count as a DNF.", 2.6); }
+  else { if (G.state === 'paused') $('pMenuBtn').textContent = 'Click again to leave'; toast('Press again to leave. This stop will count as a DNF.', 2.6); }
   setTimeout(() => { if (G.wc === W && W.quitArm && performance.now() - W.quitArm >= 2900) { W.quitArm = 0; if (G.state === 'olycard') $('ocQuit').textContent = 'Leave the race'; $('pMenuBtn').textContent = 'Menu'; } }, 3000);
 }
-// A run's result, by event
+// A run's result, by event (Big Air: one jump a run, as at the Olympics)
 function wcRunValue(ev) {
-  if (WC_TIME(ev)) { const t = G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null; return { v: t, single: t, label: t === null ? 'did not finish' : `${fmtTime(t)}${G.missed ? `, ${G.missed} missed` : ''}` }; }
-  if (ev === 'bigair') { const sc = ((G.bigair && G.bigair.scores) || []).map(x => x.pts).sort((a, c) => c - a), two = (sc[0] || 0) + (sc[1] || 0); return { v: two, single: sc[0] || 0, label: `best two ${(sc[0] || 0).toLocaleString()} + ${(sc[1] || 0).toLocaleString()}` }; }
-  if (ev === 'backcountry') { const J = G.bc ? (G.bc.judge || bcJudge()) : null, v = J ? J.total : 0; return { v, single: v, label: `${v.toFixed(1)} / 100 from the judges` }; }
-  return { v: G.score || 0, single: G.score || 0, label: `${(G.score || 0).toLocaleString()} pts` };
+  if (WC_TIME(ev)) { const t = G.finished ? Math.round(Math.max(0, G.elapsed + G.penalty - G.trickBonus) * 100) / 100 : null; return { v: t, label: t === null ? (G.dhOut ? 'missed a gate' : 'did not finish') : `${fmtTime(t)}${G.missed ? `, ${G.missed} missed` : ''}` }; }
+  if (ev === 'bigair') { const v = G.bigair ? G.bigair.best : 0; return { v, label: v ? `${v.toLocaleString()} pts${G.bigair.bestName ? `, ${G.bigair.bestName}` : ''}` : 'no score' }; }
+  if (ev === 'backcountry') { const J = G.bc ? (G.bc.judge || bcJudge()) : null, v = J ? J.total : 0; return { v, label: `${v.toFixed(1)} / 100 from the judges` }; }
+  return { v: G.score || 0, label: `${(G.score || 0).toLocaleString()} pts` };
 }
 function wcRunDone() {
-  const W = G.wc, ev = W.stop.ev, run = wcRunValue(ev); W.runs.push(run);
-  if (run.v === null || W.runs.length >= (wcCfg().runs[ev] || 1)) wcFinish(); else SFX.finish();
+  const W = G.wc, C = wcCfg(), run = wcRunValue(W.stop.ev); W.chair = !!(G.dh && G.dh.board && G.dh.board.lead); W.runs.push(run);
+  const k = W.runs.length;
+  if (k >= C.runs || wcGot(W) + (C.runs - k) < C.count) wcFinish(); else SFX.finish();   // (the last run, or too many DNFs to make the best two)
   G.state = 'olycard'; showWcCard();
 }
 function wcFinish() {
   const W = G.wc, C = wcCfg(), st = W.stop, ev = st.ev, b = loadBest(), D = wcData(b);
-  const vals = W.runs.map(x => x.v), dnf = vals.some(v => v === null);
-  const v = dnf ? null : WC_TIME(ev) ? Math.round(vals.reduce((a, x) => a + x, 0) * 100) / 100 : ev === 'park' || ev === 'pipe' ? Math.max(...vals) : vals[0];
-  W.done = true; W.started = false; W.table = wcStopTable(st, dnf ? null : { v });
+  const vals = W.runs.map(x => x.v), bb = wcBest(ev, vals), dnf = bb.v === null || vals.filter(v => typeof v === 'number').length < C.count;
+  const v = dnf ? null : ev === 'backcountry' ? Math.round(bb.v * 10) / 10 : bb.v;
+  W.done = true; W.started = false; W.dnf = dnf; W.table = wcStopTable(st, dnf ? null : { v, runs: vals, idx: bb.idx });
   const me = W.table.find(x => x.me);
   if (W.official) {
-    const r = D.res[W.w.day] = { s: W.w.s, ev, v, dnf, fin: true, place: me ? me.place : 0, pts: me ? me.pts : 0, prize: me ? me.prize : 0 };
+    const r = D.res[wcKey(st.s, st.idx)] = { s: st.s, ev, v, runs: vals, idx: bb.idx, dnf, fin: true, place: me ? me.place : 0, pts: me ? me.pts : 0, prize: me ? me.prize : 0 };
     if (r.prize) { const g = gearState(b); g.cash += r.prize; b.gear = gearObj(g); }
-    if (!dnf && W.w.idx < C.games) { const singles = W.runs.map(x => x.single).filter(x => typeof x === 'number'); W.oly = singles.length ? wcOlyMark(b, ev, WC_TIME(ev) ? Math.min(...singles) : Math.max(...singles)) : null; }
-    W.settled = wcSettle(b);
+    const singles = vals.filter(x => typeof x === 'number');
+    W.oly = singles.length ? wcOlyMark(b, ev, WC_TIME(ev) ? Math.min(...singles) : Math.max(...singles)) : null;   // (before moving on: only first-half stops qualify)
+    W.settled = wcAdvance(b);
   }
   saveBest(b); wcBibApply(b);
   SFX.finish(); crowd(0.7); if (W.official && me && me.place <= 3) setTimeout(olyFanfare, 300);
@@ -7221,6 +7598,7 @@ const BAR_REGULARS = [
     { id: 'p_s3', text: "Bet you can't land 3 tricks in one Slalom run.", modes: ['slalom'], ok: r => r.finished && r.tricks.length >= 3 },
     { id: 'p_sperf', text: `Bet you can't make every flag in Slalom and finish under 0:${CFG.SLALOM_BETS.slalomClean}.`, modes: ['slalom'], hard: true, ok: r => r.finished && r.missed === 0 && r.time < CFG.SLALOM_BETS.slalomClean },
     { id: 'p_tclean', text: "Bet you can't clear Tree Slalom without missing a flag.", modes: ['tree'], ok: r => r.finished && r.missed === 0 },
+    { id: 'p_dh120', text: "Back in my day we hit 120 on the downhill. Bet you can't.", modes: ['downhill'], ok: r => r.finished && r.topKmh >= 120 },
     { id: 'p_t32', text: `Bet you can't finish Tree Slalom under 0:${CFG.SLALOM_BETS.treeHard}.`, modes: ['tree'], hard: true, ok: r => r.finished && r.time < CFG.SLALOM_BETS.treeHard },
     { id: 'p_arc4', text: "Bet you can't make it to level 4 on that arcade game.", modes: ['rampage'], ok: r => r.level >= 4 },
     { id: 'p_ghost', text: "Bet you can't beat your own best time in Slalom. Your ghost, I mean.", modes: ['slalom'], ok: r => r.finished && r.prevBest > 0 && r.time < r.prevBest },
@@ -7230,6 +7608,7 @@ const BAR_REGULARS = [
     { id: 'p_weather', text: `Bet you can't finish Slalom in fog or snow under 0:${CFG.SLALOM_BETS.weather}. We did it in '68.`, modes: ['slalom'], hard: true, ok: r => r.finished && ['fog', 'snow'].includes(r.weather) && r.time < CFG.SLALOM_BETS.weather },
   ] },
   { id: 'rita', name: 'Ranger Rita', voice: "Ranger's honor:", seat: 2, bets: [
+    { id: 'r_dhclean', text: "I bet you can't finish a Downhill without a crash.", modes: ['downhill'], ok: r => r.finished && r.crashes === 0 },
     { id: 'r_30', text: "I bet you can't stomp the 30 m cliff.", modes: ['backcountry'], hard: true, ok: r => !!r.flags.cliff30 },
     { id: 'r_plan', text: "I bet you can't follow your scouted line exactly.", modes: ['backcountry'], ok: r => !!(r.bc && !r.bc.skipped && r.bc.followed === r.bc.sections) },
     { id: 'r_60', text: "I bet you can't score 60 in the backcountry.", modes: ['backcountry'], ok: r => !!(r.bc && r.bc.total >= 60) },
@@ -7441,7 +7820,7 @@ function barRunInfo() {
     bc: B && B.judge ? { total: B.judge.total, followed: B.judge.followed, sections: B.judge.sections, skipped: B.skipped } : null,
     mark: G.mode === 'snowmo' && G.sm ? smMarkM(G.sm) : 0, gaps: G.mode === 'snowmo' && G.sm ? G.sm.gaps : 0,
     combo: G.pstat && G.pstat.bestCombo ? G.pstat.bestCombo.count : 0, brushed: G.brushed || 0, weather: G.weather, variant: G.variant, sprayed: !!G.sprayUsed,
-    prevBest: (G.mode === 'slalom' || G.mode === 'tree') ? (loadBest()[G.mode] || 0) : 0,   // (the bar's checked before the new best is saved)
+    prevBest: isSl(G.mode) ? (loadBest()[G.mode] || 0) : 0, topKmh: G.dh ? dhKmh(G.dh.top) : 0,   // (the bar's checked before the new best is saved)
     road: G.mode === 'road' && G.road ? { done: G.road.phase === 'done', dents: G.road.dents, elk: G.road.elkRes ? G.road.elkRes.g : null, karl: G.road.photoRes ? G.road.photoRes.g : null } : null,
     climb: G.mode === 'climb' && G.cl ? { top: G.cl.end === 'top', rode: !!G.cl.rode, high: G.cl.high, woke: !!G.cl.woke, swept: G.cl.n.swept } : null };
 }
@@ -7510,16 +7889,16 @@ function closeBar() { clearInterval(barTimer); jukePreview = null; barSel = null
 function barWall(b) {
   const R = loadRanks(), me = ACCT.active, lv = sponsorLevel(b);
   const medals = (b.medals && b.medals.c) || {};   // Olympic medal counts per slot: [gold, silver, bronze]
-  const evs = ['freestyle', 'slalom', 'tree', 'park', 'pipe', 'bigair', 'backcountry'];
+  const evs = ['freestyle', 'slalom', 'tree', 'downhill', 'park', 'pipe', 'bigair', 'backcountry'];
   const trophies = evs.filter(m => GOALS[m] && GOALS[m].every(g => goalsDone(b, m).has(g.id)));
   const firsts = Object.keys(R).filter(ev => ev !== 'olympics' && !/Old$/.test(ev) && R[ev] && R[ev][0] && R[ev][0].slot === me);
-  const olds = ['slalom', 'tree'].filter(m => b[m + 'Old']).map(m => [m, fmtTime(b[m + 'Old'])]);
-  const bests = evs.filter(m => b[m]).map(m => [m, m === 'slalom' || m === 'tree' ? fmtTime(b[m]) : m === 'backcountry' ? (+b[m]).toFixed(1) : Math.round(b[m]).toLocaleString()]);
+  const olds = SL_MODES.filter(m => b[m + 'Old']).map(m => [m, fmtTime(b[m + 'Old'])]);
+  const bests = evs.filter(m => b[m]).map(m => [m, isSl(m) ? fmtTime(b[m]) : m === 'backcountry' ? (+b[m]).toFixed(1) : Math.round(b[m]).toLocaleString()]);
   if (b.rampageBest) bests.push(['rampage', b.rampageBest.toLocaleString()]);
   return { medals, sponsors: SPONSORS.slice(0, lv), trophies, firsts, bests, olds, eggs: [!!b.eggFound, !!b.eggFreestyle, !!b.eggArcade], evs,   // third cup: the golden egg from the arcade game
     deed: barOwns(b) ? (barData(b).deed || barToday()) : null };
 }
-const fmtDay = d => { const [y, m, dd] = String(d).split('-').map(Number); return y ? new Date(y, m - 1, dd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : String(d); };
+const fmtDay = d => /^S\d+$/.test(String(d)) ? `World Cup season ${String(d).slice(1)}` : (d => { const [y, m, dd] = String(d).split('-').map(Number); return y ? new Date(y, m - 1, dd).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : String(d); })(d);
 // The game room's hotspots: the games that are built, and the doors back
 function gameRoomSpots(b) {
   const reno = barReno(b), S = [];
@@ -7698,7 +8077,7 @@ function renderBar() {
       const c = Wl.medals, h = (b.medals && b.medals.h) || [];
       const line = ([ev, label]) => { const x = c[ev]; return x && x[0] + x[1] + x[2] ? `${label}: ${['gold', 'silver', 'bronze'].map((m, i) => x[i] ? `${x[i]} ${m}` : '').filter(Boolean).join(', ')}` : `${label}: none yet`; };
       info.push('<b>The medal case.</b> ' + MEDAL_SLOTS.map(line).join('. ') + '.');
-      if (h.length) info.push('<small>Latest: ' + h.slice(0, 5).map(x => `${fmtDay(x.d)}, ${x.ev === 'overall' ? 'Overall' : EVENT_NAMES[x.ev]} ${MEDAL[Math.min(3, x.pl)]} (${x.ev === 'slalom' ? fmtSec(x.v) : Math.round(x.v).toLocaleString()}${x.old ? ', from before the rivals' : ''})`).join('; ') + '.</small>');
+      if (h.length) info.push('<small>Latest: ' + h.slice(0, 5).map(x => `${fmtDay(x.d)}, ${x.ev === 'overall' ? 'Overall' : EVENT_NAMES[x.ev]} ${MEDAL[Math.min(3, x.pl)]} (${TIME_EV(x.ev) ? fmtSec(x.v) : Math.round(x.v).toLocaleString()}${x.old ? ', from before the rivals' : ''})`).join('; ') + '.</small>');
       else info.push("<small>Finish top 3 in an Olympic event or overall, in the day's official Games, to put a medal in here.</small>");
     }
     else if (barSel === 'chalkboard') info.push('<b>Your bests</b>: ' + (Wl.bests.length ? Wl.bests.map(([m, v]) => `${EVENT_NAMES[m]} ${v}`).join(', ') : 'nothing yet') + '.' + (Wl.olds.length ? ` Old course: ${Wl.olds.map(([m, v]) => `${EVENT_NAMES[m]} ${v}`).join(', ')}.` : '') + (Wl.firsts.length ? `<br>Number one on this device in: ${Wl.firsts.map(ev => EVENT_NAMES[ev]).join(', ')}.` : ''));
@@ -10712,7 +11091,7 @@ function drawBarRoom() {
   }
   P(232, 8, 80, 56, '#8a5a30'); P(235, 11, 74, 50, '#2a3a2a');
   pixText(g, 'BESTS', 272, 14, '#f4f8f4', 1, 'center'); P(250, 20, 44, 1, '#8aa08a');
-  const short = { freestyle: 'FREE', slalom: 'SLALOM', tree: 'TREES', park: 'PARK', pipe: 'PIPE', bigair: 'BIG AIR', backcountry: 'BCNTRY', rampage: 'ARCADE' };
+  const short = { freestyle: 'FREE', slalom: 'SLALOM', tree: 'TREES', downhill: 'DOWNHL', park: 'PARK', pipe: 'PIPE', bigair: 'BIG AIR', backcountry: 'BCNTRY', rampage: 'ARCADE' };
   Wl.bests.slice(-6).forEach(([m, v], i) => { pixText(g, short[m], 238, 24 + i * 6, '#e4ece4'); pixText(g, String(v).replace(/,/g, ''), 306, 24 + i * 6, '#ffffff', 1, 'right'); });
   P(118, 74, 116, 3, '#3a2414');
   Wl.evs.forEach((m, i) => { const x = 122 + i * 11, got = Wl.trophies.includes(m); P(x, 64, 8, 6, got ? '#f0c020' : 'rgba(255,255,255,0.12)'); P(x + 3, 70, 2, 2, got ? '#c8a010' : 'rgba(255,255,255,0.12)'); P(x + 1, 72, 6, 2, got ? '#8a6a20' : 'rgba(255,255,255,0.12)'); });
@@ -12316,7 +12695,7 @@ function renderCabin() {
     const A = cabAwards(b), word = ['gold', 'silver', 'bronze'];
     info.push('<b>Your trophy shelf.</b> It fills itself in as you earn things: every medal hangs underneath, and trophies, plaques, race bibs and golden eggs go up top.');
     info.push('<b>Medals</b>: ' + MEDAL_SLOTS.map(([ev, label]) => { const c = A.medals[ev]; return c[0] + c[1] + c[2] ? `${label} ${word.map((m, i) => c[i] ? `${c[i]} ${m}` : '').filter(Boolean).join(', ')}` : `${label} none yet`; }).join('; ') + '.');
-    info.push(A.hist.length ? '<small>' + A.hist.map(x => `${fmtDay(x.d)}: ${x.ev === 'overall' ? 'Overall' : EVENT_NAMES[x.ev]} ${MEDAL[Math.min(3, x.pl)]} (${x.ev === 'slalom' ? fmtSec(x.v) : Math.round(x.v).toLocaleString()}${x.old ? ', from before the rivals' : ''})`).join('<br>') + (A.more ? `<br>...and ${A.more} more before that.` : '') + '</small>'
+    info.push(A.hist.length ? '<small>' + A.hist.map(x => `${fmtDay(x.d)}: ${x.ev === 'overall' ? 'Overall' : EVENT_NAMES[x.ev]} ${MEDAL[Math.min(3, x.pl)]} (${TIME_EV(x.ev) ? fmtSec(x.v) : Math.round(x.v).toLocaleString()}${x.old ? ', from before the rivals' : ''})`).join('<br>') + (A.more ? `<br>...and ${A.more} more before that.` : '') + '</small>'
       : "<small>Finish top 3 in an Olympic event or overall, in the day's official Games, and the medal hangs here.</small>");
     info.push(`<b>Trophies</b>, one per event for every goal in it: ${A.evs.map(e => `${EVENT_NAMES[e.ev] || e.ev} ${e.done >= e.all ? 'won' : `${e.done}/${e.all}`}`).join(', ')}.`);
     info.push(`<b>The big cup</b>, for every goal in the game: ${A.bigCup ? 'yours!' : `${A.got} of ${A.all} goals`}.`);
@@ -12769,8 +13148,10 @@ const RESORT_SPOTS = [
     desc: 'Round the outside of every flag, as fast as you can. Your best time and your ghost are saved.' },
   { id: 'tree', name: 'Tree Slalom', mode: 'tree', go: 'Race it', hit: [254, 102, 62, 46],
     desc: 'The slalom through the old-growth trees: tighter, and the forest is in the way.' },
+  { id: 'downhill', name: 'Downhill', mode: 'downhill', go: 'Race it', hit: [184, 16, 38, 63],
+    desc: 'Pure speed, top to bottom: tuck, carry your speed, and go between every pair of blue panels (miss one and you\'re out). Rollers, a big jump, a compression and a long glide on the way down.' },
   { id: 'olympics', name: 'Olympics', mode: 'olympics', go: 'Go to the Olympics', hit: [4, 148, 50, 44],
-    desc: 'Slalom, Terrain Park, Halfpipe and Big Air, one run each, against the field, on day 14 of each World Cup season. Hit every Olympic mark in first-half World Cup races to get in.' },
+    desc: 'Slalom, Downhill, Terrain Park, Halfpipe and Big Air, three runs each (the best two count), against the top of the World Cup. Every other World Cup season, after stop 14: hit every Olympic mark in first-half World Cup races to get in.' },
   { id: 'worldcup', name: 'World Cup', mode: 'worldcup', go: 'Go to the World Cup', hit: [244, 4, 72, 32], desc: '' },
   { id: 'cabin', name: 'Your Cabin', item: 'cabin', hit: [58, 146, 48, 40] },
   { id: 'bar', name: 'The Bar', item: 'bar', hit: [198, 148, 42, 34] },
@@ -13063,6 +13444,12 @@ function drawResortMap() {
       P(262, 88, 40, 2, '#9aaabd'); P(300, 50, 2, 40, '#9aaabd');
       for (let k = 0; k < 3; k++) P(304 + k * 3, 42 + k * 2, 1, 6, '#c41e1e');
     },
+    downhill() {   // the start hut at the top, blue gates down the fall line, the finish
+      P(189, 31, 16, 8, '#7a4a24'); P(187, 28, 20, 3, '#d42a2a'); P(187, 28, 20, 1, '#f07070'); P(192, 33, 3, 3, '#bcdcf8'); P(199, 33, 3, 3, '#bcdcf8');
+      P(196, 39, 2, 46, '#eef3f9');
+      for (let k = 0; k < 4; k++) { const c = 197 + (k % 2 ? 4 : -4), y = 43 + k * 10; for (const sd of [-6, 5]) { P(c + sd, y, 1, 5, '#404048'); P(c + sd + (sd < 0 ? -2 : 1), y, 2, 3, '#1a4ad8'); } }
+      for (let x = 189; x < 206; x += 2) P(x, 85, 1, 1, '#202028');
+      T('DOWNHILL', 204, 21, lab, 5); },
     slalom() { for (let k = 0; k < 5; k++) { const x = 218 + (k % 2) * 18, y = 106 + k * 8; P(x, y, 1, 6, '#404048'); P(x + 1, y, 4, 3, k % 2 ? '#2a5ad0' : '#d42a2a'); } T('SLALOM', 230, 100, lab, 5); },
     tree() { for (const [x, y] of [[258, 106], [270, 118], [262, 130], [290, 108], [302, 124], [282, 134]]) pine(x, y, 2);
       for (let k = 0; k < 4; k++) { const x = 274 + (k % 2) * 16, y = 108 + k * 9; P(x, y, 1, 6, '#404048'); P(x + 1, y, 4, 3, k % 2 ? '#2a5ad0' : '#d42a2a'); } T('TREE SLALOM', 285, 100, lab, 5); },
@@ -13270,8 +13657,9 @@ function drawNightPark() {
 const fmtTime = t => { const m = Math.floor(t / 60), sec = t - m * 60; return `${m}:${sec < 10 ? '0' : ''}${sec.toFixed(1)}`; };
 let hudAcc = 0;
 function setHudMode(mode) {
-  $('hudTitle').textContent = { climb: 'Summit Trail', freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', backcountry: 'Backcountry', road: 'Mountain Road', snowmo: 'Hill Climb' }[mode];
+  $('hudTitle').textContent = { climb: 'Summit Trail', freestyle: 'Freestyle', slalom: 'Slalom', tree: 'Tree Slalom', downhill: 'Downhill', park: 'Terrain Park', pipe: 'Halfpipe', bigair: 'Big Air', backcountry: 'Backcountry', road: 'Mountain Road', snowmo: 'Hill Climb' }[mode];
   const labels = mode === 'road' ? ['Time:', 'To go:', 'Speed:', 'Dents:'] : mode === 'climb' ? ['Time:', 'Height:', 'Speed:', 'Best:'] : mode === 'snowmo' ? ['High mark:', 'Height:', 'Speed:', 'Gaps:'] : mode === 'freestyle' ? ['Time:', 'Dist:', 'Speed:', 'Score:'] : mode === 'park' ? ['Time left:', 'Score:', 'Combo:', 'Tokens:'] : mode === 'pipe' ? ['Dist:', 'Score:', 'Combo:', 'Best air:'] : mode === 'bigair' ? ['Attempt:', 'Best:', 'Speed:', 'Height:'] : mode === 'backcountry' ? ['Time:', 'Dist:', 'Speed:', 'Tricks:'] : ['Time:', 'Gates:', 'Missed:', 'Speed:'];
+  if (mode === 'downhill') labels.splice(0, 4, 'Time:', 'Gates:', 'km/h:', 'Top:');
   labels.forEach((l, i) => $('l' + (i + 1)).textContent = l);
   spareRow(false); $('sprayBtn').classList.add('hidden');
 }
@@ -13324,8 +13712,9 @@ function hudTick(dt) {
   } else {
     $('v1').textContent = fmtTime(Math.max(0, G.elapsed + G.penalty - G.trickBonus));
     $('v2').textContent = `${G.gateIdx}/${G.course.count}`;
-    $('v3').textContent = G.missed || G.brushed ? `${G.missed} (+${G.penalty}s)` : '0';   // brushed flags show in the penalty
-    $('v4').textContent = spd;
+    if (G.dh) { const v = G.sk.air ? Math.hypot(G.sk.avx, G.sk.avy) : G.sk.speed; $('v3').textContent = String(dhKmh(G.sk.crashed ? 0 : v)); $('v4').textContent = String(dhKmh(G.dh.top)); }
+    else { $('v3').textContent = G.missed || G.brushed ? `${G.missed} (+${G.penalty}s)` : '0';   // brushed flags show in the penalty
+    $('v4').textContent = spd; }
   }
 }
 
@@ -13376,6 +13765,7 @@ function refreshBest() {
   $('bFree').textContent = b.freestyle ? `Best ${b.freestyle} pts` : 'Endless';
   $('bSlalom').textContent = b.slalom ? `Best ${fmtTime(b.slalom)}` : b.slalomOld ? `Old course ${fmtTime(b.slalomOld)}` : `${CFG.SLALOM.gates} gates`;
   $('bTree').textContent = b.tree ? `Best ${fmtTime(b.tree)}` : b.treeOld ? `Old course ${fmtTime(b.treeOld)}` : `${CFG.TREE_SLALOM.gates} gates`;
+  $('bDH').textContent = b.downhill ? `Best ${fmtTime(b.downhill)}` : 'Pure speed';
   $('bPark').textContent = b.park ? `Best ${b.park.toLocaleString()} (${b.parkGrade || 'C'})` : `${CFG.PARK_TIME}s judged run`;
   $('bBigair').textContent = b.bigair ? `Best ${b.bigair.toLocaleString()}` : `${CFG.BA_ATTEMPTS} attempts`;
   $('bPipe').textContent = b.pipe ? `Best ${b.pipe.toLocaleString()} (${b.pipeGrade || 'C'})` : `${CFG.PIPE_LEN} m pipe`;
@@ -13433,7 +13823,7 @@ function startGame(mode, fromOly) {
   }
   G.weather = WEATHER_MODES.includes(mode) ? (G.wc ? G.wc.stop.weather : pickWeather()) : 'clear'; G.snow = [];
   G.rec = null; G.ghost = null;
-  if (mode === 'slalom' || mode === 'tree') {
+  if (isSl(mode)) {
     G.rec = { s: [], next: 0 };
     const gh = (loadBest().ghosts || {})[mode];
     if (gh && gh.seed === G.seed && gh.c === slCfg(mode).courseV && Array.isArray(gh.s) && gh.s.length >= 10) G.ghost = gh;
@@ -13444,7 +13834,7 @@ function startGame(mode, fromOly) {
   setHudMode(mode); hudAcc = 1; $('hud').classList.remove('hidden');
   if (v) $('hudTitle').textContent = EVENT_NAMES[G.rankKey];
   if (G.oly) $('hudTitle').textContent = `${G.oly.official ? 'Olympics' : 'Heat'}: ${EVENT_NAMES[mode]}, run ${olyRunNo(mode)} of ${CFG.OLY_RUNS}`;
-  if (G.wc) $('hudTitle').textContent = `World Cup: ${EVENT_NAMES[mode]}`;
+  if (G.wc) $('hudTitle').textContent = `World Cup: ${EVENT_NAMES[mode]}, ${mode === 'bigair' ? 'jump' : 'run'} ${G.wc.runs.length + 1} of ${CFG.WORLD_CUP.runs}`;
   $('touch').classList.toggle('hidden', !isTouch); $('tuckBtn').classList.remove('hidden'); $('jumpBtn').classList.remove('hidden'); $('jumpBtn').textContent = 'Jump';
   G.pointer.active = false;
   if (document.activeElement) document.activeElement.blur();
@@ -13456,10 +13846,11 @@ function startGame(mode, fromOly) {
   if (mode === 'backcountry') $('toast').classList.add('hidden');
   else if (G.vibes) toast(`PNW RootBeer! A little faster, a lot looser. Sketchy landings score less.${G.rbLeft ? ` ${G.rbLeft} more waiting at the Bar.` : ''}`, 3);
   else if (G.oly) toast(`${G.oly.official ? 'Olympics' : 'Practice Heat'} ${G.oly.step + 1} of ${CFG.OLY_EVENTS.length}: ${EVENT_NAMES[mode]}, run ${olyRunNo(mode)} of ${CFG.OLY_RUNS}. The best ${CFG.OLY_COUNT} count. ${isTouch ? 'Tap' : 'Press ↓'} to start.`, 3);
-  else if (G.wc) { const W = G.wc, n = CFG.WORLD_CUP.runs[mode] || 1; toast(`World Cup at ${W.stop.venue}${W.official ? '' : ' (practice)'}: ${EVENT_NAMES[mode]}${n > 1 ? `, run ${W.runs.length + 1} of ${n}` : ''}. ${isTouch ? 'Tap' : 'Press ↓'} to start.`, 3); }
+  else if (G.wc) { const W = G.wc, n = CFG.WORLD_CUP.runs; toast(`World Cup at ${W.stop.venue}${W.official ? '' : ' (practice)'}: ${EVENT_NAMES[mode]}, ${mode === 'bigair' ? 'jump' : 'run'} ${W.runs.length + 1} of ${n}. ${isTouch ? 'Tap' : 'Press ↓'} to start.`, 3); }
   else if (mode === 'bigair') toast('Press ↓ to drop in. Tuck for speed. Land the biggest trick you can. Three attempts.', 3);
   else if (mode === 'pipe') toast('Press ↓ to drop in. Hold left/right toward the middle to build speed.', 3);
   else if (mode === 'park') toast('Press ↓ to drop in. Chain tricks into combos.', 2.4);
+  else if (mode === 'downhill') toast(`Press ↓ to start. ${isTouch ? 'Tap Tuck' : 'Press F to tuck'} for speed: in a tuck you only turn a little. Go between every pair of blue panels (miss one and it's a DNF). Weather: ${WEATHER_NAMES[G.weather]}.`, 3.6);
   else if (mode === 'slalom' || mode === 'tree') { const bb = loadBest(), fresh = !bb[mode] && bb[mode + 'Old'];
     toast(`Press ↓ to start.${fresh ? ' New course!' : ''} Go round the outside of each flag, on the side it points. Weather: ${WEATHER_NAMES[G.weather]}.`, fresh ? 3.6 : 3); }
   else if (mode === 'freestyle') toast(`Press ↓ to start. Weather: ${WEATHER_NAMES[G.weather]}.`, 2.6);
@@ -13476,7 +13867,7 @@ function thumbHint(mode) {
   $('thint').classList.remove('hidden'); thintTimer = setTimeout(() => $('thint').classList.add('hidden'), 6000);
 }
 function togglePause() {
-  if (G.state === 'playing') { G.state = 'paused'; overlays('pause'); $('ghostRow').classList.toggle('hidden', !(G.mode === 'slalom' || G.mode === 'tree') || !!G.practice); $('ghostChk').checked = ACCT.ghost; }
+  if (G.state === 'playing') { G.state = 'paused'; overlays('pause'); $('ghostRow').classList.toggle('hidden', !isSl(G.mode) || !!G.practice); $('ghostChk').checked = ACCT.ghost; }
   else if (G.state === 'paused') { G.state = 'playing'; overlays(null); last = performance.now(); }
 }
 function showGameOver() {
@@ -13543,14 +13934,21 @@ function showGameOver() {
     rows.push(['Distance', `${G.finalDist} m`], ['Time', fmtTime(G.elapsed)], ['Score', G.score]);
     if (G.score > (b.freestyle || 0)) { b.freestyle = G.score; isBest = G.score > 0; }
     rows.push(['Best score', b.freestyle || 0]);
+  } else if (G.dh && !G.finished) {
+    $('overTitle').textContent = 'DNF'; $('overIcon').textContent = '!';
+    $('overMsg').textContent = 'You missed a gate: disqualified. Go between every pair of blue panels.';
+    rows.push(['Gates', `${G.passed} of ${G.course.count}`], ['Top speed', `${dhKmh(G.dh.top)} km/h`]);
+    if (b.downhill) rows.push(['Best time', fmtTime(b.downhill)]);
   } else {
     const total = Math.max(0, G.elapsed + G.penalty - G.trickBonus);
     $('overTitle').textContent = 'Finished'; $('overIcon').textContent = 'i';
-    $('overMsg').textContent = (G.missed ? `You missed ${G.missed} flag${G.missed > 1 ? 's' : ''}.` : G.brushed ? 'Every flag made.' : 'Every flag, clean.') + (G.brushed ? ` You brushed ${G.brushed} (+${(G.brushed * G.course.brushPen).toFixed(1)}s).` : '');
-    rows.push(['Run time', fmtTime(G.elapsed)], ['Penalties', `+${G.penalty}s`], ['Trick bonus', `-${G.trickBonus.toFixed(1)}s`], ['Final time', fmtTime(total)]);
+    $('overMsg').textContent = G.dh ? `Every gate. Top speed ${dhKmh(G.dh.top)} km/h${G.pstat.crashes ? `, ${G.pstat.crashes} crash${G.pstat.crashes > 1 ? 'es' : ''}` : ''}.` : (G.missed ? `You missed ${G.missed} flag${G.missed > 1 ? 's' : ''}.` : G.brushed ? 'Every flag made.' : 'Every flag, clean.') + (G.brushed ? ` You brushed ${G.brushed} (+${(G.brushed * G.course.brushPen).toFixed(1)}s).` : '');
+    if (G.dh) { rows.push(['Final time', fmtTime(total)], ['Top speed', `${dhKmh(G.dh.top)} km/h`]); const ref = G.dh.ref && G.dh.ref.sp; if (dhKmh(G.dh.top) > (b.downhillTop || 0)) b.downhillTop = dhKmh(G.dh.top);
+      G.dh.sp.forEach((t, i) => rows.push([`Split ${i + 1}`, `${fmtSec(t)}${ref ? ` (${G.dh.ref.kind === 'best' ? 'best' : 'leader'} ${fmtSec(ref[i])}, ${t - ref[i] <= 0 ? '−' : '+'}${Math.abs(t - ref[i]).toFixed(2)})` : ''}`])); }
+    else rows.push(['Run time', fmtTime(G.elapsed)], ['Penalties', `+${G.penalty}s`], ['Trick bonus', `-${G.trickBonus.toFixed(1)}s`], ['Final time', fmtTime(total)]);
     slCourseMigrate(b); const V = slCfg(G.mode).courseV;
     if (!b[G.mode] || total < b[G.mode]) {
-      b[G.mode] = total; b[G.mode + 'C'] = V; isBest = true;
+      b[G.mode] = total; b[G.mode + 'C'] = V; isBest = true; if (G.dh) b.downhillSplits = G.dh.sp.slice();
       if (G.rec && G.rec.s.length) { b.ghosts = b.ghosts || {}; b.ghosts[G.mode] = { v: 1, c: V, seed: G.seed, dt: CFG.GHOST_DT, s: G.rec.s }; }
     }
     rows.push(['Best time', fmtTime(b[G.mode])]);
@@ -13574,7 +13972,7 @@ function showGameOver() {
   // Top 5 for this event (device-wide)
   const rv = rankValue();
   if (rv !== null && !G.demo && !G.practice) {
-    const sl = G.mode === 'slalom' || G.mode === 'tree'; if (sl) slRanksTidy();
+    const sl = isSl(G.mode); if (sl) slRanksTidy();
     const rk = G.rankKey || G.mode, pos = rankAdd(rk, rv, G.mode === 'backcountry' && G.bc ? { face: G.bc.faceName } : sl ? { c: slCfg(G.mode).courseV } : G.mode === 'snowmo' && G.sm && G.sm.on.length ? { mod: 1 } : null);
     if (pos) rows.push(['', `<b>New #${pos} in ${EVENT_NAMES[rk]}!</b>`, 'wide']);
     rows.push(['', rankLinesHTML(rk, pos), 'wide rk']);
@@ -13640,8 +14038,123 @@ function legendNewBet(D, who, cur, day) {
   seen[who] = s0.concat(pick.id);
   return pick.id;
 }
+// Downhill, each frame on the course: top speed, the big jump, the compression
+function dhTick(py0, dt) {
+  const s = G.sk, D = CFG.DOWNHILL, F = D.feel, H2 = G.dh, v = s.air ? Math.hypot(s.avx, s.avy) : s.speed, kmh = dhKmh(v);
+  // the safety netting: touch it and you're in it
+  const L = dhNet(s.y, -1), R = dhNet(s.y, 1), pad = D.nets.pad;
+  if (!s.crashed && (s.x < L + pad || s.x > R - pad)) { s.x = clamp(s.x, L + pad + 10, R - pad - 10); crash(null, 'Into the nets!'); }
+  // the splits
+  if (!H2.ref && G.started) H2.ref = dhRef() || { kind: 'none', sp: null };
+  D.splits.forEach((m, i) => { const y = m * CFG.PX_PER_M; if (H2.sp[i] === undefined && py0 < y && s.y >= y) { const t = Math.round(G.elapsed * 100) / 100; H2.sp[i] = t; H2.show = { i, t, d: H2.ref && H2.ref.sp ? Math.round((t - H2.ref.sp[i]) * 100) / 100 : null, until: G.time + D.splitShow }; if (H2.show.d !== null && H2.show.d < 0) dhSay('split'); } });
+  // the camera eases down the hill as you speed up; snow off the skis
+  const ck = clamp((kmh - F.camFrom) / (dhKmh(D.vmax) - F.camFrom), 0, 1), cw = s.crashed ? F.cam[0] : F.cam[0] + (F.cam[1] - F.cam[0]) * ck;
+  H2.camF += (cw - H2.camF) * Math.min(1, dt * F.camRate);
+  if (!s.air && !s.crashed) {
+    let n = v * F.spray * dt; if (s.tuck && s.dir !== H2.lastDir) n += F.burst;
+    for (; n > 0; n--) { if (n < 1 && Math.random() > n) break; H2.snow.push({ x: s.x + (Math.random() * 8 - 4), y: s.y + 4, vx: (Math.random() * 2 - 1) * 50 - s.dir * 20, vy: -Math.random() * 40, t: 0, life: 0.3 + Math.random() * 0.3 }); }
+  }
+  H2.lastDir = s.dir;
+  for (const p of H2.snow) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+  H2.snow = H2.snow.filter(p => p.t < p.life).slice(-160);
+  if (!s.crashed && v > H2.top) { H2.top = v; if (dhKmh(v) >= 120) challenge('kmh120'); }
+  if (!H2.jumped && py0 < H2.jumpY && s.y >= H2.jumpY) {
+    H2.jumped = true;
+    if (!s.air && !s.crashed && s.speed >= D.jump.minV) { startAir(s.speed * D.jump.air, s.speed * D.jump.h, false, false); H2.inAir = true; floater(s.x, s.y - 30, `${dhKmh(s.speed)} km/h off the jump`, '#000080'); if (s.airDur >= D.say.air) dhSay('air'); }
+  }
+  if (H2.inAir && !s.air) { H2.inAir = false; if (!s.crashed) { H2.landed = true; if (s.tuck) challenge('jump'); } }
+  if (!H2.jumped2 && py0 < H2.jump2Y && s.y >= H2.jump2Y) {   // the second, smaller jump
+    H2.jumped2 = true; if (!s.air && !s.crashed && s.speed >= D.jump2.minV) startAir(s.speed * D.jump2.air, s.speed * D.jump2.h, false, false);
+  }
+  const E = D.elbow, M = CFG.PX_PER_M;
+  if (s.crashed && s.y > E.n0 * M && s.y < E.n1 * M) H2.elbowCrash = true;
+  if (!H2.elbowDone && py0 < E.n1 * M && s.y >= E.n1 * M) { H2.elbowDone = true; if (!H2.elbowCrash && !s.crashed && s.speed > E.clean) dhSay('elbow'); }
+  if (!H2.saidLast && py0 < G.course.finishY - 2000 && s.y >= G.course.finishY - 2000) { H2.saidLast = true; dhSay('last'); }
+  if (!s.crashed && kmh >= 120 && H2.bestTop && kmh > H2.bestTop && !H2.said.top) { H2.said.top = true; dhSay('top', kmh); }
+  if (H2.cmQ && G.time >= H2.cmQ.at) { const q = H2.cmQ; H2.cmQ = null; H2.cm = { text: q.text, until: G.time + D.say.show }; H2.cmAt = G.time; }
+  if (!H2.comp && py0 < H2.compY && s.y >= H2.compY) {
+    H2.comp = true;
+    if (!s.air && !s.crashed && Math.abs(s.dir) >= D.comp.turn && s.speed > D.comp.v) crash(null, 'Caught an edge in the compression!');
+  }
+  return false;
+}
+// Downhill: missed a gate. Disqualified (a DNF)
+function dhOut() {
+  const s = G.sk; G.dhOut = true; G.state = 'over'; SFX.miss();
+  floater(s.x, s.y - 40, 'Missed a gate: DNF', '#b01010');
+  setTimeout(showGameOver, 900);
+}
+// Speed lines in the snow (screen streaks, longer and denser with speed) and the snow off the skis
+function drawDHSpeed() {
+  const s = G.sk, F = CFG.DOWNHILL.feel, v = s.crashed ? 0 : s.air ? Math.hypot(s.avx, s.avy) : s.speed, kmh = dhKmh(v);
+  ctx.fillStyle = '#e8eef6'; for (const p of G.dh.snow) ctx.fillRect(Math.round(p.x - RCX), Math.round(p.y - RCY), p.t < 0.15 ? 2 : 1, p.t < 0.15 ? 2 : 1);
+  const k = clamp((kmh - F.lines[0]) / (F.lines[1] - F.lines[0]), 0, 1); if (k <= 0 || G.state !== 'playing') return;
+  const n = Math.round(F.lineN * k), len = Math.round(F.lineLen[0] + (F.lineLen[1] - F.lineLen[0]) * k), span = H + len;
+  ctx.fillStyle = '#c8d4e2';
+  for (let i = 0; i < n; i++) { const hx = ((i * 2654435761) >>> 0) / 4294967296, hy = ((i * 1597334677 + 12345) >>> 0) / 4294967296;
+    const x = Math.round(hx * W), y = Math.round(((hy * span - G.time * v * 1.7) % span + span) % span) - len; if (Math.abs(x - (s.x - RCX)) < 14) continue; ctx.fillRect(x, y, 1, len); }
+}
+// The timing points: a thin line across the course and a post at the left netting
+function drawDHSplits() {
+  CFG.DOWNHILL.splits.forEach((m, i) => { const y = m * CFG.PX_PER_M, sy = Math.round(y - RCY); if (sy < -20 || sy > H + 20) return;
+    const L = Math.round(dhNet(y, -1) - RCX), R = Math.round(dhNet(y, 1) - RCX); ctx.fillStyle = '#a8c4e8'; for (let x = L; x < R; x += 6) ctx.fillRect(x, sy, 3, 1);
+    ctx.fillStyle = '#3a3a44'; ctx.fillRect(L + 6, sy - 14, 2, 14); ctx.fillStyle = '#202028'; ctx.fillRect(L + 2, sy - 20, 10, 7); ctx.fillStyle = '#f0c020'; ctx.fillRect(L + 3, sy - 19, 8, 5); text(String(i + 1), L + 7, sy - 15, '#202028', 6); });
+}
+// The fog bank: a white wall from outside; inside it you see only a little way ahead
+function drawDHFog() {
+  const D = CFG.DOWNHILL, M = CFG.PX_PER_M, top = D.fog[0] * M - RCY, bot = D.fog[1] * M - RCY, s = G.sk; if (bot < 0 || top > H) return;
+  const sy = s.y - RCY, inside = s.y >= D.fog[0] * M - 40 && s.y < D.fog[1] * M, clear = inside ? sy + H * D.see : top;
+  const t = Math.floor(G.time * 3);
+  for (let y = Math.max(0, Math.floor(top) - 40); y < Math.min(H, bot + 40); y += 4) {
+    let a = y < top ? 0.9 * (1 - (top - y) / 40) : y > bot ? 0.9 * (1 - (y - bot) / 40) : 0.9;   // (soft edges)
+    if (inside && y < clear) a = Math.min(a, 0.18 + 0.7 * clamp((y - (clear - 90)) / 90, 0, 1));
+    if (a <= 0.01) continue;
+    ctx.fillStyle = `rgba(236,240,246,${a.toFixed(3)})`; ctx.fillRect(0, y, W, 4);
+    if (a > 0.5) { ctx.fillStyle = `rgba(255,255,255,${(a * 0.5).toFixed(3)})`; for (let x = ((y * 13 + t * 5) % 23); x < W; x += 23) ctx.fillRect(x, y, 8, 2); }   // (drifting wisps)
+  }
+}
+// The split just made: big, under the HUD (green faster, red slower)
+function drawDHSplitShow() {
+  const S = G.dh && G.dh.show, y = Math.max(104, $('hud').getBoundingClientRect().bottom + 26), C = G.dh && G.dh.cm;
+  if ((!S || G.time > S.until) && C && G.time < C.until) { text(C.text, W / 2, y, '#7a1a8a', 14); return; }   // (the commentator)
+  if (!S || G.time > S.until) return;
+  const d = S.d;
+  text(`Split ${S.i + 1}: ${fmtSec(S.t)}${d === null ? '' : `  ${d <= 0 ? '−' : '+'}${Math.abs(d).toFixed(2)}`}`, W / 2, y, d === null ? '#000080' : d <= 0 ? '#1a8a2a' : '#c01818', 16);
+  if (G.dh.ref && G.dh.ref.kind === 'leader') text('vs the leader', W / 2, y + 14, '#404048', 9);
+}
+// The finish arena: banners on the netting, the grandstand and its crowd, flags, and the big board
+function drawDHFinish() {
+  const D = CFG.DOWNHILL, y0 = G.course.finishY, H2 = G.dh; if (Math.abs(y0 - RCY - H / 2) > H * 1.5) return;
+  const cheer = H2.finT !== undefined && G.time - H2.finT < 8, wave = Math.floor(G.time * 6) % 2;
+  for (const side of [-1, 1]) for (let k = 0; k < 6; k++) {   // sponsor banners hung on the netting
+    const y = y0 - 260 + k * 90, x = Math.round(dhNet(y, side) - RCX), sy = Math.round(y - RCY), name = D.sponsors[(k * 2 + (side > 0 ? 1 : 0)) % D.sponsors.length];
+    const cols = [['#1a4ad8', '#ffffff'], ['#d42a2a', '#ffffff'], ['#f0c020', '#202028'], ['#1a8a4a', '#ffffff'], ['#202028', '#f0c020'], ['#ffffff', '#1a4ad8']][(k + (side > 0 ? 3 : 0)) % 6];
+    ctx.fillStyle = cols[0]; ctx.fillRect(x - 3, sy - 34, 6, 34); ctx.fillStyle = cols[1]; ctx.fillRect(x - 1, sy - 32, 2, 30);
+    ctx.save(); ctx.translate(x, sy - 17); ctx.rotate(-Math.PI / 2); ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = cols[0]; ctx.fillText(name.slice(0, 10), 0, 2); ctx.restore();
+  }
+  // the grandstand outside the right netting, its crowd waving when you come in
+  const gx = Math.round(dhNet(y0, 1) - RCX) + 18, gy = Math.round(y0 - RCY) - 20;
+  for (let r = 0; r < 4; r++) { ctx.fillStyle = ['#7a8698', '#8a96a8', '#9aa6b8', '#aab4c4'][r]; ctx.fillRect(gx + r * 6, gy + r * 14, 120, 12);
+    for (let i = 0; i < 12; i++) { const c = ['#d42a2a', '#f0c020', '#2a5ad0', '#1a9a3a', '#ffffff', '#f07818'][(i + r) % 6], px = gx + r * 6 + 4 + i * 9, py = gy + r * 14 - 3;
+      ctx.fillStyle = '#f2c79a'; ctx.fillRect(px + 1, py - 4, 3, 3); ctx.fillStyle = c; ctx.fillRect(px, py - 1, 5, 5);
+      if (cheer && (i + r + wave) % 2) { ctx.fillStyle = c; ctx.fillRect(px - 1, py - 6, 1, 4); ctx.fillRect(px + 5, py - 6, 1, 4); } } }
+  // flags on poles outside the left netting
+  const fx = Math.round(dhNet(y0, -1) - RCX) - 16;
+  for (let k = 0; k < 4; k++) { const y = Math.round(y0 - RCY) - 30 + k * 26, c = ['#d42a2a', '#ffffff', '#1a4ad8', '#f0c020'][k], fl = Math.floor(G.time * 4 + k) % 2;
+    ctx.fillStyle = '#606870'; ctx.fillRect(fx, y - 22, 1, 24); ctx.fillStyle = c; ctx.fillRect(fx + 1, y - 22 + fl, 9, 6); ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(fx + 1, y - 17 + fl, 9, 1); }
+  // the big board, just past the line
+  const bx = Math.round(courseX(y0 + 150) - RCX), by = Math.round(y0 + 150 - RCY), B = H2.board;
+  ctx.fillStyle = '#3a3a44'; ctx.fillRect(bx - 62, by - 4, 3, 26); ctx.fillRect(bx + 59, by - 4, 3, 26);
+  ctx.fillStyle = '#101018'; ctx.fillRect(bx - 70, by - 58, 140, 56); ctx.fillStyle = '#3a3a48'; ctx.fillRect(bx - 70, by - 58, 140, 2);
+  const live = B ? B.t : G.elapsed;
+  ctx.font = 'bold 20px "Courier New", monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#f0c020'; ctx.fillText(fmtSec(Math.max(0, live)), bx, by - 32);
+  ctx.font = 'bold 10px "Courier New", monospace'; ctx.fillStyle = B && B.lead ? '#5af05a' : '#e8e8f0'; ctx.fillText(B ? B.line : 'DOWNHILL', bx, by - 14);
+}
+// The landing off the big jump: pointing down the hill, or a crash
+function dhLandOk() { const s = G.sk; return Math.abs(s.dir) <= CFG.DOWNHILL.jump.land; }
 function finishCourse() {
   G.finished = true; G.state = 'over'; SFX.finish();
+  if (G.dh) dhBoard(Math.max(0, G.elapsed + G.penalty - G.trickBonus));
   const total = Math.max(0, G.elapsed + G.penalty - G.trickBonus), T = CFG.GOAL_TIMES[G.mode] || [0, 0];
   if (!G.missed) challenge('allFlags');
   if (!G.pstat.crashes) challenge('noCrash');
@@ -13654,9 +14167,9 @@ function finishCourse() {
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down',
   ArrowUp: 'up', KeyW: 'up', Space: 'jump', Enter: 'snap', NumpadEnter: 'snap', KeyF: 'tuck', KeyE: 'style', KeyN: 'music', KeyP: 'pause', KeyR: 'restart', KeyM: 'mute', Escape: 'menu', KeyB: 'spray',
-  Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', Digit5: 'm5', Digit6: 'm6', Digit7: 'm7', Digit8: 'm8', Digit9: 'm9',
+  Digit1: 'm1', Digit2: 'm2', Digit3: 'm3', Digit4: 'm4', Digit5: 'm5', Digit6: 'm6', Digit7: 'm7', Digit8: 'm8', Digit9: 'm9', Digit0: 'm0',
 };
-const MODE_KEYS = { m1: 'freestyle', m2: 'slalom', m3: 'tree', m4: 'park', m5: 'pipe', m6: 'bigair', m7: 'olympics', m8: 'backcountry', m9: 'worldcup' };
+const MODE_KEYS = { m1: 'freestyle', m2: 'slalom', m3: 'tree', m4: 'park', m5: 'pipe', m6: 'bigair', m7: 'olympics', m8: 'backcountry', m9: 'worldcup', m0: 'downhill' };
 addEventListener('keydown', e => {
   if (G.state === 'arcade') return;   // the arcade game handles its own keys
   if (G.state === 'camera') { if (['Space', 'Enter', 'NumpadEnter'].includes(e.code)) { e.preventDefault(); if (!e.repeat) camPress(); } return; }   // the camera: one shot, then on
