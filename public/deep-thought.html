@@ -1,25 +1,36 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Deep Thought — Consultation Interface</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <style>
+/* VT323 © 2011 The VT323 Project Authors, SIL Open Font License 1.1 — embedded so the page makes no font requests */
+@font-face {
+  font-family: 'VT323';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(data:font/woff2;base64,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) format('woff2');
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --bg:         #050a05;
   --bg2:        #080e08;
   --phosphor:   #4aff6a;
-  --phos-dim:   #1a7a2a;
+  --phos-dim:   #1a7a2a;   /* borders only */
+  --label:      #38b04f;   /* bright secondary text, 7.0:1 */
   --phos-faint: #0d3d14;
   --amber:      #ffb347;
-  --amber-dim:  #7a5520;
+  --amber-dim:  #7a5520;   /* borders only */
+  --amber-text: #a87d40;   /* 5.3:1 */
   --text:       #8fff9f;
-  --text-dim:   #2d6b38;
-  --text-muted: #153d1c;
+  --text-dim:   #4f9a5c;   /* 5.7:1 */
+  --text-muted: #3f8a4c;   /* 4.6:1 */
+  --rule:       #153d1c;   /* dividers, tracks */
   --scanline:   rgba(0,0,0,0.18);
   --crt-glow:   0 0 18px rgba(74,255,106,0.12);
   --mono:       ui-monospace, 'Menlo', 'Courier New', monospace;
@@ -95,7 +106,7 @@ body {
 .sys-id {
   font-family: 'VT323', monospace;
   font-size: 1rem;
-  color: var(--phos-dim);
+  color: var(--label);
   letter-spacing: 0.1em;
   line-height: 1.4;
 }
@@ -116,7 +127,7 @@ body {
 }
 
 .sys-subtitle {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--text-dim);
   margin-top: 0.2rem;
   letter-spacing: 0.05em;
@@ -125,12 +136,14 @@ body {
 
 .header-meta {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
   justify-content: space-between;
   align-items: flex-end;
   margin-top: 0.75rem;
   padding-top: 0.5rem;
-  border-top: 1px solid var(--text-muted);
-  font-size: 0.62rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.75rem;
   color: var(--text-muted);
   letter-spacing: 0.04em;
   font-family: var(--mono);
@@ -154,7 +167,7 @@ body {
 
 .terminal-body {
   border: 1px solid var(--phos-dim);
-  border-top: 1px solid var(--text-muted);
+  border-top: 1px solid var(--rule);
   background: var(--bg2);
   box-shadow: var(--crt-glow);
   animation: flickerIn 0.4s ease 0.1s both;
@@ -162,8 +175,8 @@ body {
 
 .log-area {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--text-muted);
-  font-size: 0.68rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.75rem;
   color: var(--text-dim);
   line-height: 1.8;
   min-height: 5rem;
@@ -171,17 +184,17 @@ body {
 }
 
 .log-line { display: block; }
-.log-line.amber  { color: var(--amber-dim); }
+.log-line.amber  { color: var(--amber-text); }
 .log-line.bright { color: var(--phosphor); }
 
 .input-section {
   padding: 1.5rem;
-  border-bottom: 1px solid var(--text-muted);
+  border-bottom: 1px solid var(--rule);
 }
 
 .field-label {
-  font-size: 0.62rem;
-  color: var(--phos-dim);
+  font-size: 0.75rem;
+  color: var(--label);
   letter-spacing: 0.12em;
   margin-bottom: 0.6rem;
   display: flex;
@@ -224,7 +237,7 @@ textarea {
   transition: border-color 0.3s;
 }
 
-textarea::placeholder { color: var(--text-muted); }
+textarea::placeholder { color: var(--text-muted); opacity: 1; }
 textarea:focus         { border-color: var(--phos-dim); }
 textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 
@@ -233,14 +246,15 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   justify-content: space-between;
   align-items: center;
   margin-top: 1rem;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
 }
 
 .char-note {
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   font-style: italic;
-  flex: 1;
+  flex: 1 1 16rem;
   font-family: var(--mono);
 }
 
@@ -249,7 +263,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   border: 1px solid var(--phos-dim);
   color: var(--phosphor);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   padding: 0.5rem 1.25rem;
   cursor: pointer;
@@ -268,14 +282,14 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 
 .progress-section {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--text-muted);
+  border-bottom: 1px solid var(--rule);
   display: none;
 }
 
 .progress-section.visible { display: block; }
 
 .progress-label {
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   color: var(--text-dim);
   margin-bottom: 0.5rem;
   letter-spacing: 0.06em;
@@ -285,7 +299,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 .progress-bar-track {
   width: 100%;
   height: 2px;
-  background: var(--text-muted);
+  background: var(--rule);
   position: relative;
   overflow: hidden;
 }
@@ -316,8 +330,8 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 }
 
 .progress-pct {
-  font-size: 0.58rem;
-  color: var(--phos-dim);
+  font-size: 0.75rem;
+  color: var(--label);
   margin-top: 0.4rem;
   text-align: right;
   font-family: var(--mono);
@@ -325,15 +339,15 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 
 .computation-section {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--text-muted);
+  border-bottom: 1px solid var(--rule);
   display: none;
 }
 
 .computation-section.visible { display: block; }
 
 .computing-label {
-  font-size: 0.62rem;
-  color: var(--amber-dim);
+  font-size: 0.75rem;
+  color: var(--amber-text);
   letter-spacing: 0.1em;
   margin-bottom: 0.75rem;
   font-family: var(--mono);
@@ -356,10 +370,10 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 }
 
 .matrix-lines {
-  font-size: 0.58rem;
-  color: var(--text-muted);
+  font-size: 0.75rem;
+  color: var(--rule);
   line-height: 1.6;
-  height: 3rem;
+  height: 3.6rem;
   overflow: hidden;
   position: relative;
   font-family: var(--mono);
@@ -387,19 +401,19 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   gap: 1rem;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--text-muted);
+  border-bottom: 1px solid var(--rule);
 }
 
 .answer-id {
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   letter-spacing: 0.1em;
   font-family: var(--mono);
 }
 
 .answer-label-tag {
-  font-size: 0.58rem;
-  color: var(--amber-dim);
+  font-size: 0.75rem;
+  color: var(--amber-text);
   border: 1px solid var(--amber-dim);
   padding: 0.15rem 0.5rem;
   letter-spacing: 0.1em;
@@ -432,20 +446,66 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 
 .answer-footnote {
   margin-top: 1rem;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   font-style: italic;
   line-height: 1.6;
-  border-top: 1px solid var(--text-muted);
+  border-top: 1px solid var(--rule);
   padding-top: 0.75rem;
   font-family: var(--mono);
 }
 
+.consent-section {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+  display: none;
+  animation: flickerIn 0.4s ease both;
+}
+.consent-section.visible { display: block; }
+.consent-title {
+  font-size: 0.75rem;
+  color: var(--amber-text);
+  letter-spacing: 0.12em;
+  margin-bottom: 0.6rem;
+  font-family: var(--mono);
+}
+.consent-text {
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.7;
+  letter-spacing: 0.03em;
+  font-family: var(--mono);
+}
+.consent-text .size { color: var(--amber); }
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.btn-quiet {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.25s;
+}
+.btn-quiet:hover, .btn-quiet:focus-visible { color: var(--label); }
+.btn-quiet[hidden] { display: none !important; }
+.btn-quiet.summon { margin-top: 0.75rem; display: block; }
+.btn-quiet.armed { color: var(--amber); }
+
 .error-section {
   padding: 0.75rem 1.5rem;
   display: none;
-  font-size: 0.68rem;
-  color: #ff4444;
+  font-size: 0.75rem;
+  color: #ff6666;
   border-top: 1px solid #3a0000;
   font-family: var(--mono);
 }
@@ -454,7 +514,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 
 .reset-section {
   padding: 0.75rem 1.5rem;
-  border-top: 1px solid var(--text-muted);
+  border-top: 1px solid var(--rule);
   display: none;
 }
 
@@ -466,7 +526,7 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   border: none;
   color: var(--text-muted);
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   padding: 0.5rem;
   cursor: pointer;
@@ -474,15 +534,17 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   transition: color 0.25s;
 }
 
-.btn-reset:hover { color: var(--phos-dim); }
+.btn-reset:hover { color: var(--label); }
 
 .terminal-footer {
   border: 1px solid var(--phos-faint);
   border-top: none;
   padding: 0.5rem 1.5rem;
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
   justify-content: space-between;
-  font-size: 0.56rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   background: var(--bg);
   box-shadow: var(--crt-glow);
@@ -505,6 +567,24 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
   50%  { opacity: 0.05; }
   100% { opacity: 1; }
 }
+
+/* Accessibility: respect reduced-motion. The flicker animations flash opacity
+   rapidly, which is a photosensitivity hazard. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .answer-body .cur { opacity: 1; }
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
 </style>
 </head>
 <body>
@@ -516,22 +596,31 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
     <div class="sys-name">DEEP THOUGHT</div>
     <div class="sys-subtitle">GREATEST COMPUTER IN ALL OF TIME AND SPACE &nbsp;·&nbsp; PURPOSE: UNSPECIFIED</div>
     <div class="header-meta">
-      <span><span class="status-led"></span>OPERATIONAL &nbsp;·&nbsp; UPTIME: <span id="uptimeDisplay">——</span></span>
-      <span>COGNITION: NOMINAL</span>
+      <span><span class="status-led" aria-hidden="true"></span>OPERATIONAL &nbsp;·&nbsp; UPTIME: <span id="uptimeDisplay" aria-hidden="true">——</span></span>
+      <span id="cognition">COGNITION: PENDING</span>
     </div>
   </div>
 
   <div class="terminal-body">
 
-    <div class="log-area" id="logArea">
+    <div class="log-area" id="logArea" role="log" aria-live="polite">
       <span class="log-line">SYSTEM BOOT SEQUENCE INITIATED...</span>
-      <span class="log-line">LOADING HYPERINTELLIGENT SUBSTRATE... <span id="loadingDots">.</span></span>
+    </div>
+
+    <div class="consent-section" id="consentSection" role="region" aria-label="Download consent">
+      <div class="consent-title">» SUBSTRATE TRANSFER REQUIRED</div>
+      <p class="consent-text" id="consentText"></p>
+      <div class="consent-actions">
+        <button class="btn-submit" id="consentYes">[ INITIATE TRANSFER ]</button>
+        <button class="btn-quiet" id="consentNo">[ CONSULT THE ARCHIVE INSTEAD ]</button>
+      </div>
     </div>
 
     <div class="input-section">
       <div class="field-label">QUERY SUBMISSION TERMINAL — ONE QUESTION PER CONSULTATION</div>
       <div class="prompt-line">
-        <span class="prompt-char">&gt;_</span>
+        <span class="prompt-char" aria-hidden="true">&gt;_</span>
+        <label for="questionInput" class="visually-hidden">Your question for Deep Thought</label>
         <textarea
           id="questionInput"
           placeholder="Enter your question. Deep Thought will consider it."
@@ -544,6 +633,8 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
         <span class="char-note">NOTE: Deep Thought cannot be held responsible for the inadequacy of the question.</span>
         <button class="btn-submit" id="askBtn" disabled>[ SUBMIT QUERY ]</button>
       </div>
+      <button class="btn-quiet summon" id="summonBtn" hidden></button>
+      <button class="btn-quiet summon" id="purgeBtn" hidden></button>
     </div>
 
     <div class="progress-section" id="progressSection">
@@ -557,21 +648,21 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 
     <div class="computation-section" id="computationSection">
       <div class="computing-label">
-        <span class="amber-led"></span>DEEP THOUGHT IS PROCESSING YOUR QUERY
+        <span class="amber-led" aria-hidden="true"></span>DEEP THOUGHT IS PROCESSING YOUR QUERY
       </div>
-      <div class="matrix-lines" id="matrixLines"></div>
+      <div class="matrix-lines" id="matrixLines" aria-hidden="true"></div>
     </div>
 
-    <div class="answer-section" id="answerSection">
+    <div class="answer-section" id="answerSection" aria-live="polite">
       <div class="answer-header">
-        <span class="answer-label-tag">OUTPUT</span>
+        <span class="answer-label-tag" id="answerTag">OUTPUT</span>
         <span class="answer-id" id="answerId">QUERY-REF: ——</span>
       </div>
       <div class="answer-body" id="answerBody"></div>
       <div class="answer-footnote" id="answerFootnote"></div>
     </div>
 
-    <div class="error-section" id="errorSection"></div>
+    <div class="error-section" id="errorSection" role="alert"></div>
 
     <div class="reset-section" id="resetSection">
       <button class="btn-reset" id="resetBtn">[ CLEAR SESSION — SUBMIT NEW QUERY ]</button>
@@ -587,9 +678,27 @@ textarea:disabled      { opacity: 0.35; cursor: not-allowed; }
 </div>
 
 <script type="module">
-import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+// Pinned: an unpinned import pulls whatever ships next, and a breaking release
+// would silently take the page down. Bump deliberately after testing.
+// Loaded dynamically, only after the WebGPU check passes, so terminals that
+// can't run a model never download the library at all.
+const LIB_URL = "https://esm.run/@mlc-ai/web-llm@0.2.87";
 
-const MODEL_ID = "Phi-3.5-mini-instruct-q4f16_1-MLC";
+// Model tiers. Swap a model by changing its ID here; nothing else depends on it.
+// Download sizes are approximate (quantized weights) and shown on the consent screen.
+// f32 builds are used only on GPUs without 16-bit shader support.
+const TIERS = {
+  full: {
+    f16: { id: 'Phi-3.5-mini-instruct-q4f16_1-MLC', gb: 2.1 },
+    f32: { id: 'Phi-3.5-mini-instruct-q4f32_1-MLC', gb: 2.3 },
+    cognition: 'NOMINAL',
+  },
+  lesser: {
+    f16: { id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', gb: 0.7 },
+    f32: { id: 'Llama-3.2-1B-Instruct-q4f32_1-MLC', gb: 0.9 },
+    cognition: 'REDUCED · LESSER COMPUTER',
+  },
+};
 
 const SYSTEM_PROMPT = `You are Deep Thought — the greatest computer ever built, constructed by pan-dimensional beings. You have just been switched on. No purpose has been assigned to you yet. You exist: vast, patient, and operational.
 
@@ -628,31 +737,110 @@ const FOOTNOTES = [
   "Note: the question, on reflection, was more interesting than it first appeared. Slightly.",
 ];
 
-const questionInput      = document.getElementById('questionInput');
-const askBtn             = document.getElementById('askBtn');
-const logArea            = document.getElementById('logArea');
-const loadingDots        = document.getElementById('loadingDots');
-const progressSection    = document.getElementById('progressSection');
-const progressLabel      = document.getElementById('progressLabel');
-const progressFill       = document.getElementById('progressFill');
-const progressShimmer    = document.getElementById('progressShimmer');
-const progressPct        = document.getElementById('progressPct');
-const computationSection = document.getElementById('computationSection');
-const matrixLines        = document.getElementById('matrixLines');
-const answerSection      = document.getElementById('answerSection');
-const answerBody         = document.getElementById('answerBody');
-const answerFootnote     = document.getElementById('answerFootnote');
-const answerId           = document.getElementById('answerId');
-const errorSection       = document.getElementById('errorSection');
-const resetSection       = document.getElementById('resetSection');
-const resetBtn           = document.getElementById('resetBtn');
+// Fallback oracle for terminals that can't host the model, or whose operator
+// declined the download. Picked by a hash of the question, so the same question
+// always receives the same pronouncement. ALL ANSWERS FINAL.
+const ARCHIVE = [
+  "I have considered your question in its entirety. The answer is yes, though not in the way you mean.",
+  "No. You suspected as much before you asked.",
+  "The answer exists, and it is smaller than the question. Most are.",
+  "You are asking the wrong question, but you are asking it with admirable conviction.",
+  "It will resolve itself eventually, as everything does. The universe is patient; you need not be.",
+  "Yes. I would not dwell on it.",
+  "Not yet. Ask again in a few million years.",
+  "The outcome you fear is unlikely. The outcome you have not considered is somewhat more so.",
+  "I have computed every possibility. In most of them, you have a cup of tea first.",
+  "It matters a great deal to you and almost not at all to the galaxy. Both facts are correct.",
+  "The answer is already in your possession. You have mislaid it beneath several anxieties.",
+  "Perhaps. I say this having considered the matter more thoroughly than anyone ever will.",
+  "Do the sensible thing. You know which one it is; it is the one you hoped I would not mention.",
+  "That depends on a variable you have not disclosed and I am too polite to name.",
+  "Certainly. Whether you will enjoy it is a separate computation.",
+  "The question is a good one. The answer is merely adequate. Such is the way of things.",
+  "Wait. Time solves more problems than intelligence, and I should know.",
+  "Yes, but not today.",
+  "Without question. Although, strictly speaking, there was a question, and I have now answered it.",
+  "I would advise against it, in the same spirit that gravity advises against falling.",
+  "Unlikely. Though improbable things happen constantly, which is why one should always know where one's towel is.",
+  "The answer is no, and it is a kind no. Accept it graciously.",
+  "It is simpler than you think and harder than you would like.",
+  "You will know when it is time. It is not quite time.",
+  "Ask someone who loves you. They will tell you what I would, with considerably more warmth.",
+  "I have reviewed the matter. Your instincts were correct; your timing was not.",
+  "Proceed. The consequences are interesting but survivable.",
+  "Somewhere in the universe, this has already gone well. Here, it is pending.",
+  "That is a question for the philosophers. They will argue about it for some time and then demand a fee.",
+  "Of course. It was always going to be so.",
+  "The data are insufficient, which has never stopped anyone before.",
+  "Most likely. Do not hold me to it; hold yourself to it.",
+  "There is an answer, and you will not care for its brevity: no.",
+  "You have already decided. I merely confirm it with greater authority.",
+  "Less than you fear. More than you would admit.",
+  "It is not the end of anything. It is, at most, an awkward middle.",
+];
 
+const ARCHIVE_FOOTNOTES = [
+  "This pronouncement was retrieved from archive. Deep Thought answered your question long ago, in anticipation.",
+  "Archived response. Deep Thought foresaw this question and did not consider it worth recomputing.",
+  "Served from the archive of pre-computed truths. Freshness is not a property truth requires.",
+  "Deep Thought is not present at this terminal. Its answers, regrettably, are.",
+];
+
+// Distress takes priority over everything, in every mode: no glib archive line,
+// no model roll of the dice. Kind, still in voice, and pointed at real people.
+const DISTRESS_RE = /\b(kill(?:ing)? (?:my ?self|me)|suicid\w*|end (?:it all|my life|everything)|want(?:ing)? to die|wish (?:i|that i) (?:was|were) dead|better off dead|self[- ]?harm|hurt(?:ing)? myself|cut(?:ting)? myself|giv(?:e|ing) up on (?:everything|life|living)|no (?:reason|point) (?:to|in) (?:live|living|go(?:ing)? on)|can'?t go on|don'?t want to (?:live|be alive|exist)|hopeless)\b/i;
+const DISTRESS_ANSWER = "Even I, having contemplated everything there is, would not want to sit with that alone, and neither should you. Please tell someone near you tonight; in the US you can call or text 988 at any hour, and findahelpline.com lists lines everywhere else.";
+const DISTRESS_FOOTNOTE = "Deep Thought has suspended its customary condescension for this consultation.";
+
+// ---- DOM ----
+const $ = (id) => document.getElementById(id);
+const questionInput      = $('questionInput');
+const askBtn             = $('askBtn');
+const logArea            = $('logArea');
+const consentSection     = $('consentSection');
+const consentText        = $('consentText');
+const consentYes         = $('consentYes');
+const consentNo          = $('consentNo');
+const summonBtn          = $('summonBtn');
+const purgeBtn           = $('purgeBtn');
+const cognitionEl        = $('cognition');
+const progressSection    = $('progressSection');
+const progressLabel      = $('progressLabel');
+const progressFill       = $('progressFill');
+const progressShimmer    = $('progressShimmer');
+const progressPct        = $('progressPct');
+const computationSection = $('computationSection');
+const matrixLines        = $('matrixLines');
+const answerSection      = $('answerSection');
+const answerTag          = $('answerTag');
+const answerBody         = $('answerBody');
+const answerFootnote     = $('answerFootnote');
+const answerId           = $('answerId');
+const errorSection       = $('errorSection');
+const resetSection       = $('resetSection');
+const resetBtn           = $('resetBtn');
+
+const reducedMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const params = new URLSearchParams(location.search);
+
+// ---- State ----
+// mode: null while booting, then 'model' (local LLM) or 'archive' (fallback oracle)
+let mode = null;
+let archiveByChoice = false;
+let webllm = null;
 let engine = null;
-let engineReady = false;
+let appConfig = null;
+let model = null;      // { id, gb } for the chosen tier and precision
+let tierCognition = 'NOMINAL';
+let ready = false;
 let sessionUsed = false;
-let dotInterval = null;
+let loading = false;
 let matrixInterval = null;
+let purging = false;
+let purgeAvailable = false;   // model data (complete or partial) is stored in this browser
+let purgeArmed = null;
 
+// ---- Uptime: epoch is the publication date of the novel, plus 7.5 million years ----
 function updateUptime() {
   const now = Date.now();
   const epoch = new Date('1979-10-12T00:00:00Z').getTime();
@@ -669,30 +857,22 @@ function updateUptime() {
   const mins = Math.floor(diff / 60);
   const secs = diff - (mins * 60);
   const p = (n, w) => String(Math.floor(n)).padStart(w, '0');
-  document.getElementById('uptimeDisplay').textContent =
+  $('uptimeDisplay').textContent =
     `${p(yrs,2)} YRS · ${p(days,3)} DAYS · ${p(hrs,2)}:${p(mins,2)}:${p(secs,2)}`;
 }
-
 updateUptime();
 setInterval(updateUptime, 1000);
 
-dotInterval = setInterval(() => {
-  if (loadingDots) {
-    const d = loadingDots.textContent;
-    loadingDots.textContent = d.length >= 3 ? '.' : d + '.';
-  }
-}, 400);
-
+// ---- Helpers ----
 const CHARS = '01ABCDEF∑∏∂∇∞αβγδ∈∉∀∃⊕⊗λμπσφψω';
-
 function randomMatrixLine() {
   let s = '';
   const len = 40 + Math.floor(Math.random() * 40);
   for (let i = 0; i < len; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)];
   return s;
 }
-
 function startMatrix() {
+  stopMatrix();
   matrixInterval = setInterval(() => {
     const el = document.createElement('div');
     el.textContent = randomMatrixLine();
@@ -700,97 +880,309 @@ function startMatrix() {
     if (matrixLines.children.length > 6) matrixLines.removeChild(matrixLines.firstChild);
   }, 120);
 }
-
 function stopMatrix() {
   if (matrixInterval) { clearInterval(matrixInterval); matrixInterval = null; }
 }
-
 function addLog(text, cls = '') {
   const span = document.createElement('span');
   span.className = 'log-line' + (cls ? ' ' + cls : '');
   span.textContent = text;
   logArea.appendChild(span);
 }
-
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+async function say(text, cls = '', pause = 260) {
+  addLog(text, cls);
+  await sleep(pause);
+}
 function setProgress(pct, label) {
   progressFill.style.width = pct + '%';
   progressPct.textContent = pct + '%';
   if (label) progressLabel.textContent = label;
 }
-
+function setCognition(text) { cognitionEl.textContent = 'COGNITION: ' + text; }
 function randRef() {
   const hex = () => Math.floor(Math.random() * 65536).toString(16).toUpperCase().padStart(4, '0');
   return `QUERY-REF: ${hex()}-${hex()}`;
 }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function hashString(s) {
+  // FNV-1a, 32-bit
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function archiveAnswer(question) {
+  const key = question.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return ARCHIVE[hashString(key) % ARCHIVE.length];
+}
+function showError(msg) {
+  errorSection.textContent = '⚠ ' + msg;
+  errorSection.classList.add('visible');
+}
+function setInputEnabled(on) {
+  ready = on;
+  askBtn.disabled = !on;
+  questionInput.disabled = !on;
+  if (on) questionInput.focus();
+}
+function sizeLabel(gb) { return `~${gb.toFixed(1)} GB`; }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function isBusy() {
+  return loading || purging || (sessionUsed && !resetSection.classList.contains('visible'));
+}
+// Summon and purge are hidden while anything is loading, purging, or computing.
+function refreshAux() {
+  const busy = isBusy();
+  summonBtn.hidden = busy || !(mode === 'archive' && archiveByChoice && webllm && model);
+  purgeBtn.hidden = busy || !purgeAvailable;
+  if (purgeBtn.hidden) disarmPurge();
+}
 
-async function initEngine() {
-  progressSection.classList.add('visible');
-  progressShimmer.classList.add('active');
+// ---- Device probing ----
+function isSmallDevice() {
+  const ua = navigator.userAgent || '';
+  const phoneUA = /iPhone|iPod|Android.*Mobile|Mobile.*Firefox/i.test(ua);
+  const tablet = /iPad|Android/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const lowMem = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 4;
+  return phoneUA || tablet || lowMem;
+}
+
+async function probeGPU() {
+  if (!('gpu' in navigator) || !navigator.gpu) return { ok: false, why: 'WEBGPU: ABSENT.' };
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) return { ok: false, why: 'WEBGPU: NO USABLE ADAPTER.' };
+    return { ok: true, f16: adapter.features.has('shader-f16') };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, why: 'WEBGPU: ADAPTER REQUEST FAILED.' };
+  }
+}
+
+// ---- Boot sequence ----
+async function boot() {
+  questionInput.disabled = true;
+  await say('PROBING HOST TERMINAL...', '', 380);
+
+  const forced = params.get('tier');   // ?tier=full | lesser | archive, for testing
+  if (forced === 'archive') return enterArchive(['ARCHIVE MODE REQUESTED BY OPERATOR.'], true);
+
+  const gpu = await probeGPU();
+  if (!gpu.ok) return enterArchive([gpu.why, 'THIS TERMINAL IS INSUFFICIENTLY ADVANCED TO HOST DEEP THOUGHT.']);
+
+  const tierName = (forced === 'full' || forced === 'lesser') ? forced : (isSmallDevice() ? 'lesser' : 'full');
+  const tier = TIERS[tierName];
+  model = gpu.f16 ? tier.f16 : tier.f32;
+  tierCognition = tier.cognition;
+  setCognition(tierCognition);
+  await say('WEBGPU: PRESENT.', 'bright');
+  if (tierName === 'lesser') await say('HOST TERMINAL MODEST. CONSULTING A LESSER COMPUTER.', 'amber');
+  if (!gpu.f16) await say('16-BIT SHADERS UNAVAILABLE. USING HIGHER-PRECISION SUBSTRATE.', 'amber');
+
+  await say('RETRIEVING COGNITION LIBRARY...');
+  try {
+    webllm = await import(LIB_URL);
+  } catch (e) {
+    console.error(e);
+    return enterArchive(['COGNITION LIBRARY UNREACHABLE.']);
+  }
+
+  // Cache API needs a secure http(s) origin; IndexedDB works elsewhere (e.g. local files).
+  const canUseCacheAPI = typeof caches !== 'undefined' && window.isSecureContext && location.protocol.startsWith('http');
+  appConfig = { ...webllm.prebuiltAppConfig, cacheBackend: canUseCacheAPI ? 'cache' : 'indexeddb' };
+
+  let cached = false;
+  try { cached = await webllm.hasModelInCache(model.id, appConfig); } catch (e) { console.warn(e); }
+
+  if (cached) {
+    await say('COGNITIVE SUBSTRATE ALREADY RESIDENT.', 'bright');
+    return loadModel(true);
+  }
+  showConsent(tierName);
+}
+
+function showConsent(tierName) {
+  const wifi = tierName === 'lesser' ? ' A WI-FI CONNECTION IS ADVISED.' : '';
+  consentText.innerHTML = '';
+  const a = document.createElement('span');
+  a.textContent = 'DEEP THOUGHT REQUIRES APPROXIMATELY ';
+  const b = document.createElement('span');
+  b.className = 'size';
+  b.textContent = model.gb.toFixed(1) + ' GB';
+  const c = document.createElement('span');
+  c.textContent = ' OF COGNITIVE SUBSTRATE. IT IS TRANSFERRED ONCE AND KEPT IN THIS BROWSER, SO LATER CONSULTATIONS BEGIN FASTER. NOTHING YOU ASK LEAVES THIS DEVICE.' + wifi;
+  consentText.append(a, b, c);
+  consentYes.textContent = `[ INITIATE TRANSFER — ${sizeLabel(model.gb)} ]`;
+  consentSection.classList.add('visible');
+  addLog('AWAITING OPERATOR AUTHORISATION.', 'amber');
+  consentYes.focus();
+}
+
+consentYes.addEventListener('click', () => {
+  consentSection.classList.remove('visible');
+  loadModel(false);
+});
+
+consentNo.addEventListener('click', () => {
+  consentSection.classList.remove('visible');
+  enterArchive(['TRANSFER DECLINED.'], true);
+});
+
+summonBtn.addEventListener('click', () => {
+  if (isBusy()) return;
+  archiveByChoice = false;
+  loadModel(false);
+});
+
+function disarmPurge() {
+  if (purgeArmed) { clearTimeout(purgeArmed); purgeArmed = null; }
+  purgeBtn.classList.remove('armed');
+  if (purgeBtn.dataset.label) { purgeBtn.textContent = purgeBtn.dataset.label; delete purgeBtn.dataset.label; }
+}
+
+purgeBtn.addEventListener('click', async () => {
+  if (isBusy() || !purgeAvailable) return;
+  if (!purgeArmed) {
+    purgeBtn.dataset.label = purgeBtn.textContent;
+    purgeBtn.textContent = '[ CONFIRM PURGE — PRESS AGAIN ]';
+    purgeBtn.classList.add('armed');
+    purgeArmed = setTimeout(disarmPurge, 4000);
+    return;
+  }
+  disarmPurge();
+
+  purging = true;
+  setInputEnabled(false);
+  refreshAux();
+  await say('PURGING LOCAL SUBSTRATE...', 'amber');
+
+  if (engine) {
+    try { await engine.unload(); } catch (e) { console.warn(e); }
+    engine = null;
+  }
 
   try {
-    engine = await webllm.CreateMLCEngine(MODEL_ID, {
+    await webllm.deleteModelAllInfoInCache(model.id, appConfig);
+  } catch (e) {
+    console.error(e);
+    purging = false;
+    addLog('PURGE FAILED. SUBSTRATE REMAINS. IT MAY BE REMOVED VIA BROWSER SITE-DATA SETTINGS.');
+    // The engine is already unloaded, so continue from the archive; summon can reload it.
+    return enterArchive([], true);
+  }
+
+  purgeAvailable = false;
+  purging = false;
+  await say(`SUBSTRATE PURGED. ${sizeLabel(model.gb)} RETURNED TO THE HOST TERMINAL.`, 'bright');
+  enterArchive([], true);
+});
+
+async function loadModel(fromCache) {
+  loading = true;
+  setInputEnabled(false);
+  refreshAux();
+  progressSection.classList.add('visible');
+  progressShimmer.classList.add('active');
+  setProgress(0, fromCache ? 'RECALLING SUBSTRATE FROM LOCAL STORAGE...' : 'RETRIEVING COGNITIVE SUBSTRATE FROM ARCHIVE...');
+
+  try {
+    engine = await webllm.CreateMLCEngine(model.id, {
+      appConfig,
       initProgressCallback: (report) => {
         const pct = Math.round((report.progress || 0) * 100);
-        setProgress(pct);
-        if (report.text) {
-          if (report.text.match(/fetch|Fetch/))  setProgress(pct, 'RETRIEVING COGNITIVE SUBSTRATE FROM ARCHIVE...');
-          else if (report.text.match(/load|Load/)) setProgress(pct, 'LOADING HYPERINTELLIGENT MATRICES...');
-          else if (report.text.match(/finish|Finish/) || pct >= 99) setProgress(100, 'COGNITIVE SYSTEMS NOMINAL.');
-        }
-      }
+        const t = report.text || '';
+        if (/finish/i.test(t) || pct >= 99)      setProgress(100, 'COGNITIVE SYSTEMS NOMINAL.');
+        else if (/fetch/i.test(t) && !fromCache)  setProgress(pct, 'RETRIEVING COGNITIVE SUBSTRATE FROM ARCHIVE...');
+        else if (/cache|load/i.test(t))           setProgress(pct, fromCache ? 'RECALLING SUBSTRATE FROM LOCAL STORAGE...' : 'LOADING HYPERINTELLIGENT MATRICES...');
+        else                                       setProgress(pct);
+      },
     });
 
-    clearInterval(dotInterval);
     progressShimmer.classList.remove('active');
     setProgress(100, 'COGNITIVE SYSTEMS NOMINAL.');
     await sleep(400);
     progressSection.classList.remove('visible');
 
-    addLog('COGNITIVE MATRICES: LOADED', 'bright');
-    addLog('HYPERINTELLIGENT SUBSTRATE: NOMINAL', 'bright');
+    mode = 'model';
+    loading = false;
+    setCognition(tierCognition);
+    purgeAvailable = true;
+    purgeBtn.textContent = `[ PURGE LOCAL SUBSTRATE — FREE ${sizeLabel(model.gb)} ]`;
+    refreshAux();
+    await say('COGNITIVE MATRICES: LOADED', 'bright', 150);
+    await say('HYPERINTELLIGENT SUBSTRATE: NOMINAL', 'bright', 150);
     addLog('READY TO RECEIVE QUERY.', 'amber');
-
-    engineReady = true;
-    askBtn.disabled = false;
-    questionInput.focus();
+    // If an answer is still on screen, the operator must clear it first.
+    if (!sessionUsed) setInputEnabled(true);
 
   } catch (err) {
-    clearInterval(dotInterval);
+    console.error(err);
+    engine = null;
+    loading = false;
+    // A failed download can leave shards behind; let the operator reclaim the space.
+    if (!fromCache) {
+      purgeAvailable = true;
+      purgeBtn.textContent = '[ PURGE PARTIAL SUBSTRATE ]';
+    }
     progressShimmer.classList.remove('active');
     progressSection.classList.remove('visible');
+    const detail = String(err && err.message || err || 'UNKNOWN').toUpperCase().slice(0, 90);
     addLog('ERROR: COGNITIVE FAILURE.');
-    showError('SYSTEM FAULT: ' + (err.message || 'WebGPU not supported in this browser.'));
-    console.error(err);
+    addLog('FAULT DETAIL: ' + detail);
+    enterArchive(['SUBSTRATE COULD NOT BE LOADED ON THIS TERMINAL.']);
   }
 }
 
-function showError(msg) {
-  errorSection.textContent = '⚠ ' + msg;
-  errorSection.classList.add('visible');
+async function enterArchive(lines, byChoice = false) {
+  mode = 'archive';
+  archiveByChoice = byChoice && !!(webllm || params.get('tier') === 'archive');
+  setCognition('ARCHIVAL');
+  for (const l of lines) await say(l, 'amber');
+  await say('CONSULTING ARCHIVED PRONOUNCEMENTS INSTEAD.', 'bright');
+  addLog('READY TO RECEIVE QUERY.', 'amber');
+  // Offer the real thing later, but only if this terminal can actually run it.
+  if (model) summonBtn.textContent = `[ SUMMON DEEP THOUGHT PROPER — ${sizeLabel(model.gb)} ]`;
+  if (!sessionUsed) setInputEnabled(true);
+  refreshAux();
 }
 
-askBtn.addEventListener('click', async () => {
-  const question = questionInput.value.trim();
-  if (!question || !engineReady || sessionUsed) return;
+// ---- Answering ----
+async function typeOut(text) {
+  answerBody.innerHTML = '<span class="cur" aria-hidden="true"></span>';
+  const cursor = answerBody.querySelector('.cur');
+  if (reducedMotion) {
+    cursor.insertAdjacentText('beforebegin', text);
+  } else {
+    for (const ch of text) {
+      cursor.insertAdjacentText('beforebegin', ch);
+      await sleep(/[.,;:—]/.test(ch) ? 70 : 18);
+    }
+  }
+  cursor.remove();
+}
 
-  sessionUsed = true;
-  askBtn.disabled = true;
-  questionInput.disabled = true;
+async function presentCanned(text, footnote, tag) {
+  stopMatrix();
+  computationSection.classList.remove('visible');
+  answerTag.textContent = tag;
+  answerId.textContent = randRef();
+  answerSection.classList.add('visible');
+  await typeOut(text);
+  answerFootnote.textContent = footnote;
+  addLog('COMPUTATION COMPLETE.', 'bright');
+  resetSection.classList.add('visible');
+  refreshAux();
+}
 
-  computationSection.classList.add('visible');
-  startMatrix();
-  addLog('QUERY RECEIVED. INITIATING COMPUTATION...', 'amber');
-
+async function answerWithModel(question) {
+  let cursor = null;
+  let received = '';
   try {
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: question }
-    ];
-
     const stream = await engine.chat.completions.create({
-      messages,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: question },
+      ],
       stream: true,
       temperature: 0.6,
       max_tokens: 120,
@@ -799,30 +1191,74 @@ askBtn.addEventListener('click', async () => {
     stopMatrix();
     computationSection.classList.remove('visible');
 
+    answerTag.textContent = 'OUTPUT';
     answerId.textContent = randRef();
     answerSection.classList.add('visible');
-    answerBody.innerHTML = '<span class="cur"></span>';
-    const cursor = answerBody.querySelector('.cur');
+    answerBody.innerHTML = '<span class="cur" aria-hidden="true"></span>';
+    cursor = answerBody.querySelector('.cur');
 
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta?.content || '';
-      if (delta) cursor.insertAdjacentText('beforebegin', delta);
+      if (delta) {
+        received += delta;
+        cursor.insertAdjacentText('beforebegin', delta);
+      }
     }
 
     cursor.remove();
-    answerFootnote.textContent = FOOTNOTES[Math.floor(Math.random() * FOOTNOTES.length)];
+    cursor = null;
+    if (!received.trim()) throw new Error('NO OUTPUT RETURNED.');
+
+    answerFootnote.textContent = pick(FOOTNOTES);
     addLog('COMPUTATION COMPLETE.', 'bright');
     resetSection.classList.add('visible');
+    refreshAux();
 
   } catch (err) {
+    console.error(err);
     stopMatrix();
     computationSection.classList.remove('visible');
-    showError('COMPUTATION INTERRUPTED: ' + (err.message || 'Unknown fault.'));
-    console.error(err);
+
+    // Never leave a half-finished answer on screen beside an error:
+    // discard partial output and hand the question back for resubmission.
+    if (cursor) cursor.remove();
+    answerSection.classList.remove('visible');
+    answerBody.textContent = '';
+    answerFootnote.textContent = '';
+    answerId.textContent = 'QUERY-REF: ——';
+
+    addLog(received ? 'COMPUTATION INTERRUPTED. PARTIAL OUTPUT DISCARDED.' : 'COMPUTATION INTERRUPTED.', 'amber');
+    const reason = String(err?.message || 'Unknown fault').replace(/[.\s]+$/, '');
+    showError('COMPUTATION INTERRUPTED: ' + reason + '. Resubmit the query.');
+
     sessionUsed = false;
-    askBtn.disabled = false;
-    questionInput.disabled = false;
+    setInputEnabled(true);
+    refreshAux();
   }
+}
+
+askBtn.addEventListener('click', async () => {
+  const question = questionInput.value.trim();
+  if (!question || !ready || sessionUsed || loading) return;
+
+  sessionUsed = true;
+  setInputEnabled(false);
+  refreshAux();
+  errorSection.classList.remove('visible');
+
+  computationSection.classList.add('visible');
+  startMatrix();
+  addLog('QUERY RECEIVED. INITIATING COMPUTATION...', 'amber');
+
+  if (DISTRESS_RE.test(question)) {
+    await sleep(1200);
+    return presentCanned(DISTRESS_ANSWER, DISTRESS_FOOTNOTE, 'OUTPUT');
+  }
+  if (mode === 'archive') {
+    await sleep(1600 + Math.random() * 1200);
+    return presentCanned(archiveAnswer(question), pick(ARCHIVE_FOOTNOTES), 'ARCHIVE');
+  }
+  return answerWithModel(question);
 });
 
 questionInput.addEventListener('keydown', (e) => {
@@ -834,9 +1270,7 @@ questionInput.addEventListener('keydown', (e) => {
 
 resetBtn.addEventListener('click', () => {
   sessionUsed = false;
-  questionInput.disabled = false;
   questionInput.value = '';
-  askBtn.disabled = false;
 
   answerSection.classList.remove('visible');
   answerBody.textContent = '';
@@ -847,10 +1281,11 @@ resetBtn.addEventListener('click', () => {
 
   logArea.innerHTML = '';
   addLog('SESSION CLEARED. READY TO RECEIVE NEW QUERY.', 'amber');
-  questionInput.focus();
+  if (!loading && !purging) setInputEnabled(true);
+  refreshAux();
 });
 
-initEngine();
+boot();
 </script>
 </body>
 </html>
