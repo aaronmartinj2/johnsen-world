@@ -11076,8 +11076,8 @@ function drawBarRoom() {
     pixText(g, ini, x + 11, 20, '#ffffff', 2, 'center');
     P(x + 5, 34, 12, 1, '#ffffff'); pixText(g, ['', 'SKI', 'GO', 'PRO'][i + 1] || '', x + 11, 36, '#ffffff', 1, 'center');
   }
-  // the medal case: the best medal won in each slot (Overall on top; Slalom, Park, Pipe, Big Air below) with a count, outlines where none
-  P(196, 9, 36, 45, '#3a2414'); P(197, 10, 34, 43, '#5a3418'); g.fillStyle = 'rgba(190,220,240,0.30)'; g.fillRect(198, 11, 32, 41); P(199, 25, 30, 1, '#3a2414');
+  // the medal case: the best medal won in each slot (Overall on top; Slalom, Downhill, Park, then Pipe, Big Air below) with a count, outlines where none
+  P(193, 9, 39, 45, '#3a2414'); P(194, 10, 37, 43, '#5a3418'); g.fillStyle = 'rgba(190,220,240,0.30)'; g.fillRect(195, 11, 35, 41); P(196, 25, 33, 1, '#3a2414');
   {
     const MCOL = ['#f0c020', '#c8ccd4', '#c8803a'], RIB = ['#d42a2a', '#2a5ad4', '#1a8a3a'];
     const cell = (x, y, ev, big) => {
@@ -11087,7 +11087,7 @@ function drawBarRoom() {
         if (n > 1) pixText(g, String(Math.min(n, 99)), mx + r + 2, my - 2, '#ffffff', 1);
       } else { g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1; g.beginPath(); g.arc(mx + 0.5, my + 0.5, r, 0, Math.PI * 2); g.stroke(); }
     };
-    cell(206, 12, 'overall', true); cell(199, 27, 'slalom'); cell(215, 27, 'park'); cell(199, 40, 'pipe'); cell(215, 40, 'bigair');
+    cell(205, 12, 'overall', true); cell(194, 27, 'slalom'); cell(206, 27, 'downhill'); cell(218, 27, 'park'); cell(200, 40, 'pipe'); cell(212, 40, 'bigair');
   }
   P(232, 8, 80, 56, '#8a5a30'); P(235, 11, 74, 50, '#2a3a2a');
   pixText(g, 'BESTS', 272, 14, '#f4f8f4', 1, 'center'); P(250, 20, 44, 1, '#8aa08a');
@@ -12693,18 +12693,17 @@ function renderCabin() {
   else if (cabSel === 'globes') info.push(wcGlobeText(b) + ' <small>The same globes stand on the window sill at the Bar.</small>');
   else if (cabSel === 'awards') {
     const A = cabAwards(b), word = ['gold', 'silver', 'bronze'];
-    info.push('<b>Your trophy shelf.</b> It fills itself in as you earn things: every medal hangs underneath, and trophies, plaques, race bibs and golden eggs go up top.');
+    info.push('<b>Your trophy shelf.</b> It fills itself in as you earn things: every medal hangs underneath, and trophies and plaques go up top.');
     info.push('<b>Medals</b>: ' + MEDAL_SLOTS.map(([ev, label]) => { const c = A.medals[ev]; return c[0] + c[1] + c[2] ? `${label} ${word.map((m, i) => c[i] ? `${c[i]} ${m}` : '').filter(Boolean).join(', ')}` : `${label} none yet`; }).join('; ') + '.');
     info.push(A.hist.length ? '<small>' + A.hist.map(x => `${fmtDay(x.d)}: ${x.ev === 'overall' ? 'Overall' : EVENT_NAMES[x.ev]} ${MEDAL[Math.min(3, x.pl)]} (${TIME_EV(x.ev) ? fmtSec(x.v) : Math.round(x.v).toLocaleString()}${x.old ? ', from before the rivals' : ''})`).join('<br>') + (A.more ? `<br>...and ${A.more} more before that.` : '') + '</small>'
       : "<small>Finish top 3 in an Olympic event or overall, in the day's official Games, and the medal hangs here.</small>");
     info.push(`<b>Trophies</b>, one per event for every goal in it: ${A.evs.map(e => `${EVENT_NAMES[e.ev] || e.ev} ${e.done >= e.all ? 'won' : `${e.done}/${e.all}`}`).join(', ')}.`);
     info.push(`<b>The big cup</b>, for every goal in the game: ${A.bigCup ? 'yours!' : `${A.got} of ${A.all} goals`}.`);
-    info.push(`<b>Race bibs</b> for each number-one ranking on this device: ${A.firsts.length ? A.firsts.join(', ') : 'none yet'}.`);
     { const R = sledData(b).tube, M = ['gold', 'silver', 'bronze']; if (R.best || R.oldBest) info.push(`<b>The sledding hill</b>: tube race best ${R.best ? `${fmtSec(R.best)}${R.medal !== undefined && R.medal !== null ? ` (${M[R.medal]})` : ''}` : 'none yet on the new course'}${R.oldBest ? ` (old course ${fmtSec(R.oldBest)})` : ''}${Object.keys(R.beat || {}).length ? `; beaten: ${Object.keys(R.beat).map(w => bgWho(w)).join(', ')}` : ''}.`);
       const T = sledData(b).tob; if (T.best) info.push(`<b>The toboggan run</b>: best ${T.best.toLocaleString()}${T.medal !== undefined && T.medal !== null ? ` (${M[T.medal]})` : ''}.`);
       const DB = sledData(b).derby; if (DB.races) info.push(`<b>The Sled Derby</b>: ${DB.wins ? `${DB.wins} win${DB.wins > 1 ? 's' : ''} (the little sled trophy)` : 'no wins yet'} in ${DB.races} race${DB.races > 1 ? 's' : ''}.`); }
     { const k = photoKindsCaught(b), all = Object.keys(PHOTO_KINDS); info.push(`<b>Photos</b>: ${k.size} of ${all.length} kinds caught${k.size ? ` (${all.filter(x => k.has(x)).map(x => PHOTO_KINDS[x].tab).join(', ')})` : ''}. They're in the album on the bookshelf.`); }
-    info.push(`<b>Golden eggs</b> in the nest: ${A.eggs.filter(Boolean).length} of 3. <b>Plaques</b>: ${A.legend ? `Legend, ${A.legend} run${A.legend > 1 ? 's' : ''}` : 'Legend not yet'}; ${A.summit ? `Summit, ${A.summit} run${A.summit > 1 ? 's' : ''}` : 'Summit not yet'}. <small>(The Bar keeps its own wall of them too.)</small>`);
+    info.push(`<b>Plaques</b>: ${A.legend ? `Legend, ${A.legend} run${A.legend > 1 ? 's' : ''}` : 'Legend not yet'}; ${A.summit ? `Summit, ${A.summit} run${A.summit > 1 ? 's' : ''}` : 'Summit not yet'}. <small>(The Bar keeps its own wall of them too.)</small>`);
   }
   else {
     const S = cabSlot(cabSel), cur = cabPickOf(C, S.id), prev = cabArm && cabArm.startsWith('cbuy:') ? cabItem(cabArm.slice(5)) : null;
@@ -13053,7 +13052,7 @@ function drawCabinRoom() {
 const cabFx = { cuckoo: -1 };
 // The trophy shelf: everything you've earned, filled in on its own. Medals hang underneath (every one, by event);
 // up top: the Legend plaque, a trophy for each event once all its goals are done, the big cup for every goal in the game,
-// a board of race bibs for each number-one ranking on this device, the golden eggs in a nest, and the Summit plaque.
+// and the Summit plaque. (Race bibs and golden eggs are shown in the Bar only.)
 function cabAwards(b) {
   const Mc = (b.medals && b.medals.c) || {}, h = (b.medals && b.medals.h) || [], medals = {};
   let mTotal = 0; for (const [ev] of MEDAL_SLOTS) { const c = Mc[ev] || [0, 0, 0]; medals[ev] = c; mTotal += c[0] + c[1] + c[2]; }
@@ -13085,15 +13084,7 @@ function drawCabinAwards(g, P, b) {
     P(219, 19, 6, 2, '#c42a2a'); P(218, 21, 8, 1, '#6a4020'); P(219, 18, 1, 1, '#c42a2a');
   }
   cup(229, 11, A.bigCup, true);
-  if (A.firsts.length) {   // the bib board
-    P(245, 14, 20, 16, '#5a3418'); P(246, 15, 18, 14, '#c89a5a');
-    A.firsts.slice(0, 12).forEach((_, i) => { const bx = 247 + (i % 4) * 4, by = 16 + Math.floor(i / 4) * 4; P(bx, by, 3, 3, '#f4f4ee'); P(bx, by, 3, 1, '#d42a2a'); P(bx + 1, by + 2, 1, 1, '#202020'); });
-  }
-  if (A.eggs.some(Boolean)) {   // the golden eggs, in a nest
-    const egg = (cx, bottom) => [3, 5, 7, 7, 7, 7, 7, 5, 3].forEach((w, i) => { const x0 = cx - (w >> 1), yy = bottom - 9 + i; P(x0 - 1, yy, w + 2, 1, '#b89848'); P(x0, yy, w, 1, i === 3 ? '#ff6fa8' : i === 5 ? '#3a8ad0' : '#fff2c0'); });
-    A.eggs.forEach((has, i) => { if (has) egg(272 + i * 8, 28); });
-    P(267, 26, 26, 4, '#8a6a3a'); for (let x = 268; x < 292; x += 3) P(x, 26 + (x % 2), 2, 1, '#5a3a1e'); P(266, 27, 1, 2, '#8a6a3a'); P(293, 27, 1, 2, '#8a6a3a');
-  }
+  // (the race bibs and the golden eggs are the Bar's: its bests board and egg cups)
   if (A.summit) plaque(297, A.summit, '#2a4a7a', '#e8eef6');
   // the medals: every one, grouped by event, best first (past six in a group, the rest are counted)
   MEDAL_SLOTS.forEach(([ev], gi) => {
