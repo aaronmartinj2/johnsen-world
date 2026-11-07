@@ -2612,7 +2612,8 @@ function crash(o, msg) {
   const s = G.sk, v0 = s.air ? Math.hypot(s.avx || 0, s.avy || 0) : s.speed;
   s.chainUntil = 0;
   s.crashed = true; s.crashT = CFG.CRASH_TIME * (G.pads && !G.demo ? CFG.CRASH_PADS.getUp : 1) + (G.dh ? CFG.DOWNHILL.tumble * clamp(v0 / CFG.DOWNHILL.vmax, 0, 1) : 0);
-  if (G.dh && dhKmh(v0) > CFG.DOWNHILL.say.crash) dhSay('crash');   // (a Downhill crash at speed: a long tumble) s.speed = 0; s.air = false; s.z = 0; s.trick = null; s.trickT = 0;
+  s.speed = 0; s.air = false; s.z = 0; s.trick = null; s.trickT = 0;   // (a Downhill crash at speed: a long tumble, above)
+  if (G.dh && dhKmh(v0) > CFG.DOWNHILL.say.crash) dhSay('crash');
   if (o) { s.ignore = o; s.justIgnored = true; }
   G.shake = 0.25; SFX.crash();
   floater(s.x, s.y - 34, msg || pick(['Ouch!', 'Oof!', 'Yard sale!', 'Bonk!']), '#b01010');
@@ -5398,10 +5399,17 @@ function tUp(e) {
   if (p.flag) for (const f of [].concat(p.flag)) G.held[f] = false;
   Touch.pts.delete(e.pointerId);
 }
+// A finger still down from steering when you take off: in the air it can swipe too (measured from where it was when it first
+// moved in the air, so a little drift does nothing). Once it swipes it's a trick finger, not a steering one.
+function holdAirSwipe(e) {
+  let p = Touch.pts.get(e.pointerId);
+  if (!p) { holdHeld({}); const L = G.sk.keyLock || {}; L.left = L.right = L.up = L.down = false; Touch.pts.set(e.pointerId, { x0: e.clientX, y0: e.clientY, air: true, flag: null, live: true, tap: false, timer: 0, fromHold: true }); return; }   // (let go of what the hold was pressing, and unlock it from takeoff, so it can't cancel the swipe)
+  tMove(e); if (p.flag) Hold.pts.delete(e.pointerId);
+}
 function touchAirTick() {
   // Landing ends swipe input, so on the ground touch behaves exactly as before.
   if (G.sk.air) return;
-  for (const p of Touch.pts.values()) if (p.air) { clearTimeout(p.timer); if (p.flag) for (const f of [].concat(p.flag)) G.held[f] = false; p.flag = null; p.air = false; }
+  for (const [id, p] of Touch.pts) if (p.air) { clearTimeout(p.timer); if (p.flag) for (const f of [].concat(p.flag)) G.held[f] = false; if (p.fromHold && Hold.pts.has(id)) { Touch.pts.delete(id); continue; } p.flag = null; p.air = false; }   // (a steering finger that never swiped: still steering)
 }
 
 /* ------------------------------ practice ------------------------------ */
@@ -14234,7 +14242,8 @@ cv.addEventListener('pointerdown', e => {
   if (e.pointerType !== 'mouse') G.touchSteer = true;
 });
 cv.addEventListener('pointermove', e => {
-  if (Hold.pts.has(e.pointerId) || Hold.ignore.has(e.pointerId)) return;   // a steering hold doesn't swipe
+  if (Hold.pts.has(e.pointerId)) { if (e.pointerType !== 'mouse' && G.sk.air && !G.sk.crashed) holdAirSwipe(e); return; }   // a steering hold doesn't swipe on the snow (in the air it can)
+  if (Hold.ignore.has(e.pointerId)) return;
   tMove(e);
   const p = toLogical(e);
   if (e.pointerType === 'mouse') {
