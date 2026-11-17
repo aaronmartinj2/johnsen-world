@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Powder Panic">
+<link rel="apple-touch-icon" href="/powder-panic/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="johnsen.world">
 <meta property="og:title" content="Powder Panic">
@@ -1757,11 +1758,11 @@ const CFG = {
 
   // ---------------------------- Welcome screen ----------------------------
   VERSION: '2.1',
-  BUILD: 127,                   // this build's number (the welcome screen shows it; the service worker's cache is named for it)
+  BUILD: 128,                   // this build's number (the welcome screen shows it; the service worker's cache is named for it)
   // Installed as an app: only where the game lives on johnsen.world (/powder-panic/), served with its manifest, icons and service
   // worker beside it. Anywhere else (a single file, a preview) none of it is loaded. persist: ask the browser to keep the saves
   // (silently: browsers that would ask the player, Firefox, are skipped).
-  APP: { path: /\/powder-panic(\/(index\.html)?)?$/, manifest: 'manifest.webmanifest', sw: 'sw.js', icons: { 'apple-touch-icon': 'apple-touch-icon.png', icon: 'favicon-32.png' }, persist: true },
+  APP: { path: /\/powder-panic(\/(index\.html)?)?$/, manifest: 'manifest.webmanifest', sw: 'sw.js', icons: { icon: 'favicon-32.png' }, persist: true },
   WELCOME: {
     blink: 1.4,                 // seconds per gentle pulse of the start prompt
     demoResetM: 1200,           // the attract-mode run restarts after this many meters
