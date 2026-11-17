@@ -4,6 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Powder Panic</title>
+<meta name="description" content="Carve fast, land big, and stay ahead of Big Karl. A pixel-art ski game: Freestyle, Slalom, the Downhill, the Terrain Park, the World Cup and the Olympics.">
+<meta name="theme-color" content="#000080">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Powder Panic">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="johnsen.world">
+<meta property="og:title" content="Powder Panic">
+<meta property="og:description" content="Carve fast, land big, and stay ahead of Big Karl. A pixel-art ski game: Freestyle, Slalom, the Downhill, the Terrain Park, the World Cup and the Olympics.">
+<meta property="og:url" content="https://johnsen.world/powder-panic/">
+<meta property="og:image" content="https://johnsen.world/powder-panic/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Powder Panic: a skier carving down a snowy slope with Big Karl chasing, under a Windows 3.x style title window.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://johnsen.world/powder-panic/og-image.png">
 <style>
 :root{
   --page:#008080; --win:#c0c0c0; --win-hi:#ffffff; --win-lo:#808080; --win-dk:#000000;
@@ -392,7 +409,7 @@ body.inbar #toast{z-index:30}
     </div>
   </div>
 
-  <div id="toast" class="win hidden"><div class="titlebar"><span class="sys"></span><span class="t" id="toastTitle">Warning</span></div><div class="dbody" id="toastText"></div></div>
+  <div id="toast" class="win hidden"><div class="titlebar"><span class="sys"></span><span class="t" id="toastTitle">Notice</span></div><div class="dbody" id="toastText"></div></div>
 
   <div id="touch" class="hidden">
     <button id="pauseBtn" aria-label="Pause">II</button>
@@ -734,6 +751,10 @@ const CFG = {
     side: 14,                   // px off to the side
     bark: 2,                    // s: barks at most this often
     barkLead: 1,                // barks when you're down to less than this many free crashes of lead and Big Karl is gaining
+    // His pose: he faces the way he's moving along your line (straight down, 30 or 60 degrees either way, or across: side-on),
+    // rounded like the skier's seven directions. poseHold: s a new direction must last before he turns to it (no flicker);
+    // poseSmooth: how fast his heading follows his motion (per s); poseMin: px/s below which he keeps the pose he has.
+    poseHold: 0.12, poseSmooth: 10, poseMin: 25,
   },
   LODGE_EXIT: 44,               // with the Second Lodge: choosing Keep going puts you out the lodge's front door, this many px past its doorway
   LODGE_ASK_ARM: 0.45,          // s the lodge's Keep going / Stop here buttons ignore presses after it opens (so a held key or tap doesn't pick by accident)
@@ -834,6 +855,17 @@ const CFG = {
     nets: { inner: [2, 3, 6], gap: 25, before: 700, after: 260, pad: 4 },
     sponsors: ['FROSTBYTE', 'SUMMIT COLA', 'PEAK OPTICS', 'TALLY HO WAX', 'ALPENGLOW', 'RIDGELINE'] },   // made-up sponsors on the finish banners
   CAM_Y_FRAC: 0.28,             // skier's vertical screen position
+  // Message boxes (toasts): their title bar. A call can name it; otherwise the first of these that matches the message picks it,
+  // and anything else is a 'Notice'. ready: how to start a run (the start prompts); warn: real warnings (danger, damage, a loss you
+  // can still avoid); tip: hints and how-tos.
+  TOAST_TITLES: {
+    ready: [/^Press ↓ to (start|drop in|ski down)/, /^World Cup at /, /^(Olympics|Practice Heat) \d+ of \d+:/, /^You click into your skis/, /^The Summit Trail: /,
+      /^The road to the Sno-Park/, /^The hill climb\./],
+    warn: [/Big Karl is awake/, /Big Karl's den is just ahead/, /avalanche above you/i, /^Swept back/, /^Tree well/, /^The sled (is in bad shape|broke down)/,
+      /^Crunch!/, /^Press again to leave/, /bets cost you/],
+    tip: [/^(Drag|Tap|Click|Hold|Swipe|Space pops|Jump pops)\b/, /^A gully/, /^The trail is off/, /^The Summit Lodge is along/, /^Turn Sound and Music on/,
+      /^Nothing recorded/, /^Scratch: the cue ball/],
+  },
 
   // ---------------------------- Terrain Park ----------------------------
   PARK_TIME: 75,                // seconds per judged run
@@ -1725,6 +1757,11 @@ const CFG = {
 
   // ---------------------------- Welcome screen ----------------------------
   VERSION: '2.1',
+  BUILD: 127,                   // this build's number (the welcome screen shows it; the service worker's cache is named for it)
+  // Installed as an app: only where the game lives on johnsen.world (/powder-panic/), served with its manifest, icons and service
+  // worker beside it. Anywhere else (a single file, a preview) none of it is loaded. persist: ask the browser to keep the saves
+  // (silently: browsers that would ask the player, Firefox, are skipped).
+  APP: { path: /\/powder-panic(\/(index\.html)?)?$/, manifest: 'manifest.webmanifest', sw: 'sw.js', icons: { 'apple-touch-icon': 'apple-touch-icon.png', icon: 'favicon-32.png' }, persist: true },
   WELCOME: {
     blink: 1.4,                 // seconds per gentle pulse of the start prompt
     demoResetM: 1200,           // the attract-mode run restarts after this many meters
@@ -1998,6 +2035,26 @@ function buildSprites() {
   }, 12, 17);
   SPR.skidogR = [skidog(0), skidog(1)]; SPR.skidogL = SPR.skidogR.map(flip);
   SPR.skidogBarkR = skidog(0, true); SPR.skidogBarkL = flip(SPR.skidogBarkR);
+  // Your dog skiing down the hill (seen from above, the way the skier is drawn): turn 0 straight down, 1 and 2 turned 30 and 60
+  // degrees to his left on screen (flipped for the other way); two bounce frames and a bark (mouth open). Across the hill he's the
+  // side-on dog above.
+  const skidogDown = (turn, f, bark) => spr(24, 24, P => {
+    const c = '#a06a30', d = '#6a4020', mz = '#c08a50', a = turn * Math.PI / 6, ux = -Math.sin(a), uy = Math.cos(a), px = uy, py = -ux, cx = 12, cy = 12;
+    const at = (u, v) => [cx + ux * u + px * v, cy + uy * u + py * v];   // u: along his way (+ down the hill), v: across
+    const blob = (u, v, r, col) => { const [x, y] = at(u, v); for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) if (xx * xx + yy * yy <= r * r + r) P(x + xx, y + yy, 1, 1, col); };
+    for (const sd of [-4, 4]) { const [x0, y0] = at(-9, sd), [x1, y1] = at(9, sd); P.line(x0, y0, x1, y1, '#15151c'); const [tx, ty] = at(10, sd * 0.85); P(tx, ty, 1, 1, '#15151c'); }   // skis, tips curling
+    const bob = f ? 0.6 : 0;
+    { const [x0, y0] = at(-7, 0), [x1, y1] = at(-10, 1); P.line(x0, y0, x1, y1, c, 2); }   // his tail
+    blob(-3.5 + bob, 0, 4, d); blob(-3.5 + bob, 0, 3, c);   // his back
+    for (const sd of [-3, 3]) { const [x, y] = at((f ? (sd < 0 ? 1 : 0) : (sd < 0 ? 0 : 1)) + 1, sd); P(x, y, 2, 2, d); }   // front paws, stepping
+    blob(3, 0, 3, d); blob(3, 0, 2, c);   // his head
+    for (const sd of [-3.5, 3.5]) { const [x, y] = at(1.5, sd); P(x - 0.5, y, 2, 3, d); }   // ears, flopping
+    { const [x0, y0] = at(1, -2), [x1, y1] = at(1, 2); P.line(x0, y0, x1, y1, '#d42020'); }   // scarf
+    { const [x0, y0] = at(3, -2), [x1, y1] = at(3, 2); P.line(x0, y0, x1, y1, '#3a3a44'); const [la, lb] = at(3, -1), [ra, rb] = at(3, 1); P(la, lb, 1, 1, '#8ab0ff'); P(ra, rb, 1, 1, '#8ab0ff'); }   // goggles
+    { const [x, y] = at(5, 0); P(x - 1, y, 2, 1, mz); const [nx, ny] = at(6, 0); P(nx, ny, 1, 1, '#000'); if (bark) { const [mx, my] = at(7, 0); P(mx - 1, my, 2, 1, '#7a1010'); } }   // snout, nose, an open mouth
+  }, 12, 14);
+  SPR.skidogDn = [0, 1, 2].map(t => ({ f: [skidogDown(t, 0), skidogDown(t, 1)], bark: skidogDown(t, 0, true) }));
+  SPR.skidogDnF = SPR.skidogDn.map(p => ({ f: p.f.map(flip), bark: flip(p.bark) }));
 
   // Big Karl: a big, shaggy, grumpy Pacific Northwest Bigfoot (brown fur, moss on his shoulders and a little fir sprouting from his
   // head, a heavy brow, big bare feet, a snapped-off fir branch). Frames: runA / runB (chasing), open (roaring, arms up), closed (stood,
@@ -2593,10 +2650,14 @@ function floater(x, y, text, col = '#000080') {
 }
 let toastTimer = 0;
 const touchText = t => !isTouch ? t : t.replace(/Press ↓ to /g, 'Tap to ').replace('Hold left/right toward the middle', 'Hold the side toward the middle');
-// A message box for a moment (title: 'Warning' unless given). In a run the game clock times it; anywhere else (the Cabin, the menus) the real clock does. A click closes it.
+// A message box for a moment (its title: as given, else CFG.TOAST_TITLES picks Ready, Warning or Tip from the message, else Notice). In a run the game clock times it; anywhere else (the Cabin, the menus) the real clock does. A click closes it.
 let toastSeq = 0;
-function toast(msg, secs = 2.4, title = G.state === 'bar' || G.state === 'cabin' || G.state === 'resort' ? 'Notice' : 'Warning') {
-  msg = touchText(msg); $('toastText').textContent = msg; $('toastTitle').textContent = title; $('toast').classList.remove('hidden'); toastTimer = secs;
+function toastKind(msg) {
+  const T = CFG.TOAST_TITLES, hit = list => list.some(re => re.test(msg));
+  return hit(T.ready) ? 'Ready' : hit(T.warn) ? 'Warning' : hit(T.tip) ? 'Tip' : 'Notice';
+}
+function toast(msg, secs = 2.4, title) {
+  title = title || toastKind(String(msg)); msg = touchText(msg); $('toastText').textContent = msg; $('toastTitle').textContent = title; $('toast').classList.remove('hidden'); toastTimer = secs;
   const n = ++toastSeq; setTimeout(() => { if (n === toastSeq && G.state !== 'playing') { $('toast').classList.add('hidden'); toastTimer = 0; } }, secs * 1000 + 60);
 }
 
@@ -3375,7 +3436,9 @@ function render() {
     } else if (it.k === 'dog') {
       const D = G.dog, R = D.face > 0;
       if (D.z > 0.5) { ctx.fillStyle = 'rgba(70,90,130,0.25)'; ctx.fillRect(Math.round(D.x - 7 - RCX), Math.round(D.y - 1 - RCY), 14, 2); }
-      const S = D.sit ? (R ? SPR.dogSquatR : SPR.dogSquatL)[Math.floor(G.time * 4) % 2] : D.barkT > 0 ? (R ? SPR.skidogBarkR : SPR.skidogBarkL) : (R ? SPR.skidogR : SPR.skidogL)[Math.floor(D.t * 6) % 2];
+      const pz = D.pose || 0, dn = Math.abs(pz) < 3 ? (pz > 0 ? SPR.skidogDnF : SPR.skidogDn)[Math.abs(pz)] : null;   // (heading down the hill: the dog from above; across: side-on)
+      const S = D.sit ? (R ? SPR.dogSquatR : SPR.dogSquatL)[Math.floor(G.time * 4) % 2] : dn ? (D.barkT > 0 ? dn.bark : dn.f[Math.floor(D.t * 6) % 2])
+        : D.barkT > 0 ? (pz > 0 || (!pz && R) ? SPR.skidogBarkR : SPR.skidogBarkL) : (pz > 0 || (!pz && R) ? SPR.skidogR : SPR.skidogL)[Math.floor(D.t * 6) % 2];
       if (S) drawS(S, D.x, D.y - D.z);
     } else if (it.k === 'patrol') {
       const Gy = G.patrolGuy;
@@ -4547,7 +4610,7 @@ function bearSpray() {
   return true;
 }
 // ---------- the Ski Patrol ----------
-const patrolReady = () => G.mode === 'freestyle' && !G.demo && !G.practice && !G.oly && !G.wc && !!(G.res && G.res.has('patrol')) && !G.patrolUsed;
+const patrolReady = () => G.mode === 'freestyle' && !G.demo && !G.practice && !G.oly && !G.wc && !!(G.res && G.res.has('patrol')) && !G.patrolOff && !G.patrolUsed;   // (off duty: set in the Hut's pop-up)
 function patrolSpawn(p) {   // from the side of the screen he's on, at his height
   const side = p.x >= G.sk.x ? 1 : -1;
   G.patrolGuy = { x: side > 0 ? G.camX + W + 12 : G.camX - 12, y: p.y + 6, side, phase: 'in', t: 0, rot: 0 };
@@ -4588,6 +4651,20 @@ function patrolTick(dt) {
 }
 // ---------- your dog ----------
 function woof() { beep(330, 0.07, 'square', 0.06, 220); beep(300, 0.09, 'square', 0.06, 200, 0.13); }
+// The way the dog faces: his own motion, smoothed, rounded to the skier's seven directions (-3 across left ... 0 down ... 3 across
+// right), and only switched once a new one has held for a moment
+function dogPose(D, dt, px, py) {
+  const C = CFG.DOG, k = Math.min(1, dt * C.poseSmooth), vx = (D.x - px) / Math.max(dt, 1e-3), vy = (D.y - py) / Math.max(dt, 1e-3);
+  if (Math.abs(vx) > 400 || Math.abs(vy) > 900) return;   // (a jump in position: no heading from that)
+  D.hx = (D.hx ?? 0) + (vx - (D.hx ?? 0)) * k; D.hy = (D.hy ?? 1) + (vy - (D.hy ?? 1)) * k;
+  if (D.pose === undefined) D.pose = 0;
+  const sk = G.sk, across = sk && !sk.air && Math.abs(sk.dir) === 3;   // (you're across the hill, stopping or stepping: so is he, side-on)
+  if (!across && Math.hypot(D.hx, D.hy) < C.poseMin) { D.want = D.pose; return; }
+  const ang = Math.atan2(D.hx, Math.max(D.hy, -1e9)) * 180 / Math.PI, a = Math.abs(ang), sgn = Math.sign(ang);   // 0: straight down
+  const want = across ? Math.sign(sk.dir) * 3 : a < 15 ? 0 : sgn * (a < 45 ? 1 : a < 75 ? 2 : 3);
+  if (want !== D.want) { D.want = want; D.wantT = 0; }
+  D.wantT = (D.wantT || 0) + dt; if (want !== D.pose && D.wantT >= C.poseHold) D.pose = want;
+}
 function dogTick(dt) {
   const D = G.dog, s = G.sk; if (!D) return;
   D.hist.push({ t: G.time, x: s.x, y: s.y }); while (D.hist.length > 2 && G.time - D.hist[1].t > CFG.DOG.lag) D.hist.shift();
@@ -4595,9 +4672,10 @@ function dogTick(dt) {
   let tx, ty;
   if (s.crashed) { tx = s.x + CFG.DOG.side; ty = s.y + 2; }   // waits beside you
   else { tx = h.x + uy * CFG.DOG.side - ux * 4; ty = h.y - ux * CFG.DOG.side - uy * 4; }   // a little behind, off to the side of your line
-  const px = D.x; D.x += (tx - D.x) * Math.min(1, dt * 18); D.y += (ty - D.y) * Math.min(1, dt * 18);
+  const px = D.x, py = D.y; D.x += (tx - D.x) * Math.min(1, dt * 18); D.y += (ty - D.y) * Math.min(1, dt * 18);
   if (Math.abs(ty - D.y) > 80 || Math.abs(tx - D.x) > 80) { D.x = tx; D.y = ty; }   // a jump in your position (the lodge door): he catches up
   if (D.x - px > 0.15) D.face = 1; else if (D.x - px < -0.15) D.face = -1;
+  dogPose(D, dt, px, py);
   D.sit = s.crashed; D.t = (D.t || 0) + dt * (s.crashed ? 0 : Math.max(0.3, sp / 120));
   if (s.air && !D.hop && s.airT < 0.15 && s.airDur >= 0.3) D.hop = { t: 0, dur: Math.min(0.9, Math.max(0.35, s.airDur * 0.8)), h: Math.min(18, Math.max(6, (s.airH || 20) * 0.5)) };
   if (D.hop) { D.hop.t += dt; const u = D.hop.t / D.hop.dur; D.z = u >= 1 ? 0 : D.hop.h * 4 * u * (1 - u); if (u >= 1 || !s.air && u > 0.5) { D.hop = null; D.z = 0; } }
@@ -4860,7 +4938,7 @@ function applyOutfit() {
   G.softSkis = !!gearById(st.outfit.skis).soft;
   G.raceSkis = !!gearById(st.outfit.skis).fast;
   G.pads = !!gearById(st.outfit.pads).pads;
-  G.res = new Set((b.resort && b.resort.owned) || []);
+  G.res = new Set((b.resort && b.resort.owned) || []); G.patrolOff = !!b.patrolOff;
   G.barReno = barReno(b);   // the Bar's renovations (the Neon Sign shows in Freestyle)
   for (const k in SKCACHE) delete SKCACHE[k];
   drawMenuArt();
@@ -5221,7 +5299,7 @@ function showWelcome() {
   G.state = 'welcome';
   overlays('welcome'); $('hud').classList.add('hidden'); $('touch').classList.add('hidden'); $('toast').classList.add('hidden');
   if (!G.demo) demoStart();
-  $('wVer').textContent = `Version ${CFG.VERSION}`;
+  $('wVer').textContent = `Version ${CFG.VERSION} (build ${CFG.BUILD})`;
   $('startBtn').style.animationDuration = `${CFG.WELCOME.blink}s`;
   drawMenuArt();
   setTimeout(() => { if (!isTouch) $('startBtn').focus(); }, 0);
@@ -12604,7 +12682,7 @@ function openCabin(from, sel = null) {
   CAB.off = null; CAB.focus = null; CAB.hover = null; CAB.help = 0; $('cabTip').classList.add('hidden');
   cabLayout();
   if (sel) cabPick(sel); else renderCabin();
-  if (!ACCT.cabHint) { ACCT.cabHint = 1; saveAccounts(); setTimeout(() => { if (G.state === 'cabin') toast(CAB.portrait ? 'Drag mouse to look around. Tap anything to open it.' : (isTouch ? 'Tap anything to open it. ? shows what you can tap.' : 'Click anything to open it. ? shows what you can click.'), 3.5, 'Notice'); }, 300); }   // once per device
+  if (!ACCT.cabHint) { ACCT.cabHint = 1; saveAccounts(); setTimeout(() => { if (G.state === 'cabin') toast(CAB.portrait ? 'Drag mouse to look around. Tap anything to open it.' : (isTouch ? 'Tap anything to open it. ? shows what you can tap.' : 'Click anything to open it. ? shows what you can click.'), 3.5); }, 300); }   // once per device
   clearInterval(cabTimer); cabTimer = setInterval(() => { if (G.state === 'cabin') drawCabinRoom(); else clearInterval(cabTimer); }, 110);
 }
 function closeCabin() {
@@ -13163,7 +13241,7 @@ function openResort(sel) {
   G.state = 'resort'; resortArm = 0; RV.upArm = null; overlays('resort'); RV.off = null; RV.hover = null; RV.focus = null; RV.help = 0; $('rsTip').classList.add('hidden');
   rsLayout();
   if (sel) resortPick(sel); else { RV.pop = false; renderResort(); }
-  if (!ACCT.rsHint) { ACCT.rsHint = 1; saveAccounts(); setTimeout(() => { if (G.state === 'resort') toast(RV.portrait ? CFG.RESORT_MAP.hint : isTouch ? CFG.RESORT_MAP.hintTap : CFG.RESORT_MAP.hintDesk, CFG.RESORT_MAP.hintT, 'Notice'); }, 300); }
+  if (!ACCT.rsHint) { ACCT.rsHint = 1; saveAccounts(); setTimeout(() => { if (G.state === 'resort') toast(RV.portrait ? CFG.RESORT_MAP.hint : isTouch ? CFG.RESORT_MAP.hintTap : CFG.RESORT_MAP.hintDesk, CFG.RESORT_MAP.hintT); }, 300); }
   clearInterval(resortTimer); resortTimer = setInterval(() => { if (G.state === 'resort') drawResortMap(); else clearInterval(resortTimer); }, 110);   // animate chairs, fire, smoke, snow
   setTimeout(() => { if (!isTouch && G.state === 'resort') (RV.pop ? $('rsPopX') : $('rsView')).focus(); }, 0);
 }
@@ -13225,7 +13303,7 @@ function rsNextLine(b) {
 // One item's buy button (in an event's list of upgrades): Buy / Tap again / Need $X more / Needs ... / Owned
 function rsUpBtn(b, id) {
   const it = rsItem(id), k = rsBlock(b, id), price = resortPrice(b, id), st = gearState(b);
-  if (k === 'owned') return '<em>Owned</em>';
+  if (k === 'owned') return id === 'patrol' ? `<button type="button" class="btn sm" data-patrol="1">${b.patrolOff ? 'Off duty: put him on' : 'On duty: take him off'}</button>` : '<em>Owned</em>';   // (the Hut: patroller on or off duty)
   const lab = k === 'needs' ? rsNeedText(it) : k === 'cash' ? `Need $${(price - st.cash).toLocaleString()} more` : RV.upArm === id ? (isTouch ? 'Tap again to buy' : 'Click again to buy') : `Buy $${price.toLocaleString()}`;
   return `<button type="button" class="btn sm" data-up="${id}"${k ? ' disabled' : ''}>${lab}</button>`;
 }
@@ -13244,7 +13322,7 @@ function renderResort() {
     info = `<b>${have ? (it.id === 'bar' ? 'Yours' : 'Owned') : lost ? 'Not found yet' : `${it.id === 'bar' ? 'The deed: ' : ''}$${price.toLocaleString()}`}</b><br>${it.id === 'truck' && !have && owned.has('car') ? `${it.desc} <b>Your Car goes in as a trade-in: $${CFG.TRUCK.tradeIn.toLocaleString()} off.</b>` : lost ? `Nobody on this account has found the Bar yet. It's at the first ski lodge, ${CFG.LODGE_M.toLocaleString()} m down the Freestyle run: ski into its door to find it.` : it.desc}`;
   } else info = S.id === 'worldcup' ? wcResortInfo(b) : S.desc;
   const ups = (S.ups || []).filter(id => !(it && id === it.id));
-  if (ups.length) info += `<div class="rsups"><b>Upgrades here</b>` + ups.map(id => { const u = rsItem(id); return `<div><span><b>${u.name}</b>${owned.has(id) ? '' : `, $${resortPrice(b, id).toLocaleString()}`}<br><small>${u.desc}</small></span>${rsUpBtn(b, id)}</div>`; }).join('') + '</div>';
+  if (ups.length) info += `<div class="rsups"><b>Upgrades here</b>` + ups.map(id => { const u = rsItem(id); return `<div><span><b>${u.name}</b>${owned.has(id) ? '' : `, $${resortPrice(b, id).toLocaleString()}`}<br><small>${u.desc}${id === 'patrol' && owned.has(id) ? (b.patrolOff ? ' Patroller off duty: Big Karl catches you as if there were no Hut.' : ' Patroller on duty.') : ''}</small></span>${rsUpBtn(b, id)}</div>`; }).join('') + '</div>';
   $('rsInfo').innerHTML = info;
   const btn = $('rsBuy'), door = rsDoor(b, S.id), block = it ? rsBlock(b, it.id) : null;
   if (door) { btn.textContent = door[0]; btn.disabled = false; }
@@ -13818,7 +13896,7 @@ function startGame(mode, fromOly) {
   wcBibApply(loadBest());   // the red bib, while you lead the World Cup
   if (mode === 'freestyle' && !G.oly && !G.wc) {   // bear spray in your pack, and your dog
     const bb = loadBest(); G.sprayCans = sprayCans(bb);
-    if (dogComes(bb)) G.dog = { x: -CFG.DOG.side, y: -6, z: 0, t: 0, sit: false, hist: [], face: 1, barkAt: -9, barkT: 0, hop: null, dh: [] };   // (t: his running animation; set before the first frame draws him)
+    if (dogComes(bb)) G.dog = { x: -CFG.DOG.side, y: -6, z: 0, t: 0, sit: false, hist: [], face: 1, barkAt: -9, barkT: 0, hop: null, dh: [], pose: 0, want: 0, wantT: 0, hx: 0, hy: 1 };   // (t: his running animation; set before the first frame draws him)
   }
   G.weather = WEATHER_MODES.includes(mode) ? (G.wc ? G.wc.stop.weather : pickWeather()) : 'clear'; G.snow = [];
   G.rec = null; G.ghost = null;
@@ -14406,7 +14484,8 @@ $('rsBuy').addEventListener('click', resortBuyPress);
   st.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { RV.hover = null; $('rsTip').classList.add('hidden'); rsFxDraw(); } });
   $('rsShade').addEventListener('click', () => { if (performance.now() - (RV.openT || 0) > CFG.RESORT_MAP.guard) resortPopClose(); });   // (not the click a phone sends after the tap that opened it)
   $('rsPopX').addEventListener('click', resortPopClose);
-  $('rsInfo').addEventListener('click', e => { const t = e.target.closest('[data-up]'); if (t && !t.disabled) rsUpBuy(t.dataset.up); });
+  $('rsInfo').addEventListener('click', e => { const t = e.target.closest('[data-up]'); if (t && !t.disabled) rsUpBuy(t.dataset.up);
+    if (e.target.closest('[data-patrol]')) { const bb = loadBest(); bb.patrolOff = !bb.patrolOff; saveBest(bb); G.patrolOff = bb.patrolOff; SFX.chal(); renderResort(); } });
   $('rsHelp').addEventListener('click', rsShowAll);
   addEventListener('resize', () => { if (G.state === 'resort') rsLayout(); });
   $('rsView').tabIndex = -1;
@@ -16000,6 +16079,22 @@ function drawSnoLot(cx, cy, o = {}) {
 }
 
 /* ------------------------------ boot ------------------------------ */
+// Installed as an app (see CFG.APP): the manifest and icons, the service worker (offline play), persistent storage. Never throws.
+const appHosted = () => /^https?:$/.test(location.protocol) && CFG.APP.path.test(location.pathname);
+function appSetup() {
+  try {
+    if (appHosted()) {
+      const base = location.pathname.replace(/\/index\.html$/, '/').replace(/([^/])$/, '$1/');   // the game's folder: /powder-panic/
+      const link = (rel, href) => { const l = document.createElement('link'); l.rel = rel; l.href = base + href; document.head.appendChild(l); };
+      link('manifest', CFG.APP.manifest);
+      for (const [rel, href] of Object.entries(CFG.APP.icons)) link(rel, href);
+      if ('serviceWorker' in navigator) addEventListener('load', () => { navigator.serviceWorker.register(base + CFG.APP.sw, { scope: base }).catch(() => {}); });
+    }
+    const S = navigator.storage;
+    if (CFG.APP.persist && S && S.persist && S.persisted && !/Firefox\//.test(navigator.userAgent)) S.persisted().then(p => p || S.persist()).catch(() => {});
+  } catch (e) { /* (an app nicety: the game runs without it) */ }
+}
+appSetup();
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
