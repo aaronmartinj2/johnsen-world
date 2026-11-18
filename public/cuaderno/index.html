@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi cuaderno de espanol</title>
+<meta name="description" content="Personal Spanish study notebook - Mexican Spanish with Sinaloa regional vocabulary.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FBF9F3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mi cuaderno">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Nunito+Sans:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#FBF9F3; }
+  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {
+  useState,
+  useEffect,
+  useRef
+} = React;
+
+// ---------- Storage: plain localStorage ----------
+const store = {
+  get: async function (k) {
+    const v = localStorage.getItem(k);
+    return v ? {
+      key: k,
+      value: v
+    } : null;
+  },
+  set: async function (k, v) {
+    localStorage.setItem(k, v);
+    return {
+      key: k,
+      value: v
+    };
+  }
+};
+
+// ---------- Design tokens: "study notebook" ----------
+const C = {
+  paper: "#FBF9F3",
+  grid: "#E8E3D5",
+  ink: "#22304A",
+  inkSoft: "#5A6A85",
+  hi: "#FFE45C",
+  // highlighter yellow — signature
+  green: "#3E8E5E",
+  red: "#D65454",
+  amber: "#E0A63A",
+  card: "#FFFFFF"
+};
+const INTERVALS = {
+  1: 0,
+  2: 1,
+  3: 3,
+  4: 7,
+  5: 14,
+  6: 30
+}; // days until next review by box
+const SESSION_SIZE = 10;
+const NEW_PER_DAY_DEFAULT = 5;
+
+// Local date — NOT toISOString(), which is UTC and would roll the day over
+// in the late afternoon for anyone in the Americas.
+const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const todayStr = () => fmt(new Date());
+const addDays = n => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return fmt(d);
+};
+
+// ---------- Audio: browser speech, Mexican voice preferred ----------
+const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+let pickedVoice = null;
+let voiceLabel = "";
+function chooseVoice() {
+  if (!synth) return null;
+  const all = synth.getVoices();
+  const es = all.filter(v => v.lang && v.lang.toLowerCase().startsWith("es"));
+  if (!es.length) return null;
+  const by = re => es.find(v => re.test(v.lang));
+  pickedVoice = by(/es[-_]MX/i) ||
+  // Mexican — what we want
+  by(/es[-_]US/i) ||
+  // US Spanish, closest cousin
+  by(/es[-_](419|CO|PE|CL|AR)/i) ||
+  // other Latin American
+  es[0]; // anything Spanish beats nothing
+  voiceLabel = pickedVoice ? `${pickedVoice.name} (${pickedVoice.lang})` : "";
+  return pickedVoice;
+}
+if (synth) {
+  chooseVoice();
+  synth.onvoiceschanged = chooseVoice;
+}
+
+// Strip flags, warning signs, and other non-speech marks
+const sayable = t => t.replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, "").replace(/\s+/g, " ").trim();
+function speak(text, rate = 0.9) {
+  if (!synth) return;
+  const clean = sayable(text);
+  if (!clean) return;
+  try {
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(clean);
+    const v = pickedVoice || chooseVoice();
+    if (v) u.voice = v;
+    u.lang = v ? v.lang : "es-MX";
+    u.rate = rate;
+    synth.speak(u);
+  } catch (e) {
+    console.error("speech failed", e);
+  }
+}
+
+// iOS needs a first utterance inside a real tap to unlock audio
+let primed = false;
+function primeSpeech() {
+  if (!synth || primed) return;
+  primed = true;
+  try {
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    synth.speak(u);
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+// ---------- Seed cards from Aaron's real study history ----------
+const seedCards = [["pensar", "to think", "Stem-changer e→ie: pienso, piensas… but nosotros pensamos"], ["pensar + infinitivo", "to plan / intend to", "Pienso viajar a México = I plan to travel to Mexico"], ["abrazar", "to hug", "Preterite yo: abracé (z→c). Don't confuse with abrasar (to scorch)"], ["cocinar", "to cook", "Regular -ar. Spelling: c, not s (cociné pasta anoche)"], ["amar", "to love", "Strong! Everyday love = querer → Te quiero"], ["pagar", "to pay", "Preterite yo: pagué (g→gu). No 'por': Pagué la cena"], ["leer", "to read", "Preterite: leí, leíste, leyó, leyeron (i→y between vowels)"], ["descansar", "to rest", "¡Que descanses! = Sleep well / Rest up"], ["regalar", "to give (a gift)", "Needs le/me/te: Le regalé un libro a mi hermana"], ["hacer", "to do, to make", "hago · hice, hiciste, hizo. Weather too: Hace frío"], ["voy a hacer", "I'm going to do", "Never 'voy hacer' — the a is required, even if you can't hear it!"], ["¿Qué hiciste?", "What did you do?", "Spelling: hiciste with c. Qué always takes an accent"], ["fui a + infinitivo", "I went to (do something)", "Fui a comprar pan. Verb stays infinitive"], ["desayunar", "to eat breakfast", "Regular -ar: desayuno, desayunas…"], ["cenar", "to eat dinner", "🇲🇽 In Mexico la cena is light and late. The big meal is la comida (~2–4pm)"], ["comer", "to eat", "Regular -er: como, comes, come, comemos"], ["dormir", "to sleep", "Stem-changer o→ue: duermo, duermes… but dormimos"], ["bañarse", "to shower, to bathe", "🇲🇽 In Mexico this is THE everyday word, even for a shower: Me voy a bañar"], ["ducharse", "to shower", "Understood everywhere, but Mexicans usually say bañarse instead"], ["bailar", "to dance", "Regular -ar: bailo, bailé"], ["nadar", "to swim", "Regular -ar: nado, nadé"], ["cantar", "to sing", "Regular -ar: canto, canté"], ["estudiar", "to study", "Regular -ar: Mi hermana estudia español"], ["hacer deporte", "to play sports", "Uses hacer: Hago deporte los sábados"]].map(([es, en, note], i) => ({
+  id: "seed-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr()
+}));
+
+// ---------- The app's own interface, as vocabulary ----------
+const uiCards = [["el cuaderno", "the notebook", "Mi cuaderno = my notebook. From cuaderno = notebook/workbook"], ["la palabra", "the word", "Plural: las palabras. Banco de palabras = word bank"], ["la tarjeta", "the card", "Also means credit card: pagar con tarjeta"], ["repasar", "to review, to go over", "Regular -ar. Voy a repasar mis notas"], ["el repaso", "the review", "Noun from repasar. Repaso rápido = quick review"], ["rápido / rápida", "fast, quick", "Adjective — agrees: una sesión rápida"], ["añadir", "to add", "-ir verb: añado, añades. Note the ñ!"], ["nuevo / nueva", "new", "Agrees with the noun: palabra nueva, verbo nuevo"], ["guardar", "to save, to keep", "Regular -ar. Guardar y añadir otra = save and add another"], ["borrar", "to delete, to erase", "Regular -ar. Related: el borrador = eraser/draft"], ["editar", "to edit", "Regular -ar: edito, editas"], ["buscar", "to look for, to search", "Preterite yo: busqué (c→qu) — matches pagué, abracé"], ["volver", "to go back, to return", "Stem-changer o→ue: vuelvo, vuelves… but volvemos"], ["salir", "to leave, to go out", "Irregular yo: salgo (like hago). Salir con = to date"], ["mostrar", "to show", "Stem-changer o→ue: muestro, muestras. Mostrar respuesta"], ["la respuesta", "the answer", "From responder = to answer"], ["la práctica", "the practice", "Práctica libre = free practice. Verb: practicar"], ["libre", "free (unrestricted)", "Not free-of-cost — that's gratis. Same for masc/fem"], ["la sesión", "the session", "Plural drops the accent: las sesiones"], ["corto / corta", "short", "Sesiones cortas = short sessions. Opposite: largo"], ["dominar", "to master", "Dominada = mastered. Domino el presente = I've got the present tense"], ["aprender", "to learn", "Regular -er. Aprendiendo = learning (gerund)"], ["el día / los días", "the day / the days", "Masculine despite the -a! El día, un buen día"], ["hoy", "today", "Repasar hoy = review today. Ayer = yesterday, mañana = tomorrow"], ["todo al día", "all caught up", "Literally 'everything up to the day'. Estar al día = be up to date"], ["¡Bien hecho!", "Well done!", "Hecho = past participle of hacer (done/made)"], ["completo / completa", "complete, full", "¡Sesión completa! Verb: completar"], ["casi", "almost, nearly", "Casi lo sé = I almost know it. Casi siempre = almost always"], ["No lo sé", "I don't know (it)", "Saber = to know facts. Irregular yo: sé (with accent)"], ["¡Lo sé!", "I know it!", "Lo = it. Saber vs conocer: saber = facts, conocer = people/places"], ["cómo funciona", "how it works", "Funcionar = to work/function (for things, not jobs)"], ["la nota", "the note", "Nota opcional. Also means a grade: buena nota"], ["el ejemplo", "the example", "Por ejemplo = for example (very common!)"], ["el truco", "the trick, the tip", "Un truco para recordar = a trick to remember"], ["la clase", "the class", "De tu clase = from your class. Also 'kind': ¿qué clase de…?"], ["la canción", "the song", "Plural: las canciones (accent drops)"], ["la calle", "the street", "Feminine. Caminar por la calle = walk down the street"], ["capturar", "to capture", "Captúralo = capture it (command + lo attached)"], ["escapar(se)", "to escape", "Antes de que se escape = before it escapes"], ["todavía", "still, yet", "Nada todavía = nothing yet. Synonym: aún"], ["nada", "nothing", "Nada por aquí = nothing around here"], ["aquí", "here", "Por aquí = around here. Allí/allá = there"], ["ver", "to see", "Irregular: veo, ves, ve. Preterite: vi, viste, vio (no accents)"], ["cancelar", "to cancel", "Regular -ar: cancelo, cancelé"], ["el segundo / los segundos", "the second(s)", "En segundos = in seconds. Also 'second' in order"]].map(([es, en, note], i) => ({
+  id: "ui-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr()
+}));
+
+// ---------- Mexican Spanish, leaning norteño / Sinaloa ----------
+const mxCards = [["ustedes", "you all", "🇲🇽 Mexico uses ustedes for ALL plural you. Vosotros is Spain only — skip it"], ["ahorita", "right now / in a bit / eventually", "🇲🇽 The famous fuzzy one. Ahorita voy could mean 2 min or never. Tone tells you"], ["¿Qué onda?", "What's up?", "🇲🇽 Everyday greeting. Reply: Aquí nomás / Todo bien"], ["¿Quiubo?", "What's up? (short for ¿Qué hubo?)", "Norteño greeting, very common in Sinaloa"], ["¡Órale!", "Wow / OK / Go on!", "🇲🇽 Context does the work: surprise, agreement, or encouragement"], ["¡Ándale!", "There you go / Hurry up / Exactly", "🇲🇽 Ándale pues = alright then (great conversation closer)"], ["Sale", "Sounds good / Deal", "🇲🇽 Sale y vale = it's a deal. Mexico's answer to Spain's ¡Vale!"], ["nomás", "just, only", "Norteño staple: Aquí nomás. Standard version is solamente/solo"], ["¿Mande?", "Sorry? / Come again?", "🇲🇽 Very Mexican way to ask someone to repeat. Also answering your name being called"], ["platicar", "to chat, to talk", "🇲🇽 Preferred over charlar/hablar for casual conversation. La plática = the chat"], ["la plebe / los plebes", "the kid(s), the young crowd", "Strongly Sinaloa/Sonora. La plebada = the young folks"], ["el buqui / la buqui", "kid, child", "Sinaloa & Sonora regional. From the Cahita indigenous languages"], ["el morro / la morra", "young guy / young woman", "Northern Mexico. Also 'my girl' informally: mi morra"], ["el compa", "buddy, bro", "Short for compadre. Extremely norteño: ¿Qué onda, compa?"], ["el carnal / la carnala", "brother/sister (close friend)", "🇲🇽 From carne — 'same flesh'. Deep friendship"], ["la cheve", "beer", "Norteño word for beer. Central Mexico says chela"], ["curado / ¡Qué cura!", "funny, amusing / How funny!", "Norteño. Note: chido is more Mexico City than northern"], ["bichi", "naked", "Sinaloa & Sonora only. Andar bichi = to be running around naked"], ["la alberca", "the swimming pool", "🇲🇽 Mexico says alberca, Spain says piscina. Nadar en la alberca"], ["el celular", "cell phone", "🇲🇽 Mexico: celular. Spain: móvil"], ["la computadora", "the computer", "🇲🇽 Mexico: computadora. Spain: ordenador"], ["manejar", "to drive", "🇲🇽 Mexico: manejar. Spain: conducir. Also means 'to handle'"], ["el jugo", "juice", "🇲🇽 Mexico: jugo. Spain: zumo"], ["el elote", "corn on the cob", "🇲🇽 From Nahuatl. Mexican Spanish is full of Nahuatl: chile, tomate, aguacate"], ["el aguachile", "aguachile (raw shrimp in chile-lime)", "Sinaloa's signature dish — arguably invented there"], ["la machaca", "dried shredded beef", "Northern Mexican staple. Machaca con huevo for breakfast"], ["el chilorio", "chilorio (shredded pork in chile)", "Sinaloa specialty, often eaten in tacos or burritos"], ["antojar(se)", "to feel like (having)", "🇲🇽 Se me antoja un taco = I'm craving a taco. El antojito = a snack"], ["¡Qué padre!", "How cool!", "🇲🇽 Padre = cool. Padrísimo = super cool"], ["güey / wey", "dude, man", "🇲🇽 Ultra-common among friends. Casual only — never with elders or at work"], ["coger ⚠️", "AVOID in Mexico", "In Spain it means to take/grab. In Mexico it's vulgar. Use tomar or agarrar"], ["agarrar", "to grab, to take", "🇲🇽 Safe everyday alternative to coger. Agarra la bolsa"], ["Ya comí", "I already ate", "🇲🇽 Mexico uses simple preterite for today's finished actions. Spain would say he comido"], ["-ito / -ita", "diminutive ending", "🇲🇽 Used constantly: cafecito, poquito, cerquita, ahorita. Softens and warms speech"]].map(([es, en, note], i) => ({
+  id: "mx-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr()
+}));
+const ALL_SEEDS = [...seedCards, ...uiCards, ...mxCards].map(c => ({
+  ...c,
+  intro: true
+}));
+
+// ---------- The waiting pool: released a few per day, in this order ----------
+// Order matters — sentence-building machinery first, decoration last.
+const library = [
+// — Question words —
+["¿Qué?", "What?", "¿Qué haces? All question words carry an accent"], ["¿Quién?", "Who?", "Plural: ¿Quiénes? ¿Quién es?"], ["¿Cuál?", "Which? / What (of a set)?", "¿Cuál prefieres? Used where English says 'what' with options"], ["¿Cuándo?", "When?", "¿Cuándo llegas?"], ["¿Dónde?", "Where?", "¿Dónde estás? Location"], ["¿Adónde?", "(To) where?", "Movement: ¿Adónde vas? Pairs with ir"], ["¿Cómo?", "How? / What?", "¿Cómo estás? Also 'what?' when you mishear"], ["¿Cuánto? / ¿Cuántos?", "How much? / How many?", "Agrees: ¿Cuántas hermanas tienes?"], ["¿Por qué?", "Why?", "Two words with accent. Answer with porque (one word, no accent)"], ["¿Para qué?", "What for?", "Purpose, vs por qué = cause"],
+// — Engine verbs —
+["ser", "to be (identity, traits)", "soy, eres, es, somos, son · Soy de Sinaloa"], ["estar", "to be (location, mood)", "estoy, estás, está, estamos, están · Estoy cansado"], ["ir", "to go", "voy, vas, va, vamos, van · Preterite = fui (same as ser!)"], ["tener", "to have", "tengo, tienes, tiene, tenemos, tienen · Preterite: tuve"], ["hay", "there is / there are", "One form for both! Hay un problema. Hay muchos"], ["poder", "to be able, can", "o→ue: puedo, puedes, puede… podemos · Preterite: pude"], ["querer", "to want / to love", "e→ie: quiero, quieres… queremos · Te quiero"], ["saber", "to know (facts, how to)", "Irregular yo: sé · Sé nadar = I know how to swim"], ["conocer", "to know (people, places)", "Irregular yo: conozco · Conozco Culiacán"], ["decir", "to say, to tell", "digo, dices, dice… · Preterite: dije, dijiste, dijo"], ["ver", "to see", "veo, ves, ve · Preterite: vi, viste, vio (no accents!)"], ["dar", "to give", "doy, das, da · Preterite: di, diste, dio"], ["poner", "to put, to place", "Irregular yo: pongo · Preterite: puse"], ["venir", "to come", "vengo, vienes, viene · Preterite: vine"], ["traer", "to bring", "Irregular yo: traigo · Preterite: traje"], ["llevar", "to carry, to take (along)", "Regular -ar. Also: para llevar = to go"], ["llegar", "to arrive", "Preterite yo: llegué (g→gu, like pagué)"], ["pasar", "to pass, to happen", "¿Qué pasó? = What happened?"], ["quedar", "to remain / to arrange to meet", "Quedamos a las 8 = let's meet at 8"], ["seguir", "to continue, to follow", "e→i: sigo, sigues, sigue · Sigo estudiando"], ["vivir", "to live", "Regular -ir: vivo, vives, vive, vivimos, viven"], ["deber", "should, ought to / to owe", "Debo estudiar · ¿Cuánto le debo?"], ["necesitar", "to need", "Regular -ar. Necesito ayuda"],
+// — Tener expressions —
+["tener hambre", "to be hungry", "Literally 'to have hunger'. Tengo hambre"], ["tener sed", "to be thirsty", "Tengo sed"], ["tener sueño", "to be sleepy", "Different from estar cansado (tired)"], ["tener frío / calor", "to be cold / hot (a person)", "For weather use hace: hace calor"], ["tener prisa", "to be in a hurry", "🇲🇽 Mexico often says tengo prisa or ando apurado"], ["tener miedo", "to be afraid", "Tener miedo de = afraid of"], ["tener razón", "to be right", "Tienes razón = you're right"], ["tener ganas de", "to feel like (doing)", "Tengo ganas de nadar"], ["tener 30 años", "to be 30 years old", "Age uses tener, never ser"], ["tener que + infinitivo", "to have to", "Tengo que trabajar = I have to work"],
+// — Sentence-builder chunks —
+["hay que + infinitivo", "one must / we need to", "Impersonal: Hay que estudiar"], ["acabar de + infinitivo", "to have just (done)", "Acabo de comer = I just ate"], ["volver a + infinitivo", "to do again", "Volví a leerlo = I read it again"], ["empezar a + infinitivo", "to start doing", "e→ie: empiezo. Preterite yo: empecé (z→c)"], ["terminar de + infinitivo", "to finish doing", "Terminé de cocinar"], ["estar + gerundio", "to be doing (right now)", "Estoy comiendo. -ando (-ar) / -iendo (-er, -ir)"], ["ir a + infinitivo", "going to (near future)", "Your old friend — and the a is never optional"], ["se me olvidó", "I forgot / it slipped my mind", "🇲🇽 Softer than olvidé — 'it forgot itself on me'"], ["se me hace que…", "I get the feeling that…", "🇲🇽 Se me hace que va a llover"], ["¿Qué tal si…?", "How about we…?", "¿Qué tal si vamos al malecón?"],
+// — Connectors —
+["pero", "but", "Basic contrast"], ["porque", "because", "One word, no accent — unlike ¿por qué?"], ["por eso", "that's why, so", "Llovió, por eso no salí"], ["también", "also, too", "Yo también = me too"], ["tampoco", "neither, not either", "Yo tampoco = me neither"], ["entonces", "then, so", "Very common filler and connector"], ["aunque", "although, even though", "Aunque llueva = even if it rains"], ["así que", "so, therefore", "Result: Tenía hambre, así que comí"], ["además", "besides, also", "Adds a point"], ["o sea", "I mean, in other words", "🇲🇽 Extremely common in speech"], ["es que…", "the thing is…", "Softens an excuse: Es que no pude"], ["ni modo", "oh well, nothing to be done", "🇲🇽 Peak Mexican shrug"], ["mientras", "while", "Mientras cocino, escucho música"], ["sin embargo", "however", "More formal register"],
+// — Time & frequency —
+["hoy / mañana / ayer", "today / tomorrow / yesterday", "Mañana also means 'morning': por la mañana"], ["anoche", "last night", "Anoche cené tarde"], ["la semana pasada", "last week", "Pasado/a = last. El mes pasado, el año pasado"], ["siempre", "always", ""], ["nunca", "never", "Nunca voy. Double negative is fine: No voy nunca"], ["a veces", "sometimes", ""], ["seguido", "often", "🇲🇽 Mexico says seguido, not a menudo"], ["casi nunca", "hardly ever", ""], ["temprano / tarde", "early / late", "Me levanto temprano"], ["luego luego", "right away", "🇲🇽 The doubled word means immediately"], ["ya", "already / now", "Ya comí = I already ate. Ya voy = I'm coming"], ["todavía / aún", "still, yet", "Todavía no = not yet"], ["el fin de semana", "the weekend", ""], ["cada día / todos los días", "every day", "Todos los días is more common in speech"],
+// — Survival phrases —
+["¿Me regala…?", "Could I get…?", "🇲🇽 The politest way to order. Yes — regalar again!"], ["¿Me da…?", "Could I have…?", "Slightly more direct than me regala"], ["Con permiso", "Excuse me (passing by)", "🇲🇽 Also when leaving a room. Reply: Propio"], ["Provecho", "Enjoy your meal", "🇲🇽 Said to strangers eating near you — expected politeness"], ["¡Salud!", "Cheers! / Bless you!", "Both toasting and sneezing"], ["Que le vaya bien", "Have a good one", "Warm goodbye. Informal: que te vaya bien"], ["Ahí nos vemos", "See you around", "🇲🇽 Casual sign-off"], ["Al rato", "In a bit, later", "🇲🇽 Cousin of ahorita, equally elastic"], ["¿Cómo se dice…?", "How do you say…?", "Your most useful learner phrase"], ["¿Qué significa…?", "What does… mean?", "Also: ¿Qué quiere decir…?"], ["Más despacio, por favor", "Slower, please", "Use it freely — people will oblige"], ["Estoy aprendiendo español", "I'm learning Spanish", "Opens doors and buys patience"], ["No entiendo", "I don't understand", "vs No sé = I don't know"], ["Disculpe / Perdón", "Excuse me / Sorry", "Disculpe to get attention, perdón to apologize"], ["No hay de qué", "Don't mention it", "Warmer than de nada"], ["¿Me puede ayudar?", "Can you help me?", "Formal usted. Informal: ¿Me puedes ayudar?"], ["¿Está bien?", "Is that okay?", "Handy check-in"],
+// — Gustar family (backwards verbs) —
+["me gusta / me gustan", "I like it / I like them", "Backwards: the THING is the subject. Me gustan los tacos"], ["me encanta", "I love it", "Stronger than gustar. Use for things, not people"], ["me choca", "I can't stand it", "🇲🇽 Me choca esperar"], ["me cae bien / mal", "I like / dislike them (a person)", "🇲🇽 For people — never me gusta unless romantic!"], ["me late", "I'm into it / sounds good", "🇲🇽 Me late la idea"], ["me interesa", "it interests me", "Same backwards pattern"], ["me duele", "it hurts me", "Me duele la cabeza = my head hurts"], ["me falta", "I'm missing / I still need", "Me falta práctica"],
+// — Daily routine reflexives —
+["levantarse", "to get up", "Me levanto a las seis"], ["despertarse", "to wake up", "e→ie: me despierto"], ["vestirse", "to get dressed", "e→i: me visto, te vistes"], ["acostarse", "to go to bed", "o→ue: me acuesto"], ["lavarse", "to wash (oneself)", "Me lavo las manos — Spanish uses 'the', not 'my'"], ["peinarse", "to comb one's hair", "Me peino"], ["ponerse", "to put on (clothes)", "Me pongo la chamarra 🇲🇽 (jacket)"], ["quitarse", "to take off", "Quítate los zapatos"], ["irse", "to leave, to go away", "Me voy = I'm out of here"], ["sentarse", "to sit down", "e→ie: me siento. ⚠️ Don't confuse with sentir(se) = to feel"], ["apurarse", "to hurry up", "🇲🇽 ¡Apúrate! = Hurry up!"], ["arreglarse", "to get ready", "🇲🇽 Me estoy arreglando"],
+// — Food & eating out —
+["la cuenta", "the bill, the check", "¿Me trae la cuenta?"], ["la propina", "the tip", "10–15% typical in Mexico"], ["para llevar", "to go, takeout", "vs para aquí / para comer aquí"], ["el mesero / la mesera", "the waiter / waitress", "🇲🇽 Mexico says mesero, Spain camarero"], ["el refresco", "soda", "🇲🇽 Also: un agua fresca (fruit water)"], ["¿Pica?", "Is it spicy?", "🇲🇽 The question that matters"], ["picoso", "spicy", "🇲🇽 Mexico says picoso; picante is understood but less common"], ["la salsa", "the salsa", "Roja, verde, or macha (Sinaloa loves chiltepín)"], ["el camarón", "shrimp", "⭐ Sinaloa is Mexico's shrimp capital"], ["los mariscos", "seafood", "⭐ La marisquería = seafood restaurant"], ["la tortilla de harina", "flour tortilla", "⭐ The north eats flour; the south eats corn"], ["la carne asada", "grilled meat / a cookout", "⭐ Both the food and the social event"], ["el desayuno / la comida / la cena", "breakfast / midday meal / supper", "🇲🇽 La comida is the big one, ~2–4pm"], ["rico / sabroso", "delicious", "¡Qué rico! is the everyday compliment"], ["¡Está buenísimo!", "It's so good!", "-ísimo intensifies anything"],
+// — Getting around —
+["el camión", "the bus", "🇲🇽 ⚠️ In Mexico camión = bus. Elsewhere it means truck"], ["la parada", "the stop", "La parada del camión"], ["la cuadra", "the city block", "🇲🇽 A dos cuadras = two blocks away"], ["derecho", "straight ahead", "⚠️ Not the same as a la derecha (to the right)!"], ["a la derecha / a la izquierda", "to the right / left", ""], ["la esquina", "the corner", "En la esquina"], ["cerca / lejos", "near / far", "Cerca de aquí = near here"], ["la troca", "the pickup truck", "⭐ Norteño, borrowed from English 'truck'"], ["el malecón", "the seaside boardwalk", "⭐ Mazatlán's is famous"], ["¿Dónde queda…?", "Where is… located?", "🇲🇽 More natural than ¿Dónde está? for places"],
+// — Money & shopping —
+["¿Cuánto cuesta?", "How much does it cost?", "Plural: ¿Cuánto cuestan?"], ["¿Cuánto le debo?", "How much do I owe you?", "Polite at checkout"], ["la lana", "money (slang)", "🇲🇽 Literally 'wool'. Also: el varo"], ["barato / caro", "cheap / expensive", "Está muy caro"], ["el cambio", "change (money)", "¿Tiene cambio? = Do you have change?"], ["el mercado", "the market", "🇲🇽 Also el tianguis = open-air street market"], ["la tiendita", "the corner store", "🇲🇽 Diminutive doing real work"], ["¿Aceptan tarjeta?", "Do you take cards?", "Cash still rules in many places"],
+// — Weather —
+["hace calor / frío", "it's hot / cold", "Weather always uses hacer"], ["está húmedo", "it's humid", "⭐ Sinaloa summers, in two words"], ["está nublado", "it's cloudy", ""], ["llover / la lluvia", "to rain / the rain", "o→ue: llueve = it's raining"], ["el chubasco", "a downpour", "⭐ Coastal Sinaloa rainy season"], ["el huracán", "hurricane", "Season runs roughly June–November"], ["el calorón", "brutal heat", "🇲🇽 -ón makes things bigger"],
+// — Norteño & Sinaloa —
+["¡Nombre!", "No way! / Nah!", "⭐ Crushed form of '¡No, hombre!'"], ["¿A poco?", "Really? / Seriously?", "🇲🇽 Genuine surprise"], ["Échale ganas", "Give it your all", "🇲🇽 Encouragement you'll hear constantly"], ["¡Aguas!", "Watch out!", "🇲🇽 Nothing to do with water anymore"], ["Qué gacho", "How lousy / uncool", "🇲🇽 Opposite of qué padre"], ["No manches", "No way / Come on", "🇲🇽 The polite version of a ruder phrase"], ["Fíjate", "Check this out / Get this", "🇲🇽 Story-opener"], ["la banda / la tambora", "the brass band", "⭐ Sinaloa's musical signature"], ["culichi", "person from Culiacán", "⭐ Also a creamy poblano sauce"], ["mazatleco", "person from Mazatlán", "⭐"], ["el rancho", "the ranch, the countryside", "⭐ Deep in norteño identity"], ["pistear", "to drink (alcohol)", "⭐ Norteño. La pisteada = the drinking session"], ["andar", "to be going around / to be (temporarily)", "🇲🇽 Ando cansado = I'm feeling tired lately"], ["¡Qué transa!", "What's up!", "🇲🇽 Casual greeting among friends"],
+// — False friends —
+["embarazada ⚠️", "pregnant (NOT embarrassed)", "Embarrassed = apenado / me da pena"], ["éxito ⚠️", "success (NOT exit)", "Exit = la salida"], ["actualmente ⚠️", "currently (NOT actually)", "Actually = en realidad / de hecho"], ["realizar ⚠️", "to carry out (NOT to realize)", "To realize = darse cuenta de"], ["molestar ⚠️", "to bother (NOT to molest)", "No te molesto = I won't bother you"], ["la ropa ⚠️", "clothes (NOT rope)", "Rope = la cuerda"], ["la carpeta ⚠️", "folder (NOT carpet)", "Carpet = la alfombra"], ["la librería ⚠️", "bookstore (NOT library)", "Library = la biblioteca"], ["largo ⚠️", "long (NOT large)", "Large = grande"], ["sensible ⚠️", "sensitive (NOT sensible)", "Sensible = razonable"], ["asistir ⚠️", "to attend (NOT to assist)", "To assist = ayudar"], ["soportar ⚠️", "to tolerate (NOT to support)", "To support = apoyar"], ["el éxito vs la salida", "success vs exit", "Worth drilling as a pair"], ["pretender ⚠️", "to intend / to court (NOT to pretend)", "To pretend = fingir"]].map(([es, en, note], i) => ({
+  id: "lib-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr(),
+  intro: false // waits in the pool
+}));
+
+// ---------- Curated nouns: article baked in, Mexico-corrected ----------
+const nouns = [["el amigo / la amiga", "friend", "🇲🇽 Also el cuate, el compa ⭐"], ["el papá / la mamá", "dad / mom", "🇲🇽 Far more common than padre/madre in speech"], ["el hijo / la hija", "son / daughter", "Los hijos = children (mixed)"], ["el hermano / la hermana", "brother / sister", "🇲🇽 Slang: el carnal"], ["el abuelo / la abuela", "grandfather / grandmother", ""], ["el tío / la tía", "uncle / aunt", ""], ["el primo / la prima", "cousin", ""], ["el esposo / la esposa", "husband / wife", "🇲🇽 Also mi señor/señora informally"], ["el novio / la novia", "boyfriend / girlfriend; groom / bride", "Both meanings"], ["el chavo / la chava", "young guy / girl", "🇲🇽 In Sinaloa you'll hear morro/morra ⭐"], ["el señor / la señora", "sir / ma'am; man / woman", "Default polite address"], ["el vecino / la vecina", "neighbor", ""], ["el jefe / la jefa", "boss", "🇲🇽 Mi jefe/jefa can also mean my dad/mom!"], ["el maestro / la maestra", "teacher", "🇲🇽 Mexico says maestro; profesor is more formal"], ["el ojo", "the eye", "¡Ojo! = Watch out!"], ["la boca", "the mouth", ""], ["la nariz", "the nose", "Plural: narices"], ["la oreja", "the ear", "El oído = inner ear/hearing"], ["el pelo", "hair", "El cabello is more formal"], ["el brazo", "the arm", ""], ["la pierna", "the leg", ""], ["el pie", "the foot", "A pie = on foot"], ["el dedo", "finger; toe", "El dedo del pie = toe"], ["el diente", "the tooth", "Plural: los dientes"], ["la espalda", "the back", "Me duele la espalda"], ["la rodilla", "the knee", ""], ["el estómago", "the stomach", "🇲🇽 La panza informally"], ["la piel", "the skin", ""], ["la sangre", "blood", "Feminine despite the -e"], ["el hueso", "the bone", ""], ["la garganta", "the throat", ""], ["el cuarto", "the room", "🇲🇽 Mexico's everyday word for room"], ["la recámara", "the bedroom", "🇲🇽 Very Mexican. Spain says dormitorio"], ["la sala", "living room", ""], ["el baño", "bathroom", "¿Dónde está el baño? — learn this one first"], ["la ventana", "the window", ""], ["la pared", "the wall", "-dad/-tad/-ed endings are feminine"], ["el piso", "the floor", "🇲🇽 In Mexico piso = floor. In Spain it means apartment!"], ["el techo", "the roof, ceiling", ""], ["la silla", "the chair", ""], ["la mesa", "the table", ""], ["la llave", "the key", "🇲🇽 Also a faucet: la llave del agua"], ["el espejo", "the mirror", ""], ["la toalla", "the towel", ""], ["el jabón", "soap", "Plural: jabones"], ["la cobija", "the blanket", "🇲🇽 Mexico: cobija. Spain: manta"], ["la almohada", "the pillow", ""], ["el foco", "the lightbulb", "🇲🇽 Mexico: foco. Spain: bombilla"], ["el pan", "bread", "El pan dulce = Mexican sweet bread 🇲🇽"], ["la carne", "meat", "La carne de res = beef"], ["el pollo", "chicken", ""], ["el pescado", "fish (to eat)", "⚠️ El pez = live fish. El pescado = on your plate"], ["el huevo", "the egg", "Huevos con machaca ⭐"], ["la leche", "milk", "Feminine"], ["el queso", "cheese", "⭐ Sinaloa: queso fresco, cotija"], ["el arroz", "rice", ""], ["el frijol", "bean", "🇲🇽 Plural frijoles. Spain says judías"], ["la sal", "salt", "Feminine"], ["el azúcar", "sugar", ""], ["el aceite", "oil (cooking)", ""], ["la fruta", "fruit", ""], ["el limón", "lime; lemon", "🇲🇽 In Mexico limón usually means LIME"], ["la cerveza", "beer", "⭐ Norteño slang: la cheve"], ["el vino", "wine", ""], ["el café", "coffee; café", "Un cafecito 🇲🇽 — diminutive is the norm"], ["la sopa", "soup", ""], ["la ensalada", "salad", ""], ["el postre", "dessert", ""], ["el pastel", "cake", "🇲🇽 Mexico: pastel. Spain: tarta"], ["la galleta", "cookie", ""], ["la botella", "the bottle", ""], ["el vaso", "drinking glass", "⚠️ Not el vidrio (the material)"], ["la taza", "the cup, mug", ""], ["el plato", "the plate; the dish", ""], ["la cuchara", "the spoon", "El tenedor = fork, el cuchillo = knife"], ["la torta", "Mexican sandwich", "🇲🇽 In Spain torta means cake — different food"], ["el tocino", "bacon", ""], ["el maíz", "corn", ""], ["la tienda", "the store", "🇲🇽 La tiendita = corner store"], ["el banco", "the bank; the bench", "Both meanings"], ["el hospital", "the hospital", ""], ["la iglesia", "the church", ""], ["el parque", "the park", ""], ["la playa", "the beach", "⭐ Mazatlán is built on them"], ["el mar", "the sea", "⭐ Sinaloa's whole economy"], ["el río", "the river", ""], ["la montaña", "the mountain", "⭐ La sierra = the mountains inland"], ["el cielo", "sky; heaven", "🇲🇽 Also a term of endearment"], ["la tierra", "earth, land, soil", ""], ["el campo", "countryside; field", "⭐ Deep in norteño identity"], ["la colonia", "the neighborhood", "🇲🇽 Mexico's word — ¿en qué colonia vives?"], ["el centro", "downtown", "Voy al centro"], ["el aeropuerto", "the airport", ""], ["el hotel", "the hotel", ""], ["el restaurante", "the restaurant", "⭐ La marisquería = seafood spot"], ["el boleto", "the ticket", "🇲🇽 Mexico: boleto. Spain: billete"], ["la maleta", "the suitcase", ""], ["el viaje", "the trip", "¡Buen viaje!"], ["el avión", "the airplane", "Plural: aviones"], ["la bicicleta", "the bicycle", "La bici for short"], ["el puente", "the bridge", "🇲🇽 Also a long weekend!"], ["el estacionamiento", "parking lot", "🇲🇽 Mexico's word. Spain: aparcamiento"], ["la banqueta", "the sidewalk", "🇲🇽 Very Mexican. Spain: acera"], ["el elevador", "the elevator", "🇲🇽 Mexico: elevador. Spain: ascensor"], ["el precio", "the price", ""], ["el efectivo", "cash", "Pagar en efectivo"], ["la bolsa", "bag; purse", ""], ["la cartera", "wallet", ""], ["el recibo", "the receipt", ""], ["el amor", "love", "Mi amor = common endearment"], ["el miedo", "fear", "Tener miedo = to be afraid"], ["la suerte", "luck", "¡Buena suerte!"], ["la razón", "reason; the right of it", "Tener razón = to be right"], ["la culpa", "fault, blame", "No es mi culpa"], ["el favor", "the favor", "Por favor · Hazme un favor"], ["la ayuda", "help", "Verb: ayudar"], ["la idea", "the idea", ""], ["la duda", "doubt", "Sin duda = no doubt"], ["el gusto", "pleasure; taste", "¡Mucho gusto! = nice to meet you"], ["el sueño", "dream; sleepiness", "Both! Tengo sueño = I'm sleepy"], ["la sorpresa", "the surprise", ""], ["la vergüenza", "embarrassment, shame", "Me da vergüenza = I'm embarrassed"], ["la pena", "embarrassment; sorrow", "🇲🇽 In Mexico me da pena = I'm embarrassed/shy"], ["la confianza", "trust, confidence", ""], ["la salud", "health", "¡Salud! when toasting or sneezing"], ["la fuerza", "strength, force", ""], ["el dolor", "pain", "El dolor de cabeza = headache"], ["la enfermedad", "illness", "Enfermo/a = sick"], ["el peligro", "danger", "Peligroso = dangerous"], ["la paz", "peace", "Plural: las paces"], ["el sol", "the sun", "Hace sol · ⭐ Mazatlán has plenty"], ["la luna", "the moon", "La luna de miel = honeymoon"], ["la estrella", "the star", ""], ["el viento", "the wind", "Hace viento"], ["la nube", "the cloud", "Está nublado"], ["la tormenta", "the storm", "⭐ Sinaloa gets serious ones"], ["el fuego", "fire", ""], ["el árbol", "the tree", "Plural: los árboles"], ["la flor", "the flower", "Plural: las flores"], ["la piedra", "the stone, rock", ""], ["la arena", "sand", ""], ["la ola", "the wave", "⭐ Beach essential"], ["el animal", "the animal", "Plural: los animales"], ["el perro / la perra", "dog", "⚠️ La perra is also an insult — use el perro generically"], ["el gato / la gata", "cat", ""], ["el pájaro", "the bird", ""], ["el caballo", "the horse", "⭐ Big in ranch culture"], ["la vaca", "the cow", "La carne de res = beef"], ["el teléfono", "the telephone", "🇲🇽 El celular for mobile"], ["la llamada", "the phone call", "Hacer una llamada"], ["el mensaje", "the message", ""], ["la película", "the movie", ""], ["la música", "music", "⭐ La banda, la tambora"], ["el juego", "the game", "Also el partido for a match"], ["la fiesta", "the party", ""], ["el baile", "the dance", "Verb: bailar"], ["el juguete", "the toy", ""], ["la ropa", "clothes", "⚠️ Singular in Spanish! La ropa está sucia"], ["el zapato", "the shoe", "Los zapatos"], ["la camisa", "the shirt", "La playera 🇲🇽 = t-shirt"], ["el vestido", "the dress", ""], ["la chamarra", "the jacket", "🇲🇽 Very Mexican. Spain: chaqueta"], ["la gorra", "the cap", "El sombrero = hat"], ["el reloj", "watch; clock", "Plural: relojes"], ["el papel", "paper; role", "Both meanings"], ["la pluma", "the pen", "🇲🇽 Mexico: pluma. Spain: bolígrafo"], ["la hoja", "sheet of paper; leaf", ""], ["la basura", "trash", "El bote de basura = trash can"], ["la lista", "the list", "⚠️ Listo/a = ready or clever"], ["el número", "the number", ""], ["el color", "the color", "Plural: los colores"], ["la tarea", "homework; task", ""], ["el examen", "the exam", "Plural: los exámenes (accent appears)"], ["la junta", "the meeting", "🇲🇽 Mexico: junta or reunión"], ["el sueldo", "the salary, pay", ""], ["la oficina", "the office", ""], ["la empresa", "the company", "El negocio = business"], ["el error", "the mistake", "Cometer un error"]].map(([es, en, note], i) => ({
+  id: "noun-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr(),
+  intro: false
+}));
+
+// ---------- Words captured from conversation ----------
+const capturados = [["probar", "to try, to taste, to prove", "o→ue: pruebo, pruebas, prueba… but probamos. Preterite regular: probé"], ["Pruébalo", "Try it / Taste it", "Command + lo attached. Accent keeps stress on PRUE-ba-lo"], ["Déjalo ahí", "Leave it there", "dejar = to leave something. Déja + lo, accent required"], ["Ahí déjalo nomás", "Just leave it right there", "⭐ Norteño word order and flavor"], ["Va a su casa", "He/She is going home", "⚠️ ir + a + destination. The a is required even though you can't hear it"], ["Está en su casa", "Make yourself at home", "🇲🇽 Said to a guest — literally 'you're in your house'"], ["Esta es su casa", "This is your home", "⚠️ está (verb, accented) vs esta (this, no accent)"], ["voltear", "to flip, to turn over", "🇲🇽 Mexico's word. Spain: dar la vuelta"], ["encontrar", "to find", "o→ue: encuentro, encuentras, encuentra"], ["arrastrar", "to drag", "Regular -ar"], ["elegir", "to choose", "e→i and g→j in yo: elijo, eliges, elige"], ["escoger", "to pick", "g→j in yo: escojo, escoges"], ["adivinar", "to guess", "Adivina qué = guess what"], ["ordenar", "to put in order; to order", "Also: to command"], ["esconder", "to hide", "Escondido = hidden. El escondite = hiding place"], ["la pista", "the clue, the hint", "Also a track or runway"], ["la ficha", "the card, the worksheet", "Also a token or chip"], ["el paso", "the step", "Paso 1, Paso 2. Also: passage"], ["Ahora toca escribir", "Now it's time to write", "tocar = to be someone's turn. Me toca = it's my turn"], ["¿A quién le toca?", "Whose turn is it?", "🇲🇽 Everyday phrase — cards, lines, chores"]].map(([es, en, note], i) => ({
+  id: "cap-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr(),
+  intro: true
+}));
+
+// ---------- Captured from conversation & songs, batch 2 ----------
+const capturados2 = [["¿Me da un…?", "Could I have a…? (usted)", "Polite/neutral. Use with anyone older or in a shop"], ["¿Me das un…?", "Can I get a…? (tú)", "Casual, with people your own age"], ["¿Me pone…?", "Could you serve me…? (usted)", "poner for food/drinks being served"], ["¿Me pones…?", "Could you serve me…? (tú)", "¿Me pones un cafecito?"], ["¿Me trae…?", "Could you bring me…? (usted)", ""], ["¿Me traes…?", "Could you bring me…? (tú)", ""], ["¿Me trae la cuenta?", "Could you bring the check?", "The standard restaurant ask"], ["Te encargo un…", "Let me get a…", "🇲🇽 ⭐ Very Mexican, inherently informal. Literally 'I entrust you with'"], ["¿Tendrá…?", "Would you happen to have…? (usted)", "Future tense used to soften a question"], ["¿Tendrás…?", "Would you happen to have…? (tú)", "¿Tendrás cambio?"], ["poner", "to put, to place", "Irregular yo: pongo · Preterite: puse · Future: pondré"], ["traer", "to bring", "Irregular yo: traigo · Preterite: traje"], ["tendré, tendrás…", "I will have, you will have", "tener's future stem is tendr-, not tener-"], ["la fortuna", "fortune, luck", ""], ["sentir", "to feel", "e→ie: siento, sientes · Me siento bien"], ["la dicha", "happiness, good fortune", "Literary/lyrical register"], ["amanecer", "to wake up at dawn; for day to break", "🇲🇽 Amanecí bien = I woke up feeling good"], ["disfrutar", "to enjoy", "Disfruta el día"], ["pa'", "short for para", "⚠️ Spoken and song only — always write para"], ["pegar", "to hit, to strike; to stick", "Que me pegue el viento = to have the wind hit me"], ["respirar", "to breathe", ""], ["Todo bien", "All good", "Common reply to ¿Qué onda?"], ["al cien", "100%, doing great", "🇲🇽 ⭐ Ando al cien = I'm doing great"], ["la calma", "calm", "Cálmate = calm down"], ["reconocer", "to recognize", "Irregular yo: reconozco (like conocer)"], ["la bendición", "blessing", "Plural: bendiciones (accent drops)"], ["el poder", "power", "⚠️ Also the verb 'to be able' — same word"], ["despertar(se)", "to wake up", "e→ie: me despierto, te despiertas"], ["agradecer", "to be grateful, to thank", "Irregular yo: agradezco"], ["decidir", "to decide", "Regular -ir. La decisión = the decision"], ["seleccionar", "to select", "Regular -ar"], ["el polvo", "dust", ""], ["intentar", "to try, to attempt", "⚠️ vs probar = to try/taste something"], ["la realidad", "reality", "-dad = feminine"], ["experimentar", "to experience; to experiment", "Both meanings"], ["hay que saber…", "one must know how to…", "hay que + infinitive, chained with a second infinitive"], ["hacer piojito", "to gently stroke someone's head", "🇲🇽 ⭐ Untranslatable tenderness. What you do to help someone sleep"], ["la cunita", "little cradle", "Diminutive of la cuna"], ["la hamaca", "hammock", ""], ["apapachar", "to cuddle, to embrace warmly", "🇲🇽 ⭐ From Nahuatl — 'to hug with the soul'"], ["el apapacho", "a warm cuddle", "Noun form of apapachar"], ["arder", "to burn, to be scorching", "El suelo arde = the ground is burning"], ["está que arde", "it's blazing hot", "estar que + verb = to be in an intense state"], ["saltar", "to jump", "Regular -ar"], ["olvidarse", "to forget", "Se me olvidó = it slipped my mind"], ["el rayo", "lightning bolt, ray", ""], ["el vehículo", "vehicle", ""], ["quedarse", "to stay, to remain", "⚠️ quedar = to remain/arrange; quedarse = to stay put"], ["Quédate aquí", "Stay here", "Command + te attached. Accent required"], ["el pecho", "chest", ""], ["el brillo", "shine, sparkle", "Brillo mío as an endearment"], ["medir", "to measure", "e→i: mido, mides, mide"], ["el masaje", "massage", ""], ["la lengua", "tongue; language", "Both meanings"], ["el piecito", "little foot", "Diminutive of el pie — tenderness, not size"], ["haré, harás…", "I will do/make, you will do/make", "hacer's future stem is har-, irregular"], ["hasta que + subjuntivo", "until (something happens)", "hasta que duermas. Future actions take subjunctive"], ["la solapa", "lapel", ""], ["colgante", "hanging, dangling", "From colgar (o→ue: cuelgo)"], ["el huarache", "leather sandal", "🇲🇽 ⭐ From Purépecha. Also a masa dish"], ["el callo", "callus", "⚠️ el callo ≠ la calle — watch the ll"], ["bichicori", "dried meat or squash", "⭐ Sinaloa/Sonora, from Cahita — same roots as buqui"], ["el trapo", "rag, cloth", ""], ["marro", "stingy, cheap", "⭐ Norteño. Standard version: tacaño"], ["tacaño / tacaña", "stingy, cheap", "Pan-Hispanic version of marro"], ["No sea… / No seas…", "Don't be… (usted / tú)", "Negative commands use subjunctive"], ["el vato", "dude, guy", "🇲🇽 ⭐ Norteño/Chicano. Also spelled bato"], ["sacar", "to take out", "Preterite yo: saqué (c→qu, like busqué, pagué)"], ["el peso", "peso; weight", "Saca un peso = cough up a peso"], ["trasquilado", "badly, unevenly cut", "Of hair — a bad haircut"], ["el gallo", "rooster", "🇲🇽 Llevar gallo = to serenade someone at dawn"], ["la chora", "chatter, a spiel", "⭐ Norteño. Echar la chora = shoot the breeze"], ["el tegua", "rough leather sandal/boot", "⭐ Regional — verify with a Sinaloan speaker, I'm unsure"]].map(([es, en, note], i) => ({
+  id: "cap2-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr(),
+  intro: true
+}));
+
+// ---------- Songs: batch 3 ----------
+const capturados3 = [["servir", "to serve; to be useful", "e→i: sirvo, sirves, sirve"], ["¿De qué me sirve…?", "What good does it do me…?", "Rhetorical, very natural in speech"], ["preocuparse", "to worry", "No te preocupes = don't worry"], ["el afán", "eagerness, drive; obsession", "¡Vaya afán! = what a compulsion"], ["arruinar", "to ruin", "Regular -ar"], ["ganar", "to win, to earn, to gain", "All three meanings"], ["lamentarse", "to lament, to complain", ""], ["vivo / viva", "alive", "⚠️ estar vivo = alive; ser vivo = clever"], ["de pronto", "suddenly", "Also: de repente"], ["complicarse", "to get complicated", "Preterite yo: compliqué (c→qu)"], ["la fuga", "escape, flight; a leak", "Fuga a la playa = escape to the beach"], ["estresarse", "to get stressed", "🇲🇽 Modern loan. El estrés = stress"], ["perjudicar", "to harm, to be bad for", "Preterite yo: perjudiqué"], ["recordar", "to remember", "o→ue: recuerdo, recuerdas. ⚠️ Not 'to record'"], ["el instante", "instant, moment", ""], ["un ratito", "a little while", "🇲🇽 Al ratito = in a bit"], ["el rato", "a while", "Hace rato = a while ago"], ["nada más", "just, only; nothing more", "🇲🇽 The full form of nomás"], ["el ser", "being", "⚠️ Also the verb 'to be' — infinitive as noun"], ["fugaz", "fleeting", "Plural: fugaces (z→c)"], ["relajarse", "to relax", "Relájate = chill out"], ["hartarse", "to get fed up", "Ya me harté = I've had it"], ["la melancolía", "melancholy", ""], ["concentrarse", "to focus, to concentrate", ""], ["lo importante", "what's important", "lo + adjective = the ___ thing"], ["programarse", "to program oneself, to set one's mind", ""], ["en busca de", "in search of", ""], ["la alegría", "joy", ""], ["bonito / bonita", "pretty, nice", "🇲🇽 Much more common than hermoso"], ["moreno / morena", "dark-haired, brown-skinned", "🇲🇽 Descriptive and affectionate. Morenita as endearment"], ["lindo / linda", "lovely, pretty", "🇲🇽 Warmer than bonito. ¡Qué lindo!"], ["el hombro", "shoulder", ""], ["quisiera", "I would like", "⚠️ Past subjunctive of querer, used as polite 'I'd like'"], ["regresar", "to return, to go back", "🇲🇽 Mexico prefers regresar; Spain says volver"], ["echarse", "to lie down, to flop down", "Echados al sol = stretched out in the sun"], ["echar", "to throw, to toss", "🇲🇽 Workhorse: echar la chora, échale ganas, echar de menos"], ["el traje de baño", "swimsuit", "🇲🇽 Use this. El bañador is Spain's word"], ["oler", "to smell", "Wildly irregular: huelo, hueles, huele, olemos, huelen"], ["Hueles rico", "You smell great", "🇲🇽 Rico covers taste, smell, and feel"], ["el pepino", "cucumber", "⭐ Pepino con chile y limón is a street snack"], ["el chile", "chile pepper", "From Nahuatl"], ["el destello", "glint, sparkle, flash", ""], ["pegado / pegada", "stuck to, clinging", "From pegar"], ["tostado / tostada", "tanned, toasted", "La tostada = the fried tortilla dish"], ["brillar", "to shine", "El brillo = the shine"], ["reflejar", "to reflect", ""], ["navegar", "to sail, to navigate", "Preterite yo: navegué (g→gu)"], ["el sudor", "sweat", "Sudar = to sweat"], ["rumbo a", "headed toward", "🇲🇽 Voy rumbo al centro"], ["el vapor", "steam, vapor", ""], ["el masajito", "a little massage", "Diminutive doing tenderness work"], ["la mente", "the mind", ""], ["activar", "to activate", ""], ["el pensamiento", "thought", "From pensar"], ["el abrazo", "hug", "Noun of abrazar"], ["el bálsamo", "balm, salve", ""], ["suave", "soft, smooth, gentle", "🇲🇽 Also slang for cool: ¡Qué suave!"], ["aliviar", "to relieve, to soothe", "El alivio = relief"], ["prender", "to light up, to turn on", "🇲🇽 Prende la luz. Spain: encender"], ["la selva", "jungle, rainforest", ""], ["escuchar", "to listen", "⚠️ oír = to hear; escuchar = to listen actively"], ["el cantar", "song, singing", "Infinitive as noun — like el ser, el poder"], ["la humedad", "humidity, dampness", "⭐ Sinaloa in one word. -dad = feminine"], ["terso / tersa", "smooth, sleek", "Literary register"], ["la compañía", "company, companionship", "El compañero = companion"], ["al final", "in the end, finally", ""], ["cuidar", "to take care of", "Cuídate = take care (common goodbye)"], ["seguir + gerundio", "to keep on doing", "Sigo estudiando = I'm still studying"], ["sincero / sincera", "sincere", ""], ["el querer", "love, affection", "Infinitive as noun. Warmer, older-fashioned than amor"], ["atrás", "back, behind", "Para atrás = backwards. ⚠️ detrás de = behind something"], ["¿Pa' qué?", "What for?", "Spoken form of ¿para qué?"], ["el felino", "feline", ""], ["la manada", "pack, herd", "Used affectionately for a crew of people"], ["a full", "full-on, all out", "Borrowed intensifier, common in modern music"], ["dejar", "to leave (something); to let", "Me dejaste = you left me"], ["cristalino / cristalina", "crystal clear", ""], ["roto / rota", "broken", "⚠️ Irregular past participle of romper"], ["juntos / juntas", "together", ""], ["otro / otra", "another, other", "Ahora eres otro = you're a different person now"], ["solitario / solitaria", "lonely, solitary", ""], ["hedonista", "hedonist", "-ista words don't change for gender"], ["egoísta", "selfish", "Same -ista pattern"], ["fácil", "easy", "Plural: fáciles. Difícil = hard"], ["despachar", "to dispatch, to dispose of", "Coldly transactional in tone"], ["puro / pura", "pure", ""], ["prometer", "to promise", "La promesa = the promise"], ["el consuelo", "comfort, consolation", "Consolar = to console"], ["creer", "to believe", "Preterite: creí, creíste, creyó, creyeron (i→y)"], ["fiar", "to lend on trust, to give credit", "🇲🇽 In tiendas: to let someone pay later"], ["reclamar", "to claim, to demand back", ""], ["liquidar", "to liquidate, to finish off", ""], ["ciegamente", "blindly", "-mente = English -ly. Ciego = blind"], ["hasta el final", "until the end", ""], ["caerse bien / mal", "to like / dislike (someone)", "Backwards structure: me cae bien"], ["conmigo / contigo", "with me / with you", "⚠️ Irregular — never con mí, con ti"], ["adorable", "adorable, lovely", ""], ["constante", "constant", ""], ["la perspectiva", "perspective", ""], ["iluminar", "to illuminate, to light up", ""], ["exigir", "to demand", "g→j in yo: exijo (like elijo, escojo)"], ["solamente", "only", "-mente adverb. Solo is the everyday short form"], ["el lazo", "bond, tie; lasso", "Lazos familiares = family ties ⭐"], ["conocer de", "to know about, to be familiar with", "conocer = acquaintance"], ["saber + infinitivo", "to know how to", "Saben dar abrazos = they know how to give hugs"], ["dar con", "to run into, to come across", "⚠️ dar alone = to give"], ["la nostalgia", "nostalgia", ""], ["radiante", "radiant, glowing", ""], ["día a día", "day by day", "Also: día tras día"], ["parar", "to stop", "La parada = the stop"], ["no para de + infinitivo", "doesn't stop doing", "No para de llover"], ["la noción", "notion, awareness", "-ción = feminine"], ["preservar", "to preserve", ""], ["la especie", "species", ""], ["tropezar", "to trip, to stumble", "e→ie: tropiezo. Preterite yo: tropecé (z→c)"], ["pudiera", "might, could", "⚠️ Past subjunctive of poder — like quisiera"], ["¡Viva…!", "Long live…!", "¡Viva México! Subjunctive as a cheer"], ["el fierro", "iron, metal", "🇲🇽 Mexico: fierro. ⭐ ¡Fierro pariente! = let's go!"], ["el drama", "drama", "⚠️ Masculine -ma word"], ["en son de paz", "in peace, meaning no harm", "Vengo en son de paz"], ["el caballero", "gentleman, knight", ""], ["el escudo", "shield", ""], ["la llama", "flame", "⚠️ Also the animal, and a form of llamar"], ["avanzar", "to advance", "Preterite yo: avancé (z→c)"], ["la ira", "anger, wrath", ""], ["la ilusión", "illusion; hope, excitement", "🇲🇽 Me hace ilusión = it excites me"], ["el monzón", "monsoon", "⭐ Sinaloa's rainy season"], ["el paraguas", "umbrella", "⚠️ Never changes: el paraguas, los paraguas"], ["conceder", "to grant, to concede", ""], ["el resto", "the rest, the remainder", ""], ["reflejarse", "to reflect on each other", ""], ["para siempre", "forever", ""], ["Ponte feliz", "Cheer up", "ponerse + adjective = to become"], ["ponerse + adjetivo", "to get, to become", "Ponerse triste, ponerse nervioso"], ["Mírame", "Look at me", "Command + me. Accent required"], ["Concédeme", "Grant me", "Command + me"], ["elegido / elegida", "chosen", "Past participle of elegir"], ["celebrar", "to celebrate", ""], ["la célula", "cell (biological)", "⚠️ La celda = a prison cell"], ["especial", "special", ""], ["la creación", "creation", "-ción = feminine"], ["el rastro", "trace, trail", "🇲🇽 Also a slaughterhouse"], ["imaginar", "to imagine", "La imaginación"], ["más vs mas", "more / most vs but", "⚠️ The accent is the whole difference"], ["Primero al diente que al pariente", "Food before family", "⭐ Dicho — half joke, half truth"], ["el pariente", "relative, family member", "⚠️ NOT parent — that's padre/madre"], ["el dicho", "saying, proverb", "Como dice el dicho…"], ["saludar", "to greet", "El saludo = greeting. Mandar un saludo"], ["volar", "to fly", "o→ue: vuelo, vuelas, vuela"], ["agarrar viada", "to get moving, pick up speed", "⭐ Norteño. Verify with a local — regional"], ["Pájaro que no vuela, que agarre viada", "If you can't fly, hustle", "⭐ Regional dicho"], ["arreglar", "to fix, to repair", "El arreglo. Arreglarse = to get ready"], ["la troquita", "little pickup truck", "⭐ Affectionate diminutive of troca"], ["la cochera", "garage, carport", "🇲🇽 Where the truck and the beer live"], ["tranqui", "chill, relaxed", "Clipped tranquilo, very casual"], ["tirar la bacha", "to joke around, to banter", "⭐ Norteño — verify with a local"], ["bromear", "to joke", "La broma = the joke"], ["la campamocha", "praying mantis", "🇲🇽 ⭐ Northwest Mexico's word"], ["extrañar", "to miss (someone)", "🇲🇽 Te extraño. Spain: te echo de menos"], ["mandar", "to send", "Te mando un saludo. Also ¿Mande?"], ["dar celos", "to make jealous", "Los celos = jealousy, always plural"], ["Le va bien", "It suits him/her", "Te va bien ese color"], ["criticar", "to criticize", "Preterite yo: critiqué (c→qu)"], ["odiar", "to hate", "El odio = hatred"], ["usar", "to wear; to use", "🇲🇽 Usar tacones = to wear heels"], ["los tacones", "high heels", ""], ["aparecer", "to appear", "yo aparezco — the -zco pattern"], ["presumir", "to show off, to boast", "🇲🇽 Presumir a alguien = show someone off proudly"], ["robar", "to steal", "Me robó el corazón"], ["explicar", "to explain", "Preterite yo: expliqué"], ["contar", "to tell; to count", "o→ue: cuento, cuentas. Both meanings"], ["soñar", "to dream", "o→ue: sueño, sueñas"], ["el disco", "record, album", ""], ["la sonrisa", "smile", "Sonreír = to smile"], ["esperar", "to wait; to hope", "Both meanings in one verb"], ["Déjame + infinitivo", "Let me…", "Déjame ver, déjame pensar, déjame ayudarte"], ["el imperfecto: decía, llegaba", "used to say, used to arrive", "Habitual past. vs preterite = one completed act"], ["-mente = -ly", "adverb ending", "Feminine adjective + mente: rápidamente, fácilmente"]].map(([es, en, note], i) => ({
+  id: "cap3-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr(),
+  intro: true
+}));
+
+// ---------- Core verbs: the gaps ----------
+const verbosCore = [["hablar", "to speak, to talk", "Regular -ar. ¿Hablas español? · Hablar con = talk to"], ["tomar", "to take; to drink", "🇲🇽 Safe alternative to coger. Tomar un café, tomar el camión"], ["pedir", "to ask for, to order", "e→i: pido, pides, pide. ⚠️ NOT preguntar. Preterite: pidió, pidieron"], ["preguntar", "to ask (a question)", "⚠️ vs pedir = to request. Hacer una pregunta"], ["entender", "to understand", "e→ie: entiendo, entiendes. No entiendo"], ["llamarse", "to be named", "Me llamo, te llamas, se llama. ¿Cómo te llamas?"], ["llamar", "to call", "Te llamo mañana. La llamada = the call"], ["gustar", "to be pleasing to", "Backwards: me gusta, me gustan. The THING is the subject"], ["jugar", "to play (a game)", "u→ue: juego, juegas — the only u→ue verb. Preterite yo: jugué"], ["escribir", "to write", "Regular -ir. Past participle irregular: escrito"], ["abrir", "to open", "Regular -ir. Past participle irregular: abierto"], ["cerrar", "to close", "e→ie: cierro, cierras, cierra"], ["comprar", "to buy", "Regular -ar. La compra = the purchase"], ["vender", "to sell", "Regular -er. Se vende = for sale"], ["trabajar", "to work", "Regular -ar. 🇲🇽 Slang: chambear"], ["ayudar", "to help", "¿Me ayudas? La ayuda = help"], ["contestar", "to answer", "🇲🇽 Common for answering phone/questions"], ["responder", "to respond", "La respuesta = the answer"], ["caminar", "to walk", "Regular -ar. Caminar por la calle"], ["correr", "to run", "Regular -er. Also: to move something over"], ["perder", "to lose; to miss", "e→ie: pierdo, pierdes. Perder el camión = miss the bus"], ["cambiar", "to change", "El cambio = change (money or otherwise)"], ["viajar", "to travel", "El viaje = the trip"], ["limpiar", "to clean", "Limpio = clean (adjective)"], ["enviar", "to send", "Accent in most forms: envío, envías. 🇲🇽 mandar is more common"], ["recibir", "to receive", "Regular -ir"], ["sentirse", "to feel (a certain way)", "e→ie: me siento bien. ⚠️ vs sentir = to feel something"], ["darse cuenta de", "to realize", "⚠️ NOT realizar (= to carry out). Me di cuenta de que…"], ["acordarse de", "to remember", "o→ue: me acuerdo. 🇲🇽 More common in speech than recordar"], ["enojarse", "to get angry", "🇲🇽 Mexico says enojarse. Spain: enfadarse. Enojado = angry"], ["alegrarse", "to be glad", "Me alegro = I'm glad (to hear it)"], ["divertirse", "to have fun", "e→ie: me divierto. ¡Que te diviertas!"], ["aburrirse", "to get bored", "Aburrido = boring OR bored, depending on ser/estar"], ["quejarse", "to complain", "La queja = the complaint"], ["asustarse", "to get scared", "¡Me asustaste! = you scared me"], ["reírse", "to laugh", "e→i + accents: me río, te ríes, se ríe. La risa = laughter"], ["llorar", "to cry", "Regular -ar. El llanto = crying"], ["gritar", "to shout", "El grito = the shout"], ["sonreír", "to smile", "Like reírse: sonrío, sonríes. La sonrisa = smile"], ["doler", "to hurt", "o→ue + backwards: me duele la cabeza, me duelen los pies"], ["enfermarse", "to get sick", "Enfermo = sick. La enfermedad = illness"], ["entrar", "to enter", "Entrar a / en la casa"], ["subir", "to go up; to get on", "Subir al camión = get on the bus"], ["bajar", "to go down; to get off", "Bajar del camión. Also: to download"], ["caerse", "to fall down", "Irregular yo: me caigo. Preterite: se cayó (i→y)"], ["pararse", "to stand up", "🇲🇽 In Mexico pararse = to stand. Elsewhere: levantarse"], ["alcanzar", "to reach; to manage to", "Preterite yo: alcancé (z→c). No me alcanza = I can't afford it"], ["lograr", "to achieve, to manage to", "Lo logré = I did it"], ["nacer", "to be born", "Irregular yo: nazco. Nací en… = I was born in…"], ["morir", "to die", "o→ue: muero. Past participle: muerto. Se murió = he died"], ["crecer", "to grow", "Irregular yo: crezco (-zco pattern)"], ["casarse", "to get married", "Casarse con alguien. La boda = the wedding"], ["apagar", "to turn off", "Preterite yo: apagué (g→gu). Pairs with prender"], ["funcionar", "to work (a machine)", "⚠️ Not for jobs — that's trabajar. No funciona = it's broken"], ["romper", "to break", "Past participle irregular: roto. Se rompió = it broke"], ["construir", "to build", "y inserted: construyo, construyes. La construcción"], ["cortar", "to cut", "El corte = the cut"], ["pintar", "to paint", "La pintura = paint, painting"], ["costar", "to cost", "o→ue: cuesta, cuestan. ¿Cuánto cuesta?"], ["gastar", "to spend (money)", "⚠️ vs pasar for time. El gasto = expense"], ["ahorrar", "to save (money)", "Los ahorros = savings"], ["cobrar", "to charge (money)", "¿Me cobra? = can I pay? 🇲🇽 Very useful in restaurants"], ["prestar", "to lend", "¿Me prestas…? = can you lend me…? Prestado = borrowed"], ["firmar", "to sign", "La firma = signature"], ["estacionar", "to park", "🇲🇽 El estacionamiento = parking lot"], ["checar", "to check", "🇲🇽 ⭐ Very Mexican, from English. Déjame checar"], ["rentar", "to rent", "🇲🇽 ⭐ Mexico says rentar. Spain: alquilar"], ["jalar", "to pull", "🇲🇽 ⭐ Mexico: jalar. Spain: tirar de. Signs say JALE / EMPUJE"], ["aventar", "to throw", "🇲🇽 ⭐ e→ie: aviento. Common in Mexico for tirar"], ["ocupar", "to need; to occupy", "🇲🇽 ⭐ Regional — Ocupo ayuda = I need help"], ["chambear", "to work", "🇲🇽 ⭐ Slang. La chamba = the job/gig"], ["empujar", "to push", "EMPUJE on doors. Pairs with jalar"], ["tratar de + infinitivo", "to try to", "Trato de entender. ⚠️ vs probar = to taste/test"], ["dejar de + infinitivo", "to stop doing", "Dejé de fumar = I quit smoking"], ["ponerse a + infinitivo", "to start doing", "Me puse a estudiar = I got down to studying"]].map(([es, en, note], i) => ({
+  id: "vb-" + i,
+  es,
+  en,
+  note,
+  box: 1,
+  due: todayStr(),
+  added: todayStr(),
+  intro: true
+}));
+const ALL_BUILTIN = [...ALL_SEEDS, ...capturados, ...capturados2, ...capturados3, ...verbosCore, ...library, ...nouns];
+
+// ---------- Checking typed answers ----------
+// Forgiving about the things that don't matter (case, punctuation, articles,
+// alternate forms) and specific about the one that does: accents.
+const stripAccents = t => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const normalize = t => t.toLowerCase().replace(/[¿?¡!.,;:"'()]/g, "").replace(/\s+/g, " ").trim();
+
+// "el amigo / la amiga" → ["el amigo", "la amiga", "amigo", "amiga"]
+const acceptedForms = es => {
+  const out = [];
+  const parts = es.split("/").map(p => p.trim());
+  for (const p of parts) {
+    const n = normalize(p);
+    if (!n) continue;
+    out.push(n);
+    const noArt = n.replace(/^(el|la|los|las|un|una)\s+/, "");
+    if (noArt !== n) out.push(noArt);
+    const noEllipsis = n.replace(/…|\.\.\./g, "").trim();
+    if (noEllipsis && noEllipsis !== n) out.push(noEllipsis);
+  }
+  return [...new Set(out)];
+};
+
+// Returns "exacto" | "acentos" | "casi" | "no"
+const checkAnswer = (typed, es) => {
+  const t = normalize(typed);
+  if (!t) return "no";
+  const forms = acceptedForms(es);
+  if (forms.includes(t)) return "exacto";
+  const tp = stripAccents(t);
+  if (forms.some(f => stripAccents(f) === tp)) return "acentos";
+  // one-character slip (typo) counts as close
+  const near = (a, b) => {
+    if (Math.abs(a.length - b.length) > 1) return false;
+    let i = 0,
+      j = 0,
+      diff = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) {
+        i++;
+        j++;
+        continue;
+      }
+      if (++diff > 1) return false;
+      if (a.length > b.length) i++;else if (a.length < b.length) j++;else {
+        i++;
+        j++;
+      }
+    }
+    return diff + (a.length - i) + (b.length - j) <= 1;
+  };
+  if (forms.some(f => near(stripAccents(f), tp))) return "casi";
+  return "no";
+};
+
+// ---------- Is this card a verb? ----------
+// The English side is the reliable signal: dictionary form starts with "to ".
+// The Spanish suffix is a backup, but only for single words without an article
+// (otherwise "el lugar", "la mujer", "el mar" would all look like verbs).
+const isVerb = c => {
+  const es = (c.es || "").trim();
+  const en = (c.en || "").trim().toLowerCase();
+  if (/^(el|la|los|las|un|una)\s/i.test(es)) return false;
+  if (en.startsWith("to ")) return true;
+  return /(ar|er|ir)$/.test(es) && !/\s/.test(es);
+};
+const STORAGE_KEY = "cuaderno-espanol-v1";
+
+// Release a few pool cards into rotation — but only on days you show up.
+function releaseNewCards(d) {
+  if (d.lastRelease === todayStr()) return d;
+  const n = d.newPerDay || NEW_PER_DAY_DEFAULT;
+  let left = n;
+  const cards = d.cards.map(c => {
+    if (c.intro === false && left > 0) {
+      left--;
+      return {
+        ...c,
+        intro: true,
+        due: todayStr()
+      };
+    }
+    return c;
+  });
+  return {
+    ...d,
+    cards,
+    lastRelease: todayStr()
+  };
+}
+function App() {
+  const [data, setData] = useState(null); // {cards, streak, lastStudy, totalReviews}
+  const [screen, setScreen] = useState("home");
+  const [session, setSession] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [saveState, setSaveState] = useState(null);
+  const [loadState, setLoadState] = useState("cargando");
+  const saveTimer = useRef(null);
+
+  // ---- Load ----
+  useEffect(() => {
+    (async () => {
+      let d;
+      try {
+        const r = await store.get(STORAGE_KEY);
+        if (r && r.value) {
+          const saved = JSON.parse(r.value);
+          const byId = new Map(ALL_BUILTIN.map(c => [c.id, c]));
+          const have = new Set(saved.cards.map(c => c.id));
+          const updated = saved.cards.map(c => {
+            const s = byId.get(c.id);
+            return s ? {
+              ...c,
+              es: s.es,
+              en: s.en,
+              note: s.note
+            } : c;
+          });
+          const fresh = ALL_BUILTIN.filter(c => !have.has(c.id));
+          d = {
+            ...saved,
+            cards: [...updated, ...fresh]
+          };
+          setLoadState("encontrado");
+        } else {
+          setLoadState("vacío");
+        }
+      } catch (e) {
+        setLoadState("error: " + String(e && e.message || e).slice(0, 60));
+      }
+      if (!d) d = {
+        cards: ALL_BUILTIN,
+        streak: 0,
+        lastStudy: null,
+        totalReviews: 0
+      };
+      setData(releaseNewCards(d));
+    })();
+  }, []);
+
+  // ---- Save (debounced, with a flush so nothing is lost on close) ----
+  const dataRef = useRef(null);
+  useEffect(() => {
+    dataRef.current = data;
+    if (!data) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveNow(), 300);
+    return () => clearTimeout(saveTimer.current);
+  }, [data]);
+  const saveNow = async () => {
+    if (!dataRef.current) return;
+    try {
+      const r = await store.set(STORAGE_KEY, JSON.stringify(dataRef.current));
+      setSaveState(r ? {
+        ok: true,
+        at: Date.now()
+      } : {
+        ok: false,
+        msg: "sin respuesta"
+      });
+    } catch (e) {
+      console.error("save failed", e);
+      setSaveState({
+        ok: false,
+        msg: String(e && e.message || e).slice(0, 90)
+      });
+    }
+  };
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", saveNow);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", saveNow);
+      saveNow();
+    };
+  }, []);
+  const showToast = msg => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 1800);
+  };
+  if (!data) return /*#__PURE__*/React.createElement(Shell, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 40,
+      textAlign: "center",
+      color: C.inkSoft
+    }
+  }, "Abriendo tu cuaderno…"));
+  const dueCards = data.cards.filter(c => c.intro !== false && c.due <= todayStr());
+  const poolCount = data.cards.filter(c => c.intro === false).length;
+
+  // ---------- Session logic ----------
+  // Some cards are grammar notes, not words — they can't be typed or spoken.
+  const typeable = c => !/[+=…]/.test(c.es) && !/^-/.test(c.es) && c.es.length <= 28 && !/ vs /.test(c.es);
+  const startSession = (practiceAnyway = false, mode = "reconocer") => {
+    primeSpeech();
+    const verbsOnly = data.verbsOnly === true;
+    let pool = dueCards;
+    if (verbsOnly) {
+      const v = pool.filter(isVerb);
+      // Not enough verbs due today? Pull from every verb you've started.
+      pool = v.length >= 4 ? v : data.cards.filter(c => c.intro !== false && isVerb(c));
+    }
+    if (practiceAnyway && pool.length === 0) {
+      pool = data.cards.filter(c => c.intro !== false && (!verbsOnly || isVerb(c))).sort(() => Math.random() - 0.5);
+    }
+    if (mode !== "reconocer") {
+      const fit = pool.filter(typeable);
+      pool = fit.length >= 4 ? fit : data.cards.filter(c => c.intro !== false && typeable(c) && (!verbsOnly || isVerb(c)));
+    }
+    const queue = [...pool].sort(() => Math.random() - 0.5).slice(0, SESSION_SIZE);
+    if (queue.length === 0) return;
+    setSession({
+      queue,
+      i: 0,
+      revealed: false,
+      mode,
+      results: {
+        know: 0,
+        almost: 0,
+        missed: 0
+      }
+    });
+    setScreen("review");
+  };
+  const grade = result => {
+    const card = session.queue[session.i];
+    let earnedToday = false;
+    setData(d => {
+      const cards = d.cards.map(c => {
+        if (c.id !== card.id) return c;
+        let box = c.box;
+        if (result === "know") box = Math.min(6, box + 1);else if (result === "missed") box = 1;
+        const due = result === "missed" ? todayStr() : addDays(INTERVALS[box]);
+        return {
+          ...c,
+          box,
+          due
+        };
+      });
+      // Streak is earned by SHOWING UP — the first card of the day counts.
+      // Requiring a finished session punished you for getting interrupted.
+      let streak = d.streak;
+      let lastStudy = d.lastStudy;
+      if (lastStudy !== todayStr()) {
+        streak = lastStudy === addDays(-1) ? streak + 1 : 1;
+        lastStudy = todayStr();
+        earnedToday = true;
+      }
+      return {
+        ...d,
+        cards,
+        streak,
+        lastStudy,
+        totalReviews: d.totalReviews + 1
+      };
+    });
+    if (earnedToday) setTimeout(saveNow, 60); // write the streak immediately
+    const results = {
+      ...session.results
+    };
+    results[result === "know" ? "know" : result === "almost" ? "almost" : "missed"]++;
+    if (session.i + 1 >= session.queue.length) {
+      setSession({
+        ...session,
+        results,
+        done: true
+      });
+      setTimeout(saveNow, 60);
+    } else {
+      setSession({
+        ...session,
+        i: session.i + 1,
+        revealed: false,
+        results
+      });
+    }
+  };
+  const addCard = (es, en, note) => {
+    setData(d => ({
+      ...d,
+      cards: [{
+        id: "c-" + Date.now(),
+        es,
+        en,
+        note,
+        box: 1,
+        due: todayStr(),
+        added: todayStr()
+      }, ...d.cards]
+    }));
+    showToast("✓ Guardado — " + es);
+  };
+  const deleteCard = id => setData(d => ({
+    ...d,
+    cards: d.cards.filter(c => c.id !== id)
+  }));
+  const updateCard = (id, patch) => setData(d => ({
+    ...d,
+    cards: d.cards.map(c => c.id === id ? {
+      ...c,
+      ...patch
+    } : c)
+  }));
+  return /*#__PURE__*/React.createElement(Shell, null, /*#__PURE__*/React.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Nunito+Sans:wght@400;700;900&display=swap');
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        button { font-family: inherit; cursor: pointer; }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+        @keyframes pop { 0% { transform: scale(.92); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
+      `), screen === "home" && /*#__PURE__*/React.createElement(Home, {
+    data: data,
+    due: dueCards.length,
+    pool: poolCount,
+    verbCount: data.cards.filter(c => c.intro !== false && isVerb(c)).length,
+    onToggleVerbs: () => setData(d => ({
+      ...d,
+      verbsOnly: !d.verbsOnly
+    })),
+    onReview: mode => startSession(true, mode),
+    onAdd: () => setScreen("add"),
+    onBank: () => setScreen("bank"),
+    onBackup: () => setScreen("backup"),
+    saveState: saveState,
+    loadState: loadState,
+    onTestSave: saveNow,
+    onPace: n => setData(d => ({
+      ...d,
+      newPerDay: n
+    })),
+    onToggleAudio: () => {
+      primeSpeech();
+      setData(d => ({
+        ...d,
+        audio: d.audio === false ? true : false
+      }));
+    }
+  }), screen === "review" && session && /*#__PURE__*/React.createElement(Review, {
+    session: session,
+    autoplay: data.audio !== false,
+    onReveal: () => setSession({
+      ...session,
+      revealed: true
+    }),
+    onGrade: grade,
+    onExit: () => {
+      synth && synth.cancel();
+      setSession(null);
+      setScreen("home");
+    }
+  }), screen === "add" && /*#__PURE__*/React.createElement(Add, {
+    onSave: addCard,
+    onBack: () => setScreen("home")
+  }), screen === "backup" && /*#__PURE__*/React.createElement(Backup, {
+    data: data,
+    onBack: () => setScreen("home"),
+    onImport: json => {
+      try {
+        const inc = JSON.parse(json);
+        const list = Array.isArray(inc) ? inc : inc.cards;
+        if (!Array.isArray(list)) throw new Error("no cards");
+        setData(d => {
+          const have = new Set(d.cards.map(c => c.es.toLowerCase()));
+          const add = list.filter(c => c.es && c.en && !have.has(String(c.es).toLowerCase())).map((c, i) => ({
+            id: "imp-" + Date.now() + "-" + i,
+            es: c.es,
+            en: c.en,
+            note: c.note || "",
+            box: 1,
+            due: todayStr(),
+            added: todayStr(),
+            intro: c.intro === false ? false : true
+          }));
+          showToast(`✓ ${add.length} palabras añadidas`);
+          return {
+            ...d,
+            cards: [...add, ...d.cards]
+          };
+        });
+      } catch (e) {
+        showToast("No pude leer ese texto");
+      }
+    }
+  }), screen === "bank" && /*#__PURE__*/React.createElement(Bank, {
+    cards: data.cards,
+    onBack: () => setScreen("home"),
+    onDelete: deleteCard,
+    onUpdate: updateCard
+  }), toast && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      bottom: 24,
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: C.ink,
+      color: "#fff",
+      padding: "10px 18px",
+      borderRadius: 999,
+      fontSize: 14,
+      fontWeight: 700,
+      animation: "pop .18s ease",
+      zIndex: 50
+    }
+  }, toast));
+}
+
+// ---------- Shell: graph-paper notebook ----------
+function Shell({
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: `
+          linear-gradient(${C.grid} 1px, transparent 1px),
+          linear-gradient(90deg, ${C.grid} 1px, transparent 1px),
+          ${C.paper}`,
+      backgroundSize: "24px 24px, 24px 24px, auto",
+      fontFamily: "'Nunito Sans', system-ui, sans-serif",
+      color: C.ink
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 480,
+      margin: "0 auto",
+      padding: "20px 16px 40px"
+    }
+  }, children));
+}
+const Hi = ({
+  children
+}) => /*#__PURE__*/React.createElement("span", {
+  style: {
+    background: `linear-gradient(104deg, transparent 4%, ${C.hi} 5%, ${C.hi} 96%, transparent 97%)`,
+    padding: "0 6px"
+  }
+}, children);
+const BigBtn = ({
+  children,
+  onClick,
+  color = C.ink,
+  outline
+}) => /*#__PURE__*/React.createElement("button", {
+  onClick: onClick,
+  style: {
+    width: "100%",
+    padding: "16px",
+    fontSize: 17,
+    fontWeight: 900,
+    borderRadius: 14,
+    border: outline ? `2px solid ${C.ink}` : "none",
+    background: outline ? "transparent" : color,
+    color: outline ? C.ink : "#fff",
+    marginBottom: 10,
+    boxShadow: outline ? "none" : "0 3px 0 rgba(34,48,74,.25)"
+  }
+}, children);
+
+// ---------- Home ----------
+function Home({
+  data,
+  due,
+  pool,
+  verbCount,
+  onToggleVerbs,
+  onReview,
+  onAdd,
+  onBank,
+  onPace,
+  onToggleAudio,
+  onBackup,
+  saveState,
+  loadState,
+  onTestSave
+}) {
+  const known = data.cards.filter(c => c.box >= 4).length;
+  const on = data.audio !== false;
+  const pace = data.newPerDay || NEW_PER_DAY_DEFAULT;
+  const shown = Math.min(due, SESSION_SIZE); // never show a scary backlog
+  const verbsOnly = data.verbsOnly === true;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      animation: "pop .2s ease"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 34,
+      margin: "8px 0 2px"
+    }
+  }, "Mi cuaderno"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 900,
+      color: C.amber
+    }
+  }, "🔥 ", data.streak, " ", data.streak === 1 ? "día" : "días")), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 22px",
+      color: C.inkSoft,
+      fontSize: 14
+    }
+  }, shown > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Hi, null, /*#__PURE__*/React.createElement("b", null, shown), " ", shown === 1 ? "tarjeta" : "tarjetas"), " ", "para hoy — unos ", Math.max(2, Math.round(shown * 0.4)), " minutos") : "Todo al día — ¡bien hecho! ✨"), /*#__PURE__*/React.createElement("button", {
+    onClick: onToggleVerbs,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      width: "100%",
+      marginBottom: 10,
+      padding: "10px 14px",
+      borderRadius: 12,
+      border: `2px solid ${verbsOnly ? C.green : C.grid}`,
+      background: verbsOnly ? "#EAF5EE" : C.card,
+      color: C.ink,
+      textAlign: "left"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      flexShrink: 0,
+      border: `2px solid ${verbsOnly ? C.green : C.grid}`,
+      background: verbsOnly ? C.green : "transparent",
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: 900,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    }
+  }, verbsOnly ? "✓" : ""), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700
+    }
+  }, "Solo verbos", /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontSize: 11.5,
+      fontWeight: 400,
+      color: C.inkSoft
+    }
+  }, verbsOnly ? `${verbCount} verbos en rotación` : `practica únicamente los ${verbCount} verbos`))), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: () => onReview("reconocer")
+  }, verbsOnly ? "▶ Repasar verbos" : shown > 0 ? `▶ Repaso de hoy (${shown})` : "▶ Práctica libre"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onReview("escuchar"),
+    style: {
+      flex: 1,
+      padding: "14px 6px",
+      borderRadius: 14,
+      border: `2px solid ${C.ink}`,
+      background: "transparent",
+      color: C.ink,
+      fontWeight: 900,
+      fontSize: 14.5,
+      lineHeight: 1.3
+    }
+  }, "👂 Escuchar", /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontSize: 11,
+      fontWeight: 400,
+      color: C.inkSoft
+    }
+  }, "solo audio")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onReview("producir"),
+    style: {
+      flex: 1,
+      padding: "14px 6px",
+      borderRadius: 14,
+      border: `2px solid ${C.ink}`,
+      background: "transparent",
+      color: C.ink,
+      fontWeight: 900,
+      fontSize: 14.5,
+      lineHeight: 1.3
+    }
+  }, "✍️ Escribir", /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontSize: 11,
+      fontWeight: 400,
+      color: C.inkSoft
+    }
+  }, "inglés → español"))), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: onAdd,
+    color: C.green
+  }, "＋ Añadir palabra nueva"), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: onBank,
+    outline: true
+  }, "📓 Ver mi banco de palabras (", data.cards.length, ")"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 22,
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 8,
+      textAlign: "center"
+    }
+  }, [[data.cards.length, "palabras"], [known, "dominadas"], [data.totalReviews, "repasos"]].map(([n, label]) => /*#__PURE__*/React.createElement("div", {
+    key: label,
+    style: {
+      background: C.card,
+      border: `1.5px solid ${C.grid}`,
+      borderRadius: 12,
+      padding: "12px 4px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 900
+    }
+  }, n), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.inkSoft
+    }
+  }, label)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      background: C.card,
+      border: `1.5px solid ${C.grid}`,
+      borderRadius: 12,
+      padding: "12px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      marginBottom: 2
+    }
+  }, "Palabras nuevas al día"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: C.inkSoft,
+      marginBottom: 9
+    }
+  }, pool > 0 ? `${pool} esperando su turno — llegan poco a poco` : "Ya soltaste todas las palabras guardadas 🎉"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6
+    }
+  }, [3, 5, 8].map(n => /*#__PURE__*/React.createElement("button", {
+    key: n,
+    onClick: () => onPace(n),
+    style: {
+      flex: 1,
+      padding: "9px 0",
+      borderRadius: 9,
+      border: `1.5px solid ${pace === n ? C.ink : C.grid}`,
+      background: pace === n ? C.ink : "transparent",
+      color: pace === n ? "#fff" : C.inkSoft,
+      fontWeight: 900,
+      fontSize: 14
+    }
+  }, n)))), /*#__PURE__*/React.createElement("button", {
+    onClick: onToggleAudio,
+    style: {
+      marginTop: 14,
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background: C.card,
+      border: `1.5px solid ${C.grid}`,
+      borderRadius: 12,
+      padding: "12px 14px",
+      textAlign: "left",
+      color: C.ink
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700
+    }
+  }, "🔊 Escuchar automáticamente", /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "block",
+      fontSize: 11.5,
+      fontWeight: 400,
+      color: C.inkSoft,
+      marginTop: 2
+    }
+  }, voiceLabel ? `Voz: ${voiceLabel}` : "Buscando voz en español…")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 44,
+      height: 26,
+      borderRadius: 999,
+      background: on ? C.green : C.grid,
+      position: "relative",
+      flexShrink: 0,
+      transition: "background .15s"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      top: 3,
+      left: on ? 21 : 3,
+      width: 20,
+      height: 20,
+      borderRadius: "50%",
+      background: "#fff",
+      transition: "left .15s",
+      boxShadow: "0 1px 3px rgba(0,0,0,.2)"
+    }
+  }))), /*#__PURE__*/React.createElement("p", {
+    style: {
+      marginTop: 24,
+      fontSize: 12.5,
+      color: C.inkSoft,
+      lineHeight: 1.5
+    }
+  }, "💡 ", /*#__PURE__*/React.createElement("b", null, "Cómo funciona:"), " cada día te esperan unas ", SESSION_SIZE, " tarjetas, ni una más. Cambia de modo para no aburrirte: ", /*#__PURE__*/React.createElement("b", null, "escuchar"), " entrena el oído, ", /*#__PURE__*/React.createElement("b", null, "escribir"), " te obliga a producir. Las palabras nuevas solo salen los días que abres el cuaderno."), /*#__PURE__*/React.createElement("button", {
+    onClick: onBackup,
+    style: {
+      background: "none",
+      border: "none",
+      color: C.inkSoft,
+      fontSize: 12.5,
+      fontWeight: 700,
+      padding: "6px 0",
+      textDecoration: "underline"
+    }
+  }, "Copia de seguridad · importar palabras"));
+}
+
+// ---------- Review ----------
+function Review({
+  session,
+  autoplay,
+  onReveal,
+  onGrade,
+  onExit
+}) {
+  const card = session.done ? null : session.queue[session.i];
+  const mode = session.mode || "reconocer";
+  const [typed, setTyped] = useState("");
+  const [verdict, setVerdict] = useState(null);
+  const inputRef = useRef(null);
+  useEffect(() => {
+    setTyped("");
+    setVerdict(null);
+  }, [card && card.id]);
+
+  // Recognition: speak alongside. Listening: the audio IS the prompt.
+  useEffect(() => {
+    if (!card) return;
+    if (mode === "escuchar") {
+      const t = setTimeout(() => speak(card.es), 350);
+      return () => clearTimeout(t);
+    }
+    if (mode === "reconocer" && autoplay) {
+      const t = setTimeout(() => speak(card.es), 220);
+      return () => clearTimeout(t);
+    }
+  }, [card && card.id, autoplay, mode]);
+
+  // In production mode, say it once the answer is shown
+  useEffect(() => {
+    if (mode === "producir" && verdict && autoplay && card) speak(card.es);
+  }, [verdict]);
+  const submit = () => {
+    if (verdict) return;
+    const v = checkAnswer(typed, card.es);
+    setVerdict(v);
+  };
+  if (session.done) {
+    const {
+      know,
+      almost,
+      missed
+    } = session.results;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "center",
+        paddingTop: 40,
+        animation: "pop .25s ease"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 56
+      }
+    }, "🎉"), /*#__PURE__*/React.createElement("h2", {
+      style: {
+        fontFamily: "'Patrick Hand', cursive",
+        fontSize: 30,
+        margin: "8px 0"
+      }
+    }, "¡Sesión completa!"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: "0 0 4px",
+        fontSize: 13,
+        color: C.inkSoft
+      }
+    }, mode === "escuchar" ? "Modo escuchar 👂" : mode === "producir" ? "Modo escribir ✍️" : "Modo reconocer"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        color: C.inkSoft,
+        fontSize: 15
+      }
+    }, /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.green
+      }
+    }, know, " bien"), " ·", " ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.amber
+      }
+    }, almost, " casi"), " ·", " ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.red
+      }
+    }, missed, " a repasar")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 24
+      }
+    }, /*#__PURE__*/React.createElement(BigBtn, {
+      onClick: onExit
+    }, "Volver al cuaderno")));
+  }
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onExit,
+    style: {
+      background: "none",
+      border: "none",
+      color: C.inkSoft,
+      fontSize: 14,
+      fontWeight: 700
+    }
+  }, "← salir"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 900,
+      color: C.inkSoft
+    }
+  }, session.i + 1, " / ", session.queue.length)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5,
+      marginBottom: 18
+    }
+  }, session.queue.map((_, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      flex: 1,
+      height: 5,
+      borderRadius: 3,
+      background: i < session.i ? C.green : i === session.i ? C.ink : C.grid
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    key: card.id + session.revealed + mode,
+    style: {
+      background: C.card,
+      border: `1.5px solid ${C.grid}`,
+      borderRadius: 18,
+      padding: "36px 22px",
+      textAlign: "center",
+      minHeight: 230,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      boxShadow: "0 4px 14px rgba(34,48,74,.07)",
+      animation: "pop .18s ease"
+    }
+  }, mode === "escuchar" && !session.revealed ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 46
+    }
+  }, "👂"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.inkSoft,
+      marginTop: 8
+    }
+  }, "¿Qué escuchaste?")) : mode === "producir" ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.inkSoft,
+      letterSpacing: 1,
+      textTransform: "uppercase"
+    }
+  }, "en español"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 900,
+      marginTop: 8,
+      lineHeight: 1.25
+    }
+  }, card.en)) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 34,
+      lineHeight: 1.15
+    }
+  }, /*#__PURE__*/React.createElement(Hi, null, card.es)), (mode === "escuchar" || session.revealed || mode === "reconocer") && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "center",
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => speak(card.es),
+    "aria-label": "Escuchar",
+    style: {
+      border: `1.5px solid ${C.grid}`,
+      background: C.paper,
+      borderRadius: 999,
+      padding: "7px 16px",
+      fontSize: 14,
+      fontWeight: 700,
+      color: C.ink
+    }
+  }, "🔊 Otra vez"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => speak(card.es, 0.5),
+    "aria-label": "Escuchar despacio",
+    style: {
+      border: `1.5px solid ${C.grid}`,
+      background: C.paper,
+      borderRadius: 999,
+      padding: "7px 16px",
+      fontSize: 14,
+      fontWeight: 700,
+      color: C.ink
+    }
+  }, "🐢 Despacio")), mode === "producir" && verdict && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      animation: "pop .18s ease"
+    }
+  }, verdict !== "exacto" && typed.trim() && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.red,
+      textDecoration: "line-through",
+      marginBottom: 4
+    }
+  }, typed), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 30,
+      lineHeight: 1.15
+    }
+  }, /*#__PURE__*/React.createElement(Hi, null, card.es)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      fontSize: 13,
+      fontWeight: 900,
+      color: verdict === "exacto" ? C.green : verdict === "no" ? C.red : C.amber
+    }
+  }, verdict === "exacto" ? "¡Exacto!" : verdict === "acentos" ? "Casi — revisa los acentos" : verdict === "casi" ? "Casi — checa la ortografía" : "Todavía no")), session.revealed && mode !== "producir" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 18,
+      animation: "pop .18s ease"
+    }
+  }, mode === "escuchar" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 30,
+      lineHeight: 1.15,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement(Hi, null, card.es)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 900
+    }
+  }, card.en), card.note && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      fontSize: 14,
+      color: C.inkSoft,
+      lineHeight: 1.45
+    }
+  }, card.note)), verdict && card.note && mode === "producir" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      fontSize: 14,
+      color: C.inkSoft,
+      lineHeight: 1.45
+    }
+  }, card.note)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 18
+    }
+  }, mode === "producir" && !verdict ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("input", {
+    ref: inputRef,
+    value: typed,
+    onChange: e => setTyped(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") submit();
+    },
+    autoCapitalize: "off",
+    autoCorrect: "off",
+    spellCheck: false,
+    placeholder: "Escríbelo en español…",
+    style: {
+      width: "100%",
+      padding: "15px 14px",
+      fontSize: 19,
+      fontFamily: "'Patrick Hand', cursive",
+      borderRadius: 12,
+      border: `1.5px solid ${C.grid}`,
+      background: C.card,
+      color: C.ink,
+      marginBottom: 10,
+      outline: "none"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 8
+    }
+  }, ["á", "é", "í", "ó", "ú", "ñ", "¿", "¡"].map(ch => /*#__PURE__*/React.createElement("button", {
+    key: ch,
+    onClick: () => {
+      setTyped(typed + ch);
+      inputRef.current && inputRef.current.focus();
+    },
+    style: {
+      flex: 1,
+      padding: "9px 0",
+      borderRadius: 9,
+      border: `1.5px solid ${C.grid}`,
+      background: C.card,
+      fontSize: 16,
+      fontWeight: 700,
+      color: C.ink
+    }
+  }, ch))), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: submit
+  }, "Revisar")) : mode === "producir" && verdict ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 8
+    }
+  }, [["missed", "No la sabía", C.red], ["almost", "Casi", C.amber], ["know", "La tenía", C.green]].map(([key, label, color]) => /*#__PURE__*/React.createElement("button", {
+    key: key,
+    onClick: () => onGrade(key),
+    style: {
+      padding: "16px 4px",
+      fontSize: 14,
+      fontWeight: 900,
+      borderRadius: 12,
+      border: "none",
+      background: color,
+      color: "#fff",
+      boxShadow: "0 3px 0 rgba(34,48,74,.2)",
+      opacity: verdict === "exacto" && key === "know" || (verdict === "acentos" || verdict === "casi") && key === "almost" || verdict === "no" && key === "missed" ? 1 : 0.55
+    }
+  }, label))) : !session.revealed ? /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: onReveal
+  }, mode === "escuchar" ? "Mostrar" : "Mostrar respuesta") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr 1fr",
+      gap: 8
+    }
+  }, [["missed", "No lo sé", C.red], ["almost", "Casi", C.amber], ["know", "¡Lo sé!", C.green]].map(([key, label, color]) => /*#__PURE__*/React.createElement("button", {
+    key: key,
+    onClick: () => onGrade(key),
+    style: {
+      padding: "16px 4px",
+      fontSize: 15,
+      fontWeight: 900,
+      borderRadius: 12,
+      border: "none",
+      background: color,
+      color: "#fff",
+      boxShadow: "0 3px 0 rgba(34,48,74,.2)"
+    }
+  }, label)))));
+}
+
+// ---------- Quick Add ----------
+function Add({
+  onSave,
+  onBack
+}) {
+  const [es, setEs] = useState("");
+  const [en, setEn] = useState("");
+  const [note, setNote] = useState("");
+  const esRef = useRef(null);
+  const save = () => {
+    if (!es.trim() || !en.trim()) return;
+    onSave(es.trim(), en.trim(), note.trim());
+    setEs("");
+    setEn("");
+    setNote("");
+    esRef.current && esRef.current.focus();
+  };
+  const input = props => ({
+    width: "100%",
+    padding: "14px",
+    fontSize: 16,
+    borderRadius: 12,
+    border: `1.5px solid ${C.grid}`,
+    background: C.card,
+    color: C.ink,
+    marginBottom: 10,
+    fontFamily: "inherit",
+    outline: "none",
+    ...props
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      animation: "pop .2s ease"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onBack,
+    style: {
+      background: "none",
+      border: "none",
+      color: C.inkSoft,
+      fontSize: 14,
+      fontWeight: 700,
+      padding: 0,
+      marginBottom: 10
+    }
+  }, "← volver"), /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 28,
+      margin: "0 0 4px"
+    }
+  }, "Añadir palabra"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 16px",
+      fontSize: 13.5,
+      color: C.inkSoft
+    }
+  }, "De tu clase, una canción, la calle — captúralo antes de que se escape."), /*#__PURE__*/React.createElement("input", {
+    ref: esRef,
+    style: input({
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 20
+    }),
+    placeholder: "En español (ej. madrugar)",
+    value: es,
+    onChange: e => setEs(e.target.value)
+  }), /*#__PURE__*/React.createElement("input", {
+    style: input({}),
+    placeholder: "In English (e.g. to get up early)",
+    value: en,
+    onChange: e => setEn(e.target.value)
+  }), /*#__PURE__*/React.createElement("textarea", {
+    style: input({
+      minHeight: 70,
+      resize: "vertical"
+    }),
+    placeholder: "Nota opcional: conjugación, truco, ejemplo…",
+    value: note,
+    onChange: e => setNote(e.target.value)
+  }), /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: save,
+    color: C.green
+  }, "✓ Guardar y añadir otra"));
+}
+
+// ---------- Word bank ----------
+function Bank({
+  cards,
+  onBack,
+  onDelete,
+  onUpdate
+}) {
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState(null);
+  const filtered = cards.filter(c => c.es.toLowerCase().includes(q.toLowerCase()) || c.en.toLowerCase().includes(q.toLowerCase()));
+  const badge = c => c.intro === false ? ["esperando", C.inkSoft] : c.box >= 4 ? ["dominada", C.green] : c.box >= 2 ? ["aprendiendo", C.amber] : ["nueva", C.ink];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      animation: "pop .2s ease"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onBack,
+    style: {
+      background: "none",
+      border: "none",
+      color: C.inkSoft,
+      fontSize: 14,
+      fontWeight: 700,
+      padding: 0,
+      marginBottom: 10
+    }
+  }, "← volver"), /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 28,
+      margin: "0 0 12px"
+    }
+  }, "Banco de palabras"), /*#__PURE__*/React.createElement("input", {
+    style: {
+      width: "100%",
+      padding: "12px 14px",
+      fontSize: 15,
+      borderRadius: 12,
+      border: `1.5px solid ${C.grid}`,
+      background: C.card,
+      marginBottom: 14,
+      outline: "none",
+      fontFamily: "inherit"
+    },
+    placeholder: "🔍 Buscar…",
+    value: q,
+    onChange: e => setQ(e.target.value)
+  }), filtered.map(c => {
+    const [label, color] = badge(c);
+    const isEd = editing === c.id;
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.id,
+      style: {
+        background: C.card,
+        border: `1.5px solid ${C.grid}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+        marginBottom: 8
+      }
+    }, !isEd ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontFamily: "'Patrick Hand', cursive",
+        fontSize: 20
+      }
+    }, c.es, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        primeSpeech();
+        speak(c.es);
+      },
+      "aria-label": "Escuchar " + c.es,
+      style: {
+        border: "none",
+        background: "none",
+        fontSize: 15,
+        padding: "0 6px",
+        opacity: 0.65
+      }
+    }, "🔊")), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 900,
+        color,
+        textTransform: "uppercase",
+        letterSpacing: 0.5
+      }
+    }, label)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 700
+      }
+    }, c.en), c.note && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12.5,
+        color: C.inkSoft,
+        marginTop: 3
+      }
+    }, c.note), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6,
+        display: "flex",
+        gap: 14
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setEditing(c.id),
+      style: {
+        background: "none",
+        border: "none",
+        color: C.inkSoft,
+        fontSize: 12.5,
+        fontWeight: 700,
+        padding: 0
+      }
+    }, "editar"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => onDelete(c.id),
+      style: {
+        background: "none",
+        border: "none",
+        color: C.red,
+        fontSize: 12.5,
+        fontWeight: 700,
+        padding: 0
+      }
+    }, "borrar"))) : /*#__PURE__*/React.createElement(EditRow, {
+      card: c,
+      onSave: patch => {
+        onUpdate(c.id, patch);
+        setEditing(null);
+      },
+      onCancel: () => setEditing(null)
+    }));
+  }), filtered.length === 0 && /*#__PURE__*/React.createElement("p", {
+    style: {
+      textAlign: "center",
+      color: C.inkSoft,
+      fontSize: 14
+    }
+  }, "Nada por aquí todavía."));
+}
+function EditRow({
+  card,
+  onSave,
+  onCancel
+}) {
+  const [es, setEs] = useState(card.es);
+  const [en, setEn] = useState(card.en);
+  const [note, setNote] = useState(card.note || "");
+  const st = {
+    width: "100%",
+    padding: "8px 10px",
+    fontSize: 14,
+    borderRadius: 8,
+    border: `1.5px solid ${C.grid}`,
+    marginBottom: 6,
+    fontFamily: "inherit",
+    outline: "none"
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("input", {
+    style: st,
+    value: es,
+    onChange: e => setEs(e.target.value)
+  }), /*#__PURE__*/React.createElement("input", {
+    style: st,
+    value: en,
+    onChange: e => setEn(e.target.value)
+  }), /*#__PURE__*/React.createElement("input", {
+    style: st,
+    value: note,
+    onChange: e => setNote(e.target.value),
+    placeholder: "Nota"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onSave({
+      es,
+      en,
+      note
+    }),
+    style: {
+      flex: 1,
+      padding: 8,
+      borderRadius: 8,
+      border: "none",
+      background: C.green,
+      color: "#fff",
+      fontWeight: 900
+    }
+  }, "Guardar"), /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    style: {
+      flex: 1,
+      padding: 8,
+      borderRadius: 8,
+      border: `1.5px solid ${C.grid}`,
+      background: "none",
+      fontWeight: 700,
+      color: C.inkSoft
+    }
+  }, "Cancelar")));
+}
+
+// ---------- Backup: take your words anywhere ----------
+function Backup({
+  data,
+  onBack,
+  onImport
+}) {
+  const [paste, setPaste] = useState("");
+  const outRef = useRef(null);
+  const json = JSON.stringify({
+    cards: data.cards,
+    streak: data.streak,
+    lastStudy: data.lastStudy
+  }, null, 0);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+    } catch (e) {
+      outRef.current && outRef.current.select();
+    }
+  };
+  const box = {
+    width: "100%",
+    padding: 12,
+    fontSize: 12,
+    fontFamily: "ui-monospace, Menlo, monospace",
+    borderRadius: 12,
+    border: `1.5px solid ${C.grid}`,
+    background: C.card,
+    color: C.ink,
+    minHeight: 110,
+    resize: "vertical",
+    outline: "none"
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      animation: "pop .2s ease"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onBack,
+    style: {
+      background: "none",
+      border: "none",
+      color: C.inkSoft,
+      fontSize: 14,
+      fontWeight: 700,
+      padding: 0,
+      marginBottom: 10
+    }
+  }, "← volver"), /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 28,
+      margin: "0 0 4px"
+    }
+  }, "Copia de seguridad"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 16px",
+      fontSize: 13.5,
+      color: C.inkSoft,
+      lineHeight: 1.5
+    }
+  }, "Tus ", data.cards.length, " palabras, en texto. Guárdalo donde quieras — o pégalo en otra versión de la app."), /*#__PURE__*/React.createElement("textarea", {
+    ref: outRef,
+    style: box,
+    readOnly: true,
+    value: json,
+    onFocus: e => e.target.select()
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      marginBottom: 26
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    onClick: copy
+  }, "📋 Copiar todo")), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontFamily: "'Patrick Hand', cursive",
+      fontSize: 22,
+      margin: "0 0 4px"
+    }
+  }, "Importar palabras"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "0 0 10px",
+      fontSize: 13,
+      color: C.inkSoft,
+      lineHeight: 1.5
+    }
+  }, "Pega una lista en formato", " ", /*#__PURE__*/React.createElement("code", {
+    style: {
+      fontSize: 12
+    }
+  }, "[", '{"es":"…","en":"…","note":"…"}', "]"), ". Las repetidas se saltan."), /*#__PURE__*/React.createElement("textarea", {
+    style: box,
+    placeholder: "[{\"es\":\"la troca\",\"en\":\"pickup truck\",\"note\":\"norteño\"}]",
+    value: paste,
+    onChange: e => setPaste(e.target.value)
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement(BigBtn, {
+    color: C.green,
+    onClick: () => {
+      if (!paste.trim()) return;
+      onImport(paste);
+      setPaste("");
+    }
+  }, "＋ Añadir estas palabras")));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
