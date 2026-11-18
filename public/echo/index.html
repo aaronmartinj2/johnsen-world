@@ -139,7 +139,7 @@
       if (now() - deadAt > (zen ? 1400 : 1000)) {
         if (zen) { zen = false; state = 'MENU'; saveSink(); AUD.suspend(); return; }
         const mx2 = px(e), my2 = py(e);
-        if (DEAD_MENU && mx2 > DEAD_MENU.x && mx2 < DEAD_MENU.x + DEAD_MENU.w && my2 > DEAD_MENU.y && my2 < DEAD_MENU.y + DEAD_MENU.h) { state = 'MENU'; return; }
+        if (DEAD_MENU && mx2 > DEAD_MENU.x && mx2 < DEAD_MENU.x + DEAD_MENU.w && my2 > DEAD_MENU.y && my2 < DEAD_MENU.y + DEAD_MENU.h) { state = 'MENU'; AUD.suspend(); return; }
         AUD.resume(); start();
       }
       return;
@@ -995,10 +995,17 @@
         const ng = c.createGain(); ng.gain.value = 0;
         ns.connect(nf); nf.connect(ng); ng.connect(AUD.mg); ns.start();
         AUD.washG = ng;
+        if (!OPT.snd || state !== 'PLAY') c.suspend();   // stays asleep until a game starts with sound on (the starting tap resumes it)
       } catch (e) {}
     },
-    master: function () { if (AUD.ctx) AUD.mg.gain.setTargetAtTime(OPT.snd ? 1 : 0, AUD.ctx.currentTime, 0.03); },
-    resume: function () { try { if (AUD.ctx && AUD.ctx.state !== 'running') AUD.ctx.resume(); } catch (e) {} },   // iOS reports 'interrupted' after calls/Siri; resume from any non-running state
+    master: function () {
+      if (!AUD.ctx) return;
+      const g = AUD.mg.gain, t = AUD.ctx.currentTime;
+      g.cancelScheduledValues(t);
+      if (OPT.snd) { g.setValueAtTime(g.value, t); g.setTargetAtTime(1, t, 0.03); }
+      else { g.setValueAtTime(0, t); AUD.suspend(); }   // off means off: stop the audio engine, not just turn it down
+    },
+    resume: function () { try { if (AUD.ctx && OPT.snd && AUD.ctx.state !== 'running') AUD.ctx.resume(); } catch (e) {} },   // iOS reports 'interrupted' after calls/Siri; resume from any non-running state
     suspend: function () { try { if (AUD.ctx && AUD.ctx.state === 'running') AUD.ctx.suspend(); } catch (e) {} },
     tone: function (freq, dur, vol, type, pan, glide, att, vib, vibHz, lp) {
       if (!AUD.ctx || !OPT.snd) return;
@@ -1035,7 +1042,7 @@
       const c = AUD.ctx, t = c.currentTime;
       AUD.mg.gain.cancelScheduledValues(t);
       AUD.mg.gain.setTargetAtTime(0, t, 0.05);            // the water swallows everything
-      setTimeout(function () { AUD.master(); }, 1100);     // ...and nothing returns
+      setTimeout(function () { if (OPT.snd) AUD.master(); }, 1100);     // ...and nothing returns
     }
   };
 
