@@ -34,6 +34,12 @@ const sections = [
     label: 'Tools',
     projects: [
       {
+        title: 'MI CUADERNO',
+        desc: 'Mexican Spanish flashcards with a Sinaloa accent.',
+        status: 'Web',
+        href: '/cuaderno/',
+      },
+      {
         title: 'LINEUP CARD',
         desc: 'Youth baseball lineups. Drag-and-drop positions, batting orders, printable cards.',
         status: 'Web',
