@@ -83,34 +83,106 @@ const addDays = n => {
   return fmt(d);
 };
 
-// ---------- Audio: browser speech, Mexican voice preferred ----------
+// ---------- Audio: browser speech, best Mexican voice preferred ----------
 const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
 let pickedVoice = null;
 let voiceLabel = "";
+const voiceListeners = new Set();
+
+// Voices are per-device, so the choice lives in this browser only —
+// not in your card data, which can move between devices via backup.
+const lsGet = k => {
+  try {
+    return window.localStorage.getItem(k);
+  } catch (e) {
+    return null;
+  }
+};
+const lsSet = (k, v) => {
+  try {
+    window.localStorage.setItem(k, v);
+  } catch (e) {}
+};
+const VOICE_KEY = "cuaderno-voz";
+const RATE_KEY = "cuaderno-velocidad";
+
+// Apple ships up to three versions of the same voice, often with the SAME name.
+// The difference lives in voiceURI: ...compact... / ...enhanced... / ...premium...
+const voiceQuality = v => {
+  const t = `${v.name} ${v.voiceURI || ""}`.toLowerCase();
+  if (/premium|prémium|neural|natural/.test(t)) return 3;
+  if (/enhanced|mejorada|google|online/.test(t)) return 2;
+  if (/compact|eloquence|espeak/.test(t)) return 0;
+  return 1;
+};
+const qualityName = q => q === 3 ? "Premium" : q === 2 ? "Mejorada" : q === 0 ? "Básica" : "";
+const regionScore = v => {
+  const l = (v.lang || "").toLowerCase().replace("_", "-");
+  if (l === "es-mx") return 3;
+  if (l === "es-us") return 2;
+  if (/^es-(419|co|pe|cl|ar|ve|gt|cr|hn|sv|ni|pa|ec|bo|py|uy|do|pr|cu)$/.test(l)) return 1;
+  return 0; // es-ES and plain es
+};
+function spanishVoices() {
+  if (!synth) return [];
+  return synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith("es")).sort((a, b) => regionScore(b) - regionScore(a) || voiceQuality(b) - voiceQuality(a) || a.name.localeCompare(b.name));
+}
+function describeVoice(v) {
+  const q = qualityName(voiceQuality(v));
+  return `${v.name} · ${v.lang}${q ? " · " + q : ""}`;
+}
 function chooseVoice() {
-  if (!synth) return null;
-  const all = synth.getVoices();
-  const es = all.filter(v => v.lang && v.lang.toLowerCase().startsWith("es"));
-  if (!es.length) return null;
-  const by = re => es.find(v => re.test(v.lang));
-  pickedVoice = by(/es[-_]MX/i) ||
-  // Mexican — what we want
-  by(/es[-_]US/i) ||
-  // US Spanish, closest cousin
-  by(/es[-_](419|CO|PE|CL|AR)/i) ||
-  // other Latin American
-  es[0]; // anything Spanish beats nothing
-  voiceLabel = pickedVoice ? `${pickedVoice.name} (${pickedVoice.lang})` : "";
+  const es = spanishVoices();
+  if (!es.length) {
+    pickedVoice = null;
+    voiceLabel = "";
+  } else {
+    const saved = lsGet(VOICE_KEY);
+    pickedVoice = saved && es.find(v => v.voiceURI === saved) || es[0];
+    voiceLabel = describeVoice(pickedVoice);
+  }
+  voiceListeners.forEach(fn => {
+    try {
+      fn();
+    } catch (e) {}
+  });
   return pickedVoice;
+}
+function setVoice(uri) {
+  lsSet(VOICE_KEY, uri);
+  chooseVoice();
 }
 if (synth) {
   chooseVoice();
-  synth.onvoiceschanged = chooseVoice;
+  if (synth.addEventListener) synth.addEventListener("voiceschanged", chooseVoice);else synth.onvoiceschanged = chooseVoice;
+  // Some browsers fill the list late and never fire the event
+  setTimeout(chooseVoice, 600);
+  setTimeout(chooseVoice, 2000);
 }
+
+// Re-render a component when the voice list or choice changes
+function useVoices() {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const fn = () => bump(n => n + 1);
+    voiceListeners.add(fn);
+    return () => voiceListeners.delete(fn);
+  }, []);
+  return {
+    voices: spanishVoices(),
+    picked: pickedVoice
+  };
+}
+const RATES = {
+  normal: 0.95,
+  lenta: 0.75
+};
+const baseRate = () => RATES[lsGet(RATE_KEY)] || RATES.normal;
 
 // Strip flags, warning signs, and other non-speech marks
 const sayable = t => t.replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu, "").replace(/\s+/g, " ").trim();
-function speak(text, rate = 0.9) {
+function speak(text, rate) {
+  if (rate == null) rate = baseRate();
   if (!synth) return;
   const clean = sayable(text);
   if (!clean) return;
@@ -762,6 +834,9 @@ function Home({
   const known = data.cards.filter(c => c.box >= 4).length;
   const on = data.audio !== false;
   const pace = data.newPerDay || NEW_PER_DAY_DEFAULT;
+  const {
+    picked
+  } = useVoices();
   const shown = Math.min(due, SESSION_SIZE); // never show a scary backlog
   const verbsOnly = data.verbsOnly === true;
   return /*#__PURE__*/React.createElement("div", {
@@ -980,7 +1055,7 @@ function Home({
       color: C.inkSoft,
       marginTop: 2
     }
-  }, voiceLabel ? `Voz: ${voiceLabel}` : "Buscando voz en español…")), /*#__PURE__*/React.createElement("span", {
+  }, picked ? `Voz: ${describeVoice(picked)}` : "Buscando voz en español…")), /*#__PURE__*/React.createElement("span", {
     style: {
       width: 44,
       height: 26,
@@ -1002,7 +1077,7 @@ function Home({
       transition: "left .15s",
       boxShadow: "0 1px 3px rgba(0,0,0,.2)"
     }
-  }))), /*#__PURE__*/React.createElement("p", {
+  }))), /*#__PURE__*/React.createElement(VoicePanel, null), /*#__PURE__*/React.createElement("p", {
     style: {
       marginTop: 24,
       fontSize: 12.5,
@@ -1376,6 +1451,102 @@ function Review({
       boxShadow: "0 3px 0 rgba(34,48,74,.2)"
     }
   }, label)))));
+}
+
+// ---------- Voice & speed ----------
+function VoicePanel() {
+  const {
+    voices,
+    picked
+  } = useVoices();
+  const [rate, setRate] = useState(lsGet(RATE_KEY) || "normal");
+  const sample = "Hola, ¿cómo estás? Vamos a repasar un ratito.";
+  const field = {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: 14,
+    borderRadius: 10,
+    border: `1.5px solid ${C.grid}`,
+    background: C.paper,
+    color: C.ink,
+    fontFamily: "inherit",
+    outline: "none"
+  };
+  const pill = active => ({
+    flex: 1,
+    padding: "9px 0",
+    borderRadius: 9,
+    fontWeight: 900,
+    fontSize: 13.5,
+    border: `1.5px solid ${active ? C.ink : C.grid}`,
+    background: active ? C.ink : "transparent",
+    color: active ? "#fff" : C.inkSoft
+  });
+  const best = voices.length ? Math.max(...voices.map(voiceQuality)) : -1;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      background: C.card,
+      border: `1.5px solid ${C.grid}`,
+      borderRadius: 12,
+      padding: "12px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      marginBottom: 8
+    }
+  }, "🗣️ Voz y velocidad"), voices.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      color: C.inkSoft,
+      lineHeight: 1.5
+    }
+  }, "Este navegador no muestra voces en español todavía. Cierra y vuelve a abrir la app.") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("select", {
+    value: picked ? picked.voiceURI : "",
+    onChange: e => {
+      primeSpeech();
+      setVoice(e.target.value);
+      setTimeout(() => speak(sample), 80);
+    },
+    style: field
+  }, voices.map(v => /*#__PURE__*/React.createElement("option", {
+    key: v.voiceURI,
+    value: v.voiceURI
+  }, describeVoice(v)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginTop: 8
+    }
+  }, [["normal", "Normal"], ["lenta", "Más lenta"]].map(([k, label]) => /*#__PURE__*/React.createElement("button", {
+    key: k,
+    onClick: () => {
+      lsSet(RATE_KEY, k);
+      setRate(k);
+      primeSpeech();
+      setTimeout(() => speak(sample), 60);
+    },
+    style: pill(rate === k)
+  }, label)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      primeSpeech();
+      speak(sample);
+    },
+    style: {
+      ...pill(false),
+      color: C.ink,
+      borderColor: C.ink
+    }
+  }, "▶ Probar")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11.5,
+      color: C.inkSoft,
+      marginTop: 8,
+      lineHeight: 1.5
+    }
+  }, voices.length, " ", voices.length === 1 ? "voz" : "voces", " en este dispositivo.", " ", best < 2 ? "Solo hay voces básicas. En iPhone: Ajustes → Accesibilidad → Contenido leído → Voces → Español → Paulina → Mejorada o Premium. Luego cierra y abre la app." : "Elige la que suene más clara — se guarda en este dispositivo.")));
 }
 
 // ---------- Quick Add ----------
