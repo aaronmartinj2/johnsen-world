@@ -306,6 +306,8 @@ legend{padding:0 4px}
 #hud .hb span{white-space:nowrap}
 #toast{position:absolute;left:50%;top:38%;transform:translateX(-50%);width:min(300px,86%)}
 #toast .dbody{padding:10px 12px;font-weight:700}
+#errBox{position:fixed;left:50%;top:18%;transform:translateX(-50%);width:min(340px,92%);z-index:9999}
+#errBox .dbody{padding:8px 12px}#errBox p{margin:0 0 8px;word-break:break-word}#errBox #errText{font-family:monospace;font-size:12px}#errBox .btns{text-align:right}
 body.incab #toast,body.inres #toast{z-index:30}
 body.inbar #toast{z-index:30}
 
@@ -410,6 +412,7 @@ body.inbar #toast{z-index:30}
     </div>
   </div>
 
+  <div id="errBox" class="win hidden" role="alert"><div class="titlebar"><span class="sys"></span><span class="t">Something went wrong</span></div><div class="dbody"><p id="errText"></p><p><small>Please take a screenshot of this for Claude.</small></p><div class="btns"><button type="button" id="errMenu">Back to the menu</button> <button type="button" id="errClose">Keep going</button></div></div></div>
   <div id="toast" class="win hidden"><div class="titlebar"><span class="sys"></span><span class="t" id="toastTitle">Notice</span></div><div class="dbody" id="toastText"></div></div>
 
   <div id="touch" class="hidden">
@@ -927,6 +930,13 @@ const CFG = {
 
   // ---------------------------- Flips and launches (all modes) ----------------------------
   FLIP_SPEED: 420,              // degrees per second while holding up/down in the air
+  FLIP_LOOK: {                  // how a flip is drawn: heels over head toward or away from you (not turned flat on the screen)
+    step: 22.5,                 //   the angle is drawn in steps of this many degrees
+    squashMin: 0.5,             //   (the flat skier squashed to no thinner than this share: only if a pose has no 3D model)
+    depth: 0.5,                 //   the 3D tuck (flipSprite): how much of a length pointing toward you shows on the screen (the view's tilt)
+    lit: 1.1, shadow: 0.72,     //   ... its faces lit from above / turned away from the light
+    lift: 3,                    //   px the body moves up the screen in a backflip (down in a front flip) on the way round
+  },
   FLIP_MIN_AIR: 0.5,            // shortest air (s) that allows flipping
   FLIP_POINTS: { 1: 500, 2: 1300, 3: 2600 },   // backflip / double / triple
   CORK_BONUS: 300,              // extra points when a flip and a 360+ spin happen in one air
@@ -1758,7 +1768,7 @@ const CFG = {
 
   // ---------------------------- Welcome screen ----------------------------
   VERSION: '2.1',
-  BUILD: 128,                   // this build's number (the welcome screen shows it; the service worker's cache is named for it)
+  BUILD: 133,                   // this build's number (the welcome screen shows it; the service worker's cache is named for it)
   // Installed as an app: only where the game lives on johnsen.world (/powder-panic/), served with its manifest, icons and service
   // worker beside it. Anywhere else (a single file, a preview) none of it is loaded. persist: ask the browser to keep the saves
   // (silently: browsers that would ask the player, Firefox, are skipped).
@@ -2255,6 +2265,109 @@ function skierSprite(o) {
   return s;
 }
 
+// A flip in 3D: a little block model of the skier, turned over round the hips and drawn the way the game sees the hill: height up the
+// screen, toward you (downhill) down it at CFG.FLIP_LOOK.depth scale, the nearest block wins, lit from above. deg: the flip (negative =
+// backflip: the head goes away from you); face: which way the skier faces (degrees; 0 = down the hill), so corks and switch flips turn
+// too; pose: 'tuck' (a plain flip), a grab ('grab_mute', 'grab_safety', 'grab_japan') or a style trick ('spread', 'heli', 'cross',
+// 'daffy'), so a trick or a grab in a flip stays solid. Each outfit's colours and hat; cached.
+const FLIP_POSES = ['tuck', 'grab_mute', 'grab_safety', 'grab_japan', 'spread', 'heli', 'cross', 'daffy'];
+function flipSprite(palName, deg, face = 0, pose = 'tuck') {
+  if (!FLIP_POSES.includes(pose)) pose = 'tuck';
+  const F = CFG.FLIP_LOOK, q = ((Math.round(deg / F.step) * F.step) % 360 + 360) % 360, fq = ((Math.round(face / 45) * 45) % 360 + 360) % 360;
+  const key = `vox|${pose}|${q}|${fq}|${palName}|`; if (SKCACHE[key]) return SKCACHE[key];
+  const pal = PALS[palName], W = 56, H = 56, ox = 28, oy = 28, Z = F.depth;
+  const sk = pal.ski || SKI_COL, boot = pal.boot || BOOT, gl = pal.glove || GLOVE, pole = pal.pole || POLE, hs = pal.hatShape || 'beanie', TIP = '#d0d0d8';
+  const a = q * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), f = fq * Math.PI / 180, cf = Math.cos(f), sf = Math.sin(f);
+  const L = [0, 0.8, 0.6].map(v => v / Math.hypot(0, 0.8, 0.6));                      // light: from above, behind you
+  const tf = (x, y, z) => { const y2 = y * ca - z * sa, z2 = y * sa + z * ca; return [x * cf + z2 * sf, y2, -x * sf + z2 * cf]; };   // over round the hips, then turned to face
+  const zb = new Float32Array(W * H).fill(-1e9), col = new Array(W * H), sh = new Float32Array(W * H);
+  const put = (x, y, z, c, n) => {
+    const [X, Y, Zz] = tf(x, y, z), sx = Math.round(ox + X), sy = Math.round(oy - Y + Zz * Z), dd = Zz + Y * Z;
+    if (sx < 0 || sy < 0 || sx >= W || sy >= H) return; const i = sy * W + sx; if (dd <= zb[i]) return;
+    const r = n ? tf(n[0], n[1], n[2]) : null; zb[i] = dd; col[i] = c; sh[i] = r ? r[0] * L[0] + r[1] * L[1] + r[2] * L[2] : 0.3;
+  };
+  // the building blocks: a box (only its surface), a limb (a round segment), a ski (a plank on the snow side of the boot)
+  const box = (x0, x1, y0, y1, z0, z1, c, side, band) => {
+    for (let x = x0; x <= x1; x += 0.5) for (let y = y0; y <= y1; y += 0.5) for (let z = z0; z <= z1; z += 0.5) {
+      const ns = [x === x0 && [-1, 0, 0], x === x1 && [1, 0, 0], y === y0 && [0, -1, 0], y === y1 && [0, 1, 0], z === z0 && [0, 0, -1], z === z1 && [0, 0, 1]].filter(Boolean);
+      if (!ns.length) continue;
+      let best = null, bv = -9; for (const n of ns) { const r = tf(...n), v = r[0] * L[0] + r[1] * L[1] + r[2] * L[2]; if (v > bv) { bv = v; best = n; } }
+      put(x, y, z, band && y >= 3 && y <= 4 ? band : side && x > 2 ? side : c, best);
+    }
+  };
+  const limb = (p0, p1, r, c, c2) => {
+    const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]) || 1;
+    for (let t = 0; t <= 1; t += 0.35 / len) for (let dx = -r; dx <= r; dx += 0.5) for (let dy = -r; dy <= r; dy += 0.5) for (let dz = -r; dz <= r; dz += 0.5) {
+      const m = Math.hypot(dx, dy, dz); if (m > r + 0.01 || (r > 0 && m < r - 0.6)) continue;
+      put(p0[0] + (p1[0] - p0[0]) * t + dx, p0[1] + (p1[1] - p0[1]) * t + dy, p0[2] + (p1[2] - p0[2]) * t + dz, c2 && p0[0] + (p1[0] - p0[0]) * t > 2 ? c2 : c, m ? [dx / m, dy / m, dz / m] : null);
+    }
+  };
+  const ski = (x, y, z, ang, back = 6, front = 11) => {   // ang: its heading on the snow (0: tip toward you)
+    const dx = Math.sin(ang), dz = Math.cos(ang), px = Math.cos(ang), pz = -Math.sin(ang);
+    for (let t = -back; t <= front; t += 0.5) for (let u = -1; u <= 1; u += 0.5) {
+      const c = t > front - 1.5 ? TIP : sk;
+      put(x + dx * t + px * u, y, z + dz * t + pz * u, c, [0, 1, 0]); put(x + dx * t + px * u, y - 0.5, z + dz * t + pz * u, c, [0, -1, 0]);
+    }
+  };
+  const glove = (p) => box(p[0] - 1, p[0] + 1, p[1] - 1, p[1] + 1, p[2] - 1, p[2] + 1, gl);
+  const head = (y, z) => {   // skin, goggles toward you, the hat; y: the chin
+    box(-2, 2, y, y + 4, z - 2, z + 2, SKIN);
+    box(-3, 3, y + 1, y + 2, z + 2, z + 3, '#2a2a48'); box(-2, 2, y + 1, y + 1, z + 3, z + 3, pal.lens || '#2a2a48');
+    if (hs === 'helmet') box(-3, 3, y + 3, y + 5, z - 3, z + 2, pal.hat);
+    else if (hs === 'cowboy') { box(-3, 3, y + 3, y + 6, z - 3, z + 2, pal.hat); box(-5, 5, y + 3, y + 3, z - 5, z + 4, pal.hat); }
+    else if (hs === 'headband') { box(-3, 3, y + 3, y + 5, z - 3, z + 2, '#5a3a1e'); box(-3, 3, y + 3, y + 3, z - 3, z + 2, pal.hat); }
+    else { box(-3, 3, y + 3, y + 5, z - 3, z + 2, pal.hat); box(-1, 1, y + 6, y + 6, z - 2, z, pal.pom); }
+  };
+  if (pose === 'tuck' || pose.startsWith('grab_')) {
+    // tucked: skis under the seat (tips toward you), knees to the chest, the back curled over them
+    ski(-4, -8, 3, 0, 9, 9); ski(3, -8, 3, 0, 9, 9);
+    box(-5, -2, -7, -5, -1, 2, boot); box(2, 5, -7, -5, -1, 2, boot);
+    box(-4, -1, -5, 2, 2, 5, pal.pants); box(1, 4, -5, 2, 2, 5, pal.pants);           // shins, up to the knees
+    if (pal.pads) { box(-4, -1, 0, 2, 5, 5, pal.pads); box(1, 4, 0, 2, 5, 5, pal.pads); }
+    box(-4, 4, -3, 0, -3, 4, pal.pants);                                              // thighs and seat
+    box(-4, 4, 0, 7, -4, 1, pal.jacket, pal.dark, pal.stripe);                        // the back
+    if (pal.cross) { box(-1, 1, 1, 6, -5, -5, pal.cross); box(-3, 3, 3, 4, -5, -5, pal.cross); }
+    head(6, 2);
+    const sL = [-5.5, 5, 0], sR = [5.5, 5, 0];                                       // shoulders
+    let hL = [-5.5, -1, 5], hR = [5.5, -1, 5], up = null;                            // hands: on the shins
+    if (pose === 'grab_mute') { hL = [-2, -7, 8]; hR = [2, -7, 8]; }                  // both hands on the skis, in front of the boots
+    else if (pose === 'grab_safety') { hL = [-6, -7, 1]; hR = [6, -7, 1]; }          // each hand on the outside of its ski, under the boot
+    else if (pose === 'grab_japan') { hL = [3, -7, -4]; up = true; }                  // reaching across for the other ski's tail, the other arm up
+    limb(sL, hL, 1, pal.jacket); glove(hL);
+    if (up) { const t = [6.5, 13, -1]; limb(sR, t, 1, pal.dark); glove(t); }
+    else { limb(sR, hR, 1, pal.dark); glove(hR); }
+    if (pose === 'tuck') { limb([-6, -1, 5], [-10, 3, -12], 0, pole); limb([6, -1, 5], [10, 3, -12], 0, pole); }   // poles under the arms, pointing back
+  } else {
+    // straight out: legs from the hips to the boots, the skis on the boots, the body upright
+    const B = { spread: [[-7, -10, 0, -0.75], [7, -10, 0, 0.75]], heli: [[-3, -11, 0, 0], [3, -11, 0, 0]], cross: [[-3, -11, 0, 0.5], [3, -11, 0, -0.5]],
+      daffy: [[-3, -10, 6, 0], [3, -10, -6, Math.PI]] }[pose];
+    B.forEach(([x, y, z, ang], i) => {
+      limb([i ? 2 : -2, -2, 0], [x, y + 1, z], 1.5, pal.pants);
+      box(x - 1.5, x + 1.5, y - 1, y + 1, z - 1.5, z + 1.5, boot);
+      ski(x, y - 1.5 - (pose === 'cross' && i ? 0.5 : 0), z, ang);
+    });
+    box(-4, 4, -3, 0, -2, 2, pal.pants);
+    box(-4, 4, 0, 7, -2, 2, pal.jacket, pal.dark, pal.stripe);
+    if (pal.cross) { box(-1, 1, 1, 6, -3, -3, pal.cross); box(-3, 3, 3, 4, -3, -3, pal.cross); }
+    head(7, 0);
+    const sL = [-5.5, 6, 0], sR = [5.5, 6, 0];
+    const H2 = { spread: [[-13, 7, 0], [13, 7, 0]], heli: [[-5, 16, 0], [5, 16, 0]], cross: [[-7, 0, 2], [7, 0, 2]], daffy: [[-12, 9, 1], [12, 9, -1]] }[pose];
+    limb(sL, H2[0], 1, pal.jacket); glove(H2[0]); limb(sR, H2[1], 1, pal.dark); glove(H2[1]);
+    for (const h of H2) limb(h, [h[0] * 1.1, h[1] - 9, h[2] - 3], 0, pole);         // the poles, hanging from the hands
+  }
+  const shade = (hex, k) => { const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); if (!m) return hex; return '#' + [1, 2, 3].map(j => Math.max(0, Math.min(255, Math.round(parseInt(m[j], 16) * k))).toString(16).padStart(2, '0')).join(''); };
+  const S = spr(W, H, P => { for (let i = 0; i < W * H; i++) if (col[i]) P(i % W, Math.floor(i / W), 1, 1, shade(col[i], sh[i] > 0.5 ? F.lit : sh[i] > -0.1 ? 1 : F.shadow)); }, ox, oy + 10);
+  SKCACHE[key] = S; return S;
+}
+
+// Build the plain flips' 3D pictures ahead (facing down the hill and switch), a few at a time, so the first flip of a run doesn't stutter
+function flipWarm() {
+  clearTimeout(flipWarm.t); const todo = [];
+  for (const f of [0, 180]) for (let d = CFG.FLIP_LOOK.step; d < 360; d += CFG.FLIP_LOOK.step) todo.push([d, f]);
+  const step = () => { for (let n = 0; n < 4 && todo.length; n++) { const [d, f] = todo.shift(); try { flipSprite('hero', d, f); } catch (e) { return; } } if (todo.length) flipWarm.t = setTimeout(step, 30); };
+  flipWarm.t = setTimeout(step, 300);
+}
+
 /* ------------------------------ helpers ------------------------------ */
 function hash(x, y, s) {
   let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0;
@@ -2588,7 +2701,7 @@ function resetWorld(mode) {
     npcT: 2, shake: 0, gotT: 0, gotStage: 0, lastChomp: -1, course: null,
   });
   G.cells.clear();
-  holdReset();
+  holdReset(); touchReset(); flipWarm();
   for (const k in G.held) G.held[k] = false;
   G.sk = {
     x: 0, y: 0, dir: 3, speed: 0, vx: 0, vy: 0, avx: 0, avy: 0, air: false, z: 0, airT: 0, airDur: 0, airH: 0,
@@ -3410,7 +3523,12 @@ function render() {
       else if (s.switch) S = skierSprite({ face: ((Math.round((s.dir * 30 + 180) / 45) % 8) + 8) % 8, pal: 'hero' });
       else S = skierSprite({ dir: s.dir, tuck: G.dh && s.tuck && Math.abs(s.dir) < 2 ? 'dh' : (s.tuck && Math.abs(s.dir) < 2 && !s.air) || (s.buttering && Math.abs(s.dir) < 2), pal: 'hero' });
       const sway = G.vibes && !s.air && !s.crashed ? Math.sin(G.time * 3) * CFG.ROOTBEER.sway : 0;
-      if (s.air && !s.crashed) drawRot(S, s.x, s.y - zd, s.pitch, airScale(zd)); else drawS(S, s.x + sway, s.y - zd);
+      if (s.air && !s.crashed) {
+        const F = CFG.FLIP_LOOK, q = Math.round(s.pitch / F.step) * F.step;
+        const solid = ((q % 360) + 360) % 360 !== 0 || !!s.trick || s.grabbing;   // flipping, or a grab or a style trick (in a spin too): the 3D skier, turned over and round
+        if (solid) S = flipSprite('hero', s.pitch, s.facing, s.trick || (s.grabbing ? 'grab_' + s.grabType : 'tuck'));
+        drawFlip(S, s.x, s.y - zd, s.pitch, airScale(zd), solid);
+      } else drawS(S, s.x + sway, s.y - zd);
       if (G.mode === 'backcountry' && s.inPowder && !s.air && !s.crashed) { ctx.fillStyle = 'rgba(244,248,253,0.92)'; ctx.fillRect(Math.round(s.x - RCX) - 9, Math.round(s.y - RCY) - 3, 18, 5); }
     } else if (it.k === 'pur') {
       const p = G.pur;
@@ -4449,6 +4567,19 @@ function drawRot(S, x, y, deg, sc = 1) {
   ctx.drawImage(S.c, -S.ax, -(S.ay - 10));
   ctx.restore();
 }
+// A flip: the skier stays facing the same way and goes heels over head, toward you or away from you. Seen from up the hill that's
+// a squash to a thin line side-on, upside down at 180 degrees, then a stretch back out; a backflip carries the body up the screen
+// on the way round, a front flip down it. (pitch: degrees, negative = backflip)
+function drawFlip(S, x, y, deg, sc = 1, solid = false) {   // solid: the 3D tuck (already turned over: drawn as it is)
+  const F = CFG.FLIP_LOOK, q = Math.round(deg / F.step) * F.step, a = q * Math.PI / 180, k = Math.cos(a);
+  if (Math.abs(k) > 0.999 && k > 0 && sc === 1) { drawS(S, x, y); return; }
+  const sy = solid ? 1 : (k < 0 ? -1 : 1) * Math.max(F.squashMin, Math.abs(k));
+  ctx.save();
+  ctx.translate(Math.round(x - RCX), Math.round(y - RCY - 10 + Math.sin(a) * F.lift));
+  ctx.scale(sc, sc * sy);
+  ctx.drawImage(S.c, -S.ax, -(S.ay - 10));
+  ctx.restore();
+}
 // Air readability: how high the skier is (0..1) and the matching sprite scale
 function airLift(zd) { return clamp(zd / CFG.AIR_SCALE_AT, 0, 1); }
 function airScale(zd) { return 1 + Math.round(airLift(zd) * CFG.AIR_SCALE_MAX * 8) / 8; }
@@ -5454,7 +5585,7 @@ function drawHold() {
 function tDown(e) {
   if (e.pointerType === 'mouse' || G.state !== 'playing') return;
   const s = G.sk, air = s.air && !s.crashed;
-  const others = [...Touch.pts.values()].some(p => p.live);
+  const others = [...Touch.pts.values()].some(p => p.live && p.air);
   const p = { x0: e.clientX, y0: e.clientY, air, flag: null, live: true, tap: false, timer: 0 };
   Touch.pts.set(e.pointerId, p);
   if (!air) return;
@@ -5488,7 +5619,13 @@ function holdAirSwipe(e) {
 function touchAirTick() {
   // Landing ends swipe input, so on the ground touch behaves exactly as before.
   if (G.sk.air) return;
-  for (const [id, p] of Touch.pts) if (p.air) { clearTimeout(p.timer); if (p.flag) for (const f of [].concat(p.flag)) G.held[f] = false; if (p.fromHold && Hold.pts.has(id)) { Touch.pts.delete(id); continue; } p.flag = null; p.air = false; }   // (a steering finger that never swiped: still steering)
+  if (Touch.pts.size) touchReset();   // (a steering finger that never swiped is still in Hold, still steering)
+}
+// Forget every air touch: on the landing, when a run starts, and when the page loses focus (so a touch the browser never finished
+// can't leave swipes dead until a reload)
+function touchReset() {
+  for (const p of Touch.pts.values()) { clearTimeout(p.timer); if (p.flag) for (const f of [].concat(p.flag)) G.held[f] = false; }
+  Touch.pts.clear();
 }
 
 /* ------------------------------ practice ------------------------------ */
@@ -14306,7 +14443,7 @@ addEventListener('keydown', e => {
   action(k, e.repeat);
 });
 addEventListener('keyup', e => { if (G.state === 'bgame') { bgKey(e, false); return; } const k = KEYMAP[e.code]; if (k && k in G.held) G.held[k] = false; });
-addEventListener('blur', () => { for (const k in G.held) G.held[k] = false; });
+addEventListener('blur', () => { touchReset(); for (const k in G.held) G.held[k] = false; });
 
 function toLogical(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / SCALE, y: (e.clientY - r.top) / SCALE }; }
 cv.addEventListener('pointerdown', e => {
@@ -14329,7 +14466,7 @@ cv.addEventListener('pointermove', e => {
     if (!G.lastMouse || Math.hypot(p.x - G.lastMouse.x, p.y - G.lastMouse.y) > 2) { G.pointer = { active: true, x: p.x, y: p.y }; G.lastMouse = p; }
   } else if (G.touchSteer) { G.pointer.x = p.x; G.pointer.y = p.y; }
 });
-const endTouch = e => { if (holdUp(e)) return; tUp(e); if (e.pointerType !== 'mouse') { G.touchSteer = false; G.pointer.active = false; } };
+const endTouch = e => { const h = holdUp(e); tUp(e); if (h) return; if (e.pointerType !== 'mouse') { G.touchSteer = false; G.pointer.active = false; } };
 cv.addEventListener('pointerup', endTouch); cv.addEventListener('pointercancel', endTouch);
 cv.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -14502,7 +14639,7 @@ $('ocQuit').addEventListener('click', olyQuitPress);
 $('ocSkip').addEventListener('click', olySkipPress);
 $('againBtn').addEventListener('click', () => { G.variantNext = G.variant; startGame(G.mode); });
 $('oMenuBtn').addEventListener('click', showMenu);
-document.addEventListener('visibilitychange', () => { if (document.hidden && G.state === 'playing') togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { touchReset(); if (G.state === 'playing') togglePause(); } });
 addEventListener('resize', () => { resize(); if (G.sk) camFollow(); });
 
 /* ---------- the Truck & Camper: the mountain road (mode 'road') and the Sno-Park hill climb (mode 'snowmo') ----------
@@ -16096,6 +16233,20 @@ function appSetup() {
   } catch (e) { /* (an app nicety: the game runs without it) */ }
 }
 appSetup();
+// Errors: shown once each in a message box (the message, where, the build and the screen) so they can be reported; never throws
+const errSeen = new Set();
+function reportError(e, where) {
+  try {
+    const msg = (e && (e.message || e.reason && e.reason.message)) || String(e && e.reason || e), at = e && e.stack ? String(e.stack).split('\n').slice(0, 3).join(' | ') : '';
+    const key = msg + '|' + (where || ''); if (errSeen.has(key) || errSeen.size > 5) return; errSeen.add(key);
+    $('errText').textContent = `${msg}\n${where ? `in ${where}, ` : ''}screen: ${G.state}${G.mode ? `, mode: ${G.mode}` : ''}, build ${CFG.BUILD}\n${at.slice(0, 400)}`;
+    $('errText').style.whiteSpace = 'pre-wrap'; $('errBox').classList.remove('hidden');
+  } catch (er) { /* never throws */ }
+}
+addEventListener('error', e => reportError(e.error || e, e.filename ? `line ${e.lineno}` : ''));
+addEventListener('unhandledrejection', e => reportError(e.reason || e, 'promise'));
+$('errClose').addEventListener('click', () => $('errBox').classList.add('hidden'));
+$('errMenu').addEventListener('click', () => { $('errBox').classList.add('hidden'); try { touchReset(); holdReset(); showMenu(); } catch (er) { location.reload(); } });
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -16106,7 +16257,7 @@ function frame(now) {
     else if (G.state === 'caught') { updateCaught(dt); updateFx(dt); }
     else if (G.state === 'over') updateFx(dt);
     render(); hudTick(dt);
-  } catch (e) { if (!frame.failed) { frame.failed = true; console.error(e); } }
+  } catch (e) { if (!frame.failed) { frame.failed = true; console.error(e); } reportError(e, 'frame'); }
   requestAnimationFrame(frame);
 }
 resize();
