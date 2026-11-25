@@ -1,7 +1,7 @@
-// Powder Panic's service worker (build 133). The game page is fetched network-first, so a new deploy shows up straight away,
+// Powder Panic's service worker (build 135). The game page is fetched network-first, so a new deploy shows up straight away,
 // and the copy kept from the last visit is used when there's no network (offline play). The icons and the manifest come from
 // the cache first. Everything stays inside /powder-panic/.
-const BUILD = 133;
+const BUILD = 135;
 const CACHE = `powder-panic-${BUILD}`;
 const BASE = new URL('./', self.location).pathname;   // /powder-panic/
 const ASSETS = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png'];
