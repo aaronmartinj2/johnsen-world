@@ -5,6 +5,12 @@ const sections = [
     label: 'Games',
     projects: [
       {
+        title: 'SOUND CROSSING',
+        desc: 'Pilot a Washington State Ferry across Puget Sound. Learn the slips from Captain Torsten, then earn your own boat.',
+        status: 'Web',
+        href: '/sound-crossing/',
+      },
+      {
         title: 'ECHO',
         desc: 'You are a sound, sinking through black water. Pulse to see, steer to survive.',
         status: 'Web',
