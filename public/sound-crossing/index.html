@@ -260,7 +260,7 @@ button:focus-visible{outline:2px solid var(--rust);outline-offset:2px}
   #mentor,#approach,#toast,#b-cast,#radio,#evq{left:calc(50% - 89px)}
   #radio{width:min(360px,44%)}
   #b-cast{padding:6px 14px 5px;font-size:13px}
-  #mentor{width:min(360px,44%);padding:6px 10px 7px} #mentor p{font-size:14.5px}
+  #mentor{width:min(360px,44%);padding:6px 10px 7px;top:calc(env(safe-area-inset-top,0px) + 40px);left:calc(50% + 40px)} #mentor p{font-size:14.5px}
   #approach{max-width:44%}
   #controls{bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
   #tele{padding:6px 8px 6px} #tele-track{height:150px;margin:4px 0}
@@ -276,7 +276,8 @@ button:focus-visible{outline:2px solid var(--rust);outline-offset:2px}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .card{background:var(--paper);width:min(420px,100%);border-radius:3px;padding:20px 22px 18px;box-shadow:0 18px 40px rgba(42,42,40,.25)}
 .grade-row{display:flex;gap:18px;align-items:center;margin:10px 0 14px}
-#grade{font-family:var(--display);font-weight:800;font-size:96px;line-height:.8;color:var(--rust);min-width:64px;text-align:center}
+#grade{font-family:var(--display);font-weight:800;font-size:96px;line-height:.8;color:var(--rust);min-width:64px;text-align:center;flex:none;white-space:nowrap}
+.grade-row>div:last-child{flex:1;min-width:0}
 #score{font-family:var(--display);font-weight:600;font-size:24px;margin:0}
 #fb{margin:4px 0 0;font-size:15.5px;line-height:1.35}
 .stats{display:grid;grid-template-columns:1fr auto;gap:5px 16px;margin:0 0 16px;padding:12px 0 0;border-top:1px solid var(--panel-line);font-size:15px}
@@ -4782,7 +4783,7 @@ function renderBridge(dt){
   const v=BI?BINO.az+BINO.sx:ta+gl*1.22,cv_=Math.cos(v),sv=Math.sin(v);
   const E={x:b.x+fx*(EYE-Math.abs(gl)*6)+rx*gl*(B2+.6),y:b.y+fy*(EYE-Math.abs(gl)*6)+ry*gl*(B2+.6)},EH=BT.EH;
   if(!CON||performance.now()-CON.t>500)layoutConsole();
-  const hfov=(BI?(VW>VH?9:7.5):(VW>VH?74:62))*Math.PI/180,tanH=Math.tan(hfov/2),f=VW/2/tanH,cx=VW/2,hy=BI?VH*.5+f*Math.tan(BINO.el+BINO.sy):VH*(VW<VH?.36:.4);if(BI)BINO.f=f;
+  const hfov=(BI?(VW>VH?9:7.5):(VW>VH?74:62))*Math.PI/180,tanH=Math.tan(hfov/2),f=VW/2/tanH,cx=VW/2,hy=BI?VH*.5+f*Math.tan(BINO.el+BINO.sy):CON&&CON.wide?Math.round(CON.hb+(CON.y0-CON.hb)*.5):VH*(VW<VH?.36:.4);if(BI)BINO.f=f;
   const cam3=(x,y,h)=>{const dx=x-E.x,dy=y-E.y;return{r:-dx*sv+dy*cv_,d:dx*cv_+dy*sv,h}};
   const pr=q=>({x:cx+f*q.r/q.d,y:hy+f*(EH-q.h)/q.d});
   const fill3=(pts,col)=>{const c=clipNear(pts,1.5);if(c.length<3)return;g.fillStyle=col;g.beginPath();
@@ -4965,7 +4966,7 @@ function layoutConsole(){
   const lever={x:radar.cx+R+18,y:top+18,w:56,h:h-30};
   const rx0=lever.x+lever.w+16,rx1=wide?VW-pad-28:Math.min(VW-pad,rx0+380),rw=rx1-rx0,dr=wide?Math.min(h*.5,70):0,sx=rx0+2*dr+34;
   const ms=BT.id==='iss'?(VW>700?[.09,.25,.41,.59,.75,.91]:[.26,.74]):VW>700?[.12,.34,.66,.88]:[.2,.8];
-  CON={t:performance.now(),y0,top,bot,h,radar,lever,ms,RH,
+  CON={t:performance.now(),y0,hb,wide,top,bot,h,radar,lever,ms,RH,
     dial:wide?{cx:rx0+dr+12,cy:top+h*.66,r:dr}:{cx:rx0+rw/2,cy:top+h*.42,r:Math.max(20,Math.min(rw*.32,h*.36))},
     steer:wide?{x:sx,y:top+6,w:rx1-sx,h:36}:{x:rx0,y:top+h*.5,w:rw,h:36},
     tl:wide?{x:sx,y:bot-36,w:(rx1-sx)/2-4,h:34}:{x:rx0,y:bot-34,w:rw/2-4,h:34},tr:wide?{x:sx+(rx1-sx)/2+4,y:bot-36,w:(rx1-sx)/2-4,h:34}:{x:rx0+rw/2+4,y:bot-34,w:rw/2-4,h:34},
