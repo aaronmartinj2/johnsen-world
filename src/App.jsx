@@ -5,6 +5,12 @@ const sections = [
     label: 'Games',
     projects: [
       {
+        title: 'MINE GRID',
+        desc: 'The minefield logic puzzle, rebuilt. Every board can be solved without guessing. Plays offline.',
+        status: 'Web',
+        href: '/mine-grid/',
+      },
+      {
         title: 'SOUND CROSSING',
         desc: 'Pilot a Washington State Ferry across Puget Sound. Learn the slips from Captain Torsten, then earn your own boat.',
         status: 'Web',

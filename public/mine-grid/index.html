@@ -1,0 +1,1610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mine Grid</title>
+<meta name="description" content="A minefield logic puzzle with guess-free boards, stats and offline play.">
+<meta name="theme-color" content="#23262c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mine Grid">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+@font-face{font-family:"Silkscreen";font-weight:400;font-style:normal;font-display:block;
+  src:url(data:font/woff2;base64,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) format("woff2")}
+@font-face{font-family:"Silkscreen";font-weight:700;font-style:normal;font-display:block;
+  src:url(data:font/woff2;base64,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) format("woff2")}
+
+/* Layout: one beveled desktop window centred on a dithered desk, dialogs as smaller windows. */
+:root{
+  --desk-a:#4a5d7a; --desk-b:#51668a;
+  --panel:#c6c6c2; --hi:#fbfbf7; --lo:#7c7c78; --edge:#2a2a28;
+  --ink:#1a1a1a; --muted:#3d3d3a;
+  --open:#b9b9b5; --line:#8f8f8b; --boom:#e5483a; --focus:#1c5bd6;
+  --led-bg:#1b1305; --led-on:#ffae1a; --led-off:#3b2a0c;
+  --title-bg:#23262c; --title-ink:#f4f4f0; --hazard:#f0b400; --stripe-dark:#1a1a1a;
+  --flag:#e8590c; --mine:#1c1c1c; --scrim:rgba(12,16,26,.55); --help-ink:#eef1f6;
+  --n1:#1d49c4; --n2:#1c7a37; --n3:#c7291f; --n4:#3a1e8c;
+  --n5:#86300f; --n6:#0e7777; --n7:#1a1a1a; --n8:#5d5d5d;
+  --pixel:"Silkscreen","Courier New",monospace;
+  --ui:Verdana, Geneva, "DejaVu Sans", sans-serif;
+  --cell:36px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  font-family:var(--ui);
+  color:var(--ink);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --desk-a:#1b2130; --desk-b:#1f2638;
+    --panel:#55565a; --hi:#808186; --lo:#2b2c2f; --edge:#111;
+    --ink:#ececec; --muted:#c9c9c9;
+    --open:#3f4044; --line:#2b2c2f; --focus:#7fb0ff;
+    --mine:#0d0d0d; --scrim:rgba(0,0,0,.6);
+    --n1:#86a8ff; --n2:#72d38d; --n3:#ff7d70; --n4:#c6a8ff;
+    --n5:#ffb07d; --n6:#62d8d8; --n7:#f0f0f0; --n8:#b4b4b4;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --desk-a:#1b2130; --desk-b:#1f2638;
+  --panel:#55565a; --hi:#808186; --lo:#2b2c2f; --edge:#111;
+  --ink:#ececec; --muted:#c9c9c9;
+  --open:#3f4044; --line:#2b2c2f; --focus:#7fb0ff;
+  --mine:#0d0d0d; --scrim:rgba(0,0,0,.6);
+  --n1:#86a8ff; --n2:#72d38d; --n3:#ff7d70; --n4:#c6a8ff;
+  --n5:#ffb07d; --n6:#62d8d8; --n7:#f0f0f0; --n8:#b4b4b4;
+  color-scheme:dark;
+}
+:root[data-numbers="contrast"]{--n1:var(--ink);--n2:var(--ink);--n3:var(--ink);--n4:var(--ink);--n5:var(--ink);--n6:var(--ink);--n7:var(--ink);--n8:var(--ink)}
+
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+html{height:100%}
+body{
+  margin:0; min-height:100%;
+  background-color:var(--desk-a);
+  background-image:repeating-conic-gradient(var(--desk-a) 0 25%, var(--desk-b) 0 50%);
+  background-size:4px 4px;
+}
+.desk{
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  padding:16px max(10px, env(safe-area-inset-right,0px)) 24px max(10px, env(safe-area-inset-left,0px));
+}
+.sunken{border:3px solid; border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+
+.window{
+  display:inline-flex; flex-direction:column; gap:8px;
+  max-width:100%; min-width:0;
+  background:var(--panel); padding:0 8px 8px;
+  outline:1px solid var(--edge);
+}
+.titlebar{
+  margin:0 -8px; display:flex; align-items:center; gap:8px;
+  padding:7px 8px 11px 10px; background:var(--title-bg); color:var(--title-ink);
+  position:relative;
+}
+.titlebar::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:4px;
+  background:repeating-linear-gradient(-45deg, var(--hazard) 0 6px, var(--stripe-dark) 6px 12px);
+}
+.titlebar h1, .titlebar h2{
+  margin:0; font-family:var(--pixel); font-weight:700;
+  font-size:18px; letter-spacing:.02em; line-height:1;
+}
+.titlebar h2{font-size:15px}
+.titlebar > svg{width:18px;height:18px;flex:none}
+.tb-actions{margin-left:auto; display:flex; gap:6px}
+.tb-btn{font-size:11px; padding:2px 7px}
+
+button{
+  font:inherit; color:var(--ink); background:var(--panel);
+  border:3px solid; border-color:var(--hi) var(--lo) var(--lo) var(--hi);
+  padding:4px 9px; cursor:pointer; touch-action:manipulation;
+  outline:1px solid var(--edge); outline-offset:0;
+}
+button:active, button[aria-pressed="true"]{border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+button[aria-pressed="true"]{font-weight:700}
+button:disabled{color:var(--muted); cursor:default; opacity:.6}
+button:disabled:active{border-color:var(--hi) var(--lo) var(--lo) var(--hi)}
+button:focus-visible{outline:2px solid var(--focus); outline-offset:1px}
+
+.toolbar{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; font-size:12px}
+.seg{display:flex; flex-wrap:wrap; gap:4px}
+.check{display:inline-flex; align-items:center; gap:7px; cursor:pointer; font-weight:700; font-size:13px}
+.check input{margin:0; accent-color:var(--flag); width:16px; height:16px}
+
+.custom{display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; font-size:12px; padding:8px}
+.custom label{display:flex; flex-direction:column; gap:3px}
+.custom input{
+  font:inherit; width:64px; padding:3px 5px; color:var(--ink); background:var(--hi);
+  border:2px solid; border-color:var(--lo) var(--hi) var(--hi) var(--lo);
+}
+.custom .err{flex-basis:100%; margin:0; color:var(--n3); min-height:1em}
+
+.hud{display:flex; align-items:center; justify-content:space-between; padding:5px 6px; gap:8px}
+.led{background:var(--led-bg); padding:3px 4px; line-height:0; border:1px solid; border-color:var(--lo) var(--hi) var(--hi) var(--lo)}
+.led svg{height:30px; width:auto; display:block}
+.led .on{fill:var(--led-on)} .led .off{fill:var(--led-off)}
+.face{padding:2px; width:44px; height:44px; line-height:0}
+.face svg{width:100%; height:100%}
+.face .ex{display:none}
+.face[data-state="normal"] .ex-normal,
+.face[data-state="press"] .ex-press,
+.face[data-state="won"] .ex-won,
+.face[data-state="lost"] .ex-lost{display:inline}
+
+.board-wrap{max-width:100%; min-width:0; overflow:auto; overscroll-behavior:contain; align-self:center; touch-action:pan-x pan-y}
+.board{
+  display:grid;
+  grid-template-columns:repeat(var(--cols,9), var(--cell));
+  grid-auto-rows:var(--cell);
+  touch-action:pan-x pan-y;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.board:focus{outline:none}
+.board:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+.board.dealing{cursor:progress}
+.cell{
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--pixel); font-weight:700;
+  font-size:calc(var(--cell) * .58); line-height:1;
+  cursor:default; overflow:hidden;
+}
+.cell.hidden{
+  background:var(--panel);
+  border:max(2px, calc(var(--cell) * .09)) solid; border-color:var(--hi) var(--lo) var(--lo) var(--hi);
+  color:var(--ink);
+}
+.cell.open, .cell.hidden.pressed{
+  background:var(--open); border:0;
+  border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+}
+.cell.hidden.pressed > *{visibility:hidden}
+.cell.boom{background:var(--boom)}
+.cell.cursor{box-shadow:inset 0 0 0 2px var(--focus)}
+.cell svg{width:68%; height:68%; pointer-events:none}
+.cell.q{font-size:calc(var(--cell) * .5)}
+.n1{color:var(--n1)} .n2{color:var(--n2)} .n3{color:var(--n3)} .n4{color:var(--n4)}
+.n5{color:var(--n5)} .n6{color:var(--n6)} .n7{color:var(--n7)} .n8{color:var(--n8)}
+
+/* Reveal ripple: each opened cell keeps a copy of its cover that pops away after a delay. */
+.cell.dig::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:var(--panel);
+  border:max(2px, calc(var(--cell) * .09)) solid; border-color:var(--hi) var(--lo) var(--lo) var(--hi);
+  animation:cover-off 150ms ease-in var(--d,0ms) both;
+}
+@keyframes cover-off{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.5)}}
+.cell.plant svg{animation:plant 260ms cubic-bezier(.3,1.6,.5,1) var(--d,0ms) both}
+@keyframes plant{from{transform:translateY(-60%) scale(.2);opacity:0}to{transform:none;opacity:1}}
+.window.shake{animation:shake .28s steps(4)}
+@keyframes shake{25%{transform:translateX(-3px)}50%{transform:translateX(3px)}75%{transform:translateX(-2px)}}
+
+.controls{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.mode{display:none; gap:4px; font-size:14px}
+.mode button{padding:8px 10px}
+@media (any-pointer: coarse){ .mode{display:flex} }
+.zoom{display:flex; gap:4px; margin-left:auto; font-size:13px}
+.zoom button{min-width:38px; padding:5px 8px; font-family:var(--ui)}
+
+.status{margin:0; min-height:1.3em; font-size:13px; text-align:center; max-width:34em; align-self:center}
+.info{display:flex; justify-content:space-between; gap:12px; font-size:11px; color:var(--muted); flex-wrap:wrap}
+.help{
+  margin:0; max-width:38em; font-size:12px; line-height:1.5; text-align:center;
+  color:var(--help-ink); text-shadow:0 1px 0 rgba(0,0,0,.45);
+}
+
+/* Dialogs */
+dialog.dlg{
+  padding:0; border:0; background:transparent; color:var(--ink);
+  width:min(440px, calc(100vw - 24px)); max-width:none;
+  max-height:calc(100dvh - 24px); overflow:visible;
+}
+dialog.dlg::backdrop{background:var(--scrim)}
+.dlg-inner{
+  background:var(--panel); outline:1px solid var(--edge);
+  padding:0 10px 14px; display:flex; flex-direction:column; gap:14px;
+  max-height:calc(100dvh - 24px); overflow:auto; font-size:13px;
+}
+.dlg-inner .titlebar{margin:0 -10px; position:sticky; top:0; z-index:1}
+.rows{display:flex; flex-direction:column; gap:16px}
+.row{display:flex; flex-direction:column; gap:6px; align-items:flex-start}
+.row-label{font-weight:700; font-size:13px}
+.desc{margin:0; font-size:12px; color:var(--muted); line-height:1.45; max-width:36em}
+.stat-list{
+  margin:0; display:grid; grid-template-columns:1fr auto; gap:7px 16px;
+  padding:10px 12px; background:var(--open);
+}
+.stat-list dt{font-size:12px; align-self:center}
+.stat-list dd{margin:0; font-family:var(--pixel); font-size:14px; text-align:right; font-variant-numeric:tabular-nums; align-self:center}
+.dlg h3{margin:0; font-size:13px}
+.table-wrap{overflow-x:auto; background:var(--open)}
+.recent{width:100%; border-collapse:collapse; font-size:12px}
+.recent th{text-align:left; font-weight:700; padding:6px 10px; border-bottom:1px solid var(--line)}
+.recent td{padding:5px 10px; font-variant-numeric:tabular-nums}
+.recent td.num, .recent th.num{text-align:right}
+.recent td.num{font-family:var(--pixel)}
+.empty{margin:0; padding:10px 12px; background:var(--open); font-size:12px; color:var(--muted)}
+.danger{color:var(--n3)}
+
+@media (prefers-reduced-motion: reduce){
+  .window.shake{animation:none}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-mine" viewBox="0 0 16 16">
+      <g stroke="var(--mine)" stroke-width="1.5" stroke-linecap="round">
+        <line x1="8" y1="1.5" x2="8" y2="14.5"/><line x1="1.5" y1="8" x2="14.5" y2="8"/>
+        <line x1="3.4" y1="3.4" x2="12.6" y2="12.6"/><line x1="12.6" y1="3.4" x2="3.4" y2="12.6"/>
+      </g>
+      <circle cx="8" cy="8" r="4.6" fill="var(--mine)"/>
+      <circle cx="6.5" cy="6.5" r="1.3" fill="#fff"/>
+    </symbol>
+    <symbol id="i-flag" viewBox="0 0 16 16">
+      <rect x="4" y="12.8" width="8" height="1.8" fill="var(--mine)"/>
+      <line x1="7.2" y1="2" x2="7.2" y2="13" stroke="var(--mine)" stroke-width="1.4"/>
+      <polygon points="7.9,2 14,4.8 7.9,7.6" fill="var(--flag)"/>
+    </symbol>
+    <symbol id="i-flag-light" viewBox="0 0 16 16">
+      <rect x="4" y="12.8" width="8" height="1.8" fill="#f4f4f0"/>
+      <line x1="7.2" y1="2" x2="7.2" y2="13" stroke="#f4f4f0" stroke-width="1.4"/>
+      <polygon points="7.9,2 14,4.8 7.9,7.6" fill="var(--flag)"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 16 16">
+      <g stroke="#e0271b" stroke-width="2" stroke-linecap="round">
+        <line x1="2" y1="2" x2="14" y2="14"/><line x1="14" y1="2" x2="2" y2="14"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<main class="desk">
+  <div class="window" id="win">
+    <header class="titlebar">
+      <svg aria-hidden="true"><use href="#i-flag-light"/></svg>
+      <h1>Mine Grid</h1>
+      <div class="tb-actions">
+        <button type="button" class="tb-btn" id="openStats">Stats</button>
+        <button type="button" class="tb-btn" id="openSettings">Settings</button>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Difficulty" id="presets">
+        <button type="button" data-preset="beginner">Beginner</button>
+        <button type="button" data-preset="intermediate">Intermediate</button>
+        <button type="button" data-preset="expert">Expert</button>
+        <button type="button" data-preset="custom">Custom</button>
+      </div>
+    </div>
+
+    <div class="custom sunken" id="custom" hidden>
+      <label>Width (9–30)<input type="number" id="cw" min="9" max="30" step="1" inputmode="numeric"></label>
+      <label>Height (9–24)<input type="number" id="ch" min="9" max="24" step="1" inputmode="numeric"></label>
+      <label>Mines<input type="number" id="cm" min="10" step="1" inputmode="numeric"></label>
+      <button type="button" id="capply">Start custom game</button>
+      <p class="err" id="cerr" role="alert"></p>
+    </div>
+
+    <div class="hud sunken">
+      <div class="led" id="mines" role="status"></div>
+      <button type="button" class="face" id="face" data-state="normal" aria-label="New game">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="20" r="9.3" fill="#ffd23f" stroke="#1a1a1a" stroke-width="1.2"/>
+          <path d="M7 15.5 Q7 5 16 5 Q25 5 25 15.5 Z" fill="#f28c1b" stroke="#1a1a1a" stroke-width="1.2"/>
+          <rect x="3.5" y="14.3" width="25" height="3" rx="1.5" fill="#f28c1b" stroke="#1a1a1a" stroke-width="1.2"/>
+          <path d="M16 5.5 V14" stroke="#b85f06" stroke-width="1.6"/>
+          <g class="ex ex-normal" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.3" stroke-linecap="round">
+            <circle cx="12.3" cy="21" r="1.2" stroke="none"/><circle cx="19.7" cy="21" r="1.2" stroke="none"/>
+            <path d="M12.2 24.8 Q16 27.8 19.8 24.8" fill="none"/>
+          </g>
+          <g class="ex ex-press" fill="#1a1a1a">
+            <circle cx="12.3" cy="21" r="1.6"/><circle cx="19.7" cy="21" r="1.6"/>
+            <ellipse cx="16" cy="25.6" rx="1.8" ry="2.1"/>
+          </g>
+          <g class="ex ex-won" stroke="#1a1a1a" stroke-width="1.3" stroke-linecap="round" fill="none">
+            <path d="M10.6 21.6 Q12.3 19.2 14 21.6"/><path d="M18 21.6 Q19.7 19.2 21.4 21.6"/>
+            <path d="M11 23.8 Q16 30 21 23.8 Z" fill="#1a1a1a"/>
+          </g>
+          <g class="ex ex-lost" stroke="#1a1a1a" stroke-width="1.3" stroke-linecap="round" fill="none">
+            <path d="M10.8 20.2 L13.8 21.4"/><path d="M21.2 20.2 L18.2 21.4"/>
+            <path d="M12.3 27 Q16 23.8 19.7 27"/>
+          </g>
+        </svg>
+      </button>
+      <div class="led" id="timer" role="timer"></div>
+    </div>
+
+    <div class="board-wrap sunken" id="wrap">
+      <div class="board" id="board" tabindex="0" role="grid" aria-label="Minefield"></div>
+    </div>
+
+    <div class="controls">
+      <div class="mode" role="group" aria-label="What a tap does" id="mode">
+        <button type="button" data-mode="dig">Tap digs</button>
+        <button type="button" data-mode="flag">Tap flags</button>
+      </div>
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button type="button" id="zoomOut" aria-label="Zoom out">−</button>
+        <button type="button" id="zoomFit">Fit</button>
+        <button type="button" id="zoomIn" aria-label="Zoom in">+</button>
+      </div>
+    </div>
+
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="info"><span id="best"></span><span id="kind"></span></div>
+  </div>
+
+  <p class="help">Right-click, Control-click or long-press flags a cell. On a Mac trackpad, a two-finger click works too. Click a number that has all its flags to clear the cells around it. Pinch, Ctrl+scroll or the zoom buttons resize the board. With the board focused, arrow keys move, Space digs, F flags, C clears around a number, + and − zoom, and F2 starts over.</p>
+</main>
+
+<dialog class="dlg" id="settingsDlg" aria-labelledby="settingsTitle">
+  <div class="dlg-inner">
+    <header class="titlebar">
+      <h2 id="settingsTitle">Settings</h2>
+      <div class="tb-actions"><button type="button" class="tb-btn" data-close>Close</button></div>
+    </header>
+    <div class="rows">
+      <div class="row">
+        <label class="check"><input type="checkbox" id="setNoGuess"> Guess-free boards</label>
+        <p class="desc">Every board can be cleared by logic from your first click, with no coin flips. Takes effect on the next board you start. Stats keep guess-free and classic games apart.</p>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="setQ"> Question marks</label>
+        <p class="desc">Right-click or long-press cycles flag, question mark, blank. Turn off to toggle flags only.</p>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="setMotion"> Reveal animations</label>
+        <p class="desc">Openings ripple out from your click, and mines surface one by one when you lose.</p>
+      </div>
+      <div class="row">
+        <span class="row-label" id="numLbl">Number colors</span>
+        <div class="seg" role="group" aria-labelledby="numLbl" id="setNumbers">
+          <button type="button" data-numbers="classic">Classic</button>
+          <button type="button" data-numbers="contrast">High contrast</button>
+        </div>
+        <p class="desc">High contrast prints every number in the same dark ink, so you read the digit instead of relying on its color.</p>
+      </div>
+      <div class="row">
+        <span class="row-label" id="themeLbl">Theme</span>
+        <div class="seg" role="group" aria-labelledby="themeLbl" id="setTheme">
+          <button type="button" data-theme="auto">Match device</button>
+          <button type="button" data-theme="light">Light</button>
+          <button type="button" data-theme="dark">Dark</button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="row-label">Play offline</span>
+        <p class="desc" id="installText"></p>
+        <button type="button" id="installBtn" hidden>Install Mine Grid</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="dlg" id="statsDlg" aria-labelledby="statsTitle">
+  <div class="dlg-inner">
+    <header class="titlebar">
+      <h2 id="statsTitle">Stats</h2>
+      <div class="tb-actions"><button type="button" class="tb-btn" data-close>Close</button></div>
+    </header>
+    <div class="seg" role="group" aria-label="Difficulty" id="statsLevel">
+      <button type="button" data-level="beginner">Beginner</button>
+      <button type="button" data-level="intermediate">Intermediate</button>
+      <button type="button" data-level="expert">Expert</button>
+      <button type="button" data-level="custom">Custom</button>
+    </div>
+    <div class="seg" role="group" aria-label="Board type" id="statsKind">
+      <button type="button" data-kind="ng">Guess-free</button>
+      <button type="button" data-kind="classic">Classic</button>
+    </div>
+    <dl class="stat-list sunken" id="statList"></dl>
+    <h3>Recent wins</h3>
+    <div id="recentBox"></div>
+    <p class="desc">3BV is the fewest clicks that can clear a board. 3BV per second divides it by your time, so it rewards efficient play whatever board you drew. Starting a new board mid-game counts as a loss.</p>
+    <div><button type="button" id="resetStats">Reset these stats</button></div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+
+// LOGIC-START
+/* Pure game logic: no DOM, no storage, no timers. */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashSeed(str){
+  let h = 2166136261 >>> 0;
+  for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+const HIDDEN = 0, OPEN = 1, FLAG = 2, QMARK = 3;
+
+const nbCache = new Map();
+function neighborTable(w, h){
+  const key = w + 'x' + h;
+  let t = nbCache.get(key);
+  if (t) return t;
+  t = new Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
+    const out = [];
+    for (let dy = -1; dy <= 1; dy++){
+      const ny = y + dy; if (ny < 0 || ny >= h) continue;
+      for (let dx = -1; dx <= 1; dx++){
+        if (!dx && !dy) continue;
+        const nx = x + dx; if (nx < 0 || nx >= w) continue;
+        out.push(ny * w + nx);
+      }
+    }
+    t[y * w + x] = out;
+  }
+  nbCache.set(key, t);
+  return t;
+}
+function computeAdj(n, nb, mine){
+  const adj = new Uint8Array(n);
+  for (let i = 0; i < n; i++){
+    if (mine[i]) continue;
+    let c = 0; for (const j of nb[i]) c += mine[j];
+    adj[i] = c;
+  }
+  return adj;
+}
+// 3BV: the fewest left-clicks that clear the board (each opening counts once,
+// plus every numbered cell not touching an opening).
+function threeBV(n, nb, mine, adj){
+  const seen = new Uint8Array(n); let count = 0; const q = [];
+  for (let i = 0; i < n; i++){
+    if (mine[i] || adj[i] !== 0 || seen[i]) continue;
+    count++; seen[i] = 1; q.length = 0; q.push(i);
+    for (let h = 0; h < q.length; h++){
+      for (const j of nb[q[h]]){
+        if (seen[j] || mine[j]) continue;
+        seen[j] = 1;
+        if (adj[j] === 0) q.push(j);
+      }
+    }
+  }
+  for (let i = 0; i < n; i++) if (!mine[i] && !seen[i]) count++;
+  return count;
+}
+
+const Gen = {
+  // Random layout keeping `safe` and its neighbours clear when there is room.
+  random(w, h, mines, safe, rng){
+    const n = w * h, nb = neighborTable(w, h);
+    const excl = new Uint8Array(n); excl[safe] = 1;
+    for (const j of nb[safe]) excl[j] = 1;
+    let cand = [];
+    for (let i = 0; i < n; i++) if (!excl[i]) cand.push(i);
+    if (cand.length < mines){ cand = []; for (let i = 0; i < n; i++) if (i !== safe) cand.push(i); }
+    const mask = new Uint8Array(n);
+    for (let k = 0; k < mines; k++){
+      const j = k + Math.floor(rng() * (cand.length - k));
+      const t = cand[k]; cand[k] = cand[j]; cand[j] = t;
+      mask[cand[k]] = 1;
+    }
+    return mask;
+  },
+  // One attempt at a guess-free board. Returns the mask, or null.
+  tryNoGuess(w, h, mines, safe, rng){
+    const mask = Gen.random(w, h, mines, safe, rng);
+    const nb = neighborTable(w, h);
+    const adj = computeAdj(w * h, nb, mask);
+    return Solver.solve(w, h, mask, adj, safe, mines) ? mask : null;
+  }
+};
+
+/* Logic-only solver. It sees the true layout only through cells it reveals,
+   and it never guesses: it opens a cell only when every arrangement of mines
+   consistent with what it can see makes that cell safe. */
+const Solver = {
+  NODE_CAP: 120000,
+  MAX_COMPONENT: 64,
+  solve(w, h, mine, adj, start, total){
+    const n = w * h, nb = neighborTable(w, h);
+    const rev = new Uint8Array(n), flg = new Uint8Array(n);
+    let revCount = 0, flagCount = 0;
+    const target = n - total;
+    const q = [];
+    function open(i){
+      if (rev[i] || flg[i]) return false;
+      if (mine[i]) throw new Error('solver opened a mine');
+      rev[i] = 1; revCount++; q.length = 0; q.push(i);
+      while (q.length){
+        const c = q.pop();
+        if (adj[c] !== 0) continue;
+        for (const j of nb[c]) if (!rev[j] && !flg[j]){ rev[j] = 1; revCount++; q.push(j); }
+      }
+      return true;
+    }
+    function flag(i){
+      if (rev[i] || flg[i]) return false;
+      if (!mine[i]) throw new Error('solver flagged a safe cell');
+      flg[i] = 1; flagCount++;
+      return true;
+    }
+    function constraints(){
+      const out = [];
+      for (let i = 0; i < n; i++){
+        if (!rev[i] || adj[i] === 0) continue;
+        let need = adj[i]; const u = [];
+        for (const j of nb[i]){ if (flg[j]) need--; else if (!rev[j]) u.push(j); }
+        if (u.length) out.push({ cell: i, u, need });
+      }
+      return out;
+    }
+    const markA = new Int32Array(n), markB = new Int32Array(n);
+    let stamp = 0;
+    function local(){
+      const cons = constraints();
+      let progress = false;
+      for (const c of cons){
+        if (c.need === 0){ for (const v of c.u) progress = open(v) || progress; }
+        else if (c.need === c.u.length){ for (const v of c.u) progress = flag(v) || progress; }
+      }
+      if (progress) return true;
+      // Pair rule between constraints whose cells are within two steps.
+      const at = new Int32Array(n).fill(-1);
+      cons.forEach((c, k) => { at[c.cell] = k; });
+      for (let k = 0; k < cons.length; k++){
+        const A = cons[k], ax = A.cell % w, ay = (A.cell - ax) / w;
+        for (let dy = -2; dy <= 2; dy++){
+          const y = ay + dy; if (y < 0 || y >= h) continue;
+          for (let dx = -2; dx <= 2; dx++){
+            const x = ax + dx; if (x < 0 || x >= w) continue;
+            const m = at[y * w + x];
+            if (m <= k) continue;
+            if (pair(A, cons[m]) || pair(cons[m], A)) progress = true;
+          }
+        }
+        if (progress) return true;
+      }
+      return false;
+    }
+    function pair(A, B){
+      const sA = ++stamp; for (const v of A.u) markA[v] = sA;
+      const sB = ++stamp; for (const v of B.u) markB[v] = sB;
+      let common = 0; const onlyB = [], onlyA = [];
+      for (const v of B.u){ if (markA[v] === sA) common++; else onlyB.push(v); }
+      if (!common) return false;
+      for (const v of A.u) if (markB[v] !== sB) onlyA.push(v);
+      let progress = false;
+      // Fewest and most mines the shared cells can hold, given A.
+      const commonMin = Math.max(0, A.need - onlyA.length);
+      const commonMax = Math.min(common, A.need);
+      if (onlyB.length){
+        if (B.need - commonMax === onlyB.length){
+          for (const v of onlyB) progress = flag(v) || progress;
+          const inCommon = B.need - onlyB.length;
+          const inOnlyA = A.need - inCommon;
+          if (onlyA.length && inOnlyA === 0) for (const v of onlyA) progress = open(v) || progress;
+          else if (onlyA.length && inOnlyA === onlyA.length) for (const v of onlyA) progress = flag(v) || progress;
+        } else if (B.need - commonMin === 0){
+          for (const v of onlyB) progress = open(v) || progress;
+        }
+      }
+      return progress;
+    }
+    function enumerate(){
+      const cons = constraints();
+      if (!cons.length) return endgame(0);
+      const varId = new Int32Array(n).fill(-1), vars = [];
+      for (const c of cons) for (const v of c.u) if (varId[v] < 0){ varId[v] = vars.length; vars.push(v); }
+      let unknown = 0;
+      for (let i = 0; i < n; i++) if (!rev[i] && !flg[i]) unknown++;
+      const interior = unknown - vars.length;
+      const R = total - flagCount;
+      // Group frontier cells into independent components.
+      const parent = vars.map((_, k) => k);
+      const find = k => { while (parent[k] !== k){ parent[k] = parent[parent[k]]; k = parent[k]; } return k; };
+      for (const c of cons){
+        const a = find(varId[c.u[0]]);
+        for (let t = 1; t < c.u.length; t++){ const b = find(varId[c.u[t]]); if (a !== b) parent[b] = a; }
+      }
+      const groups = new Map();
+      for (let k = 0; k < vars.length; k++){
+        const r = find(k);
+        if (!groups.has(r)) groups.set(r, { vars: [], cons: [] });
+        groups.get(r).vars.push(vars[k]);
+      }
+      for (const c of cons) groups.get(find(varId[c.u[0]])).cons.push(c);
+      const comps = [...groups.values()].map(g => Solver.component(g.vars, g.cons));
+      // Which totals each component can contribute, given the global mine count.
+      const lo = Math.max(0, R - interior);
+      const sumsOf = list => {
+        let s = new Uint8Array(R + 1); s[0] = 1;
+        for (const c of list){
+          const t = new Uint8Array(R + 1);
+          for (let a = 0; a <= R; a++) if (s[a]) for (const k of c.ks) if (a + k <= R) t[a + k] = 1;
+          s = t;
+        }
+        return s;
+      };
+      let progress = false;
+      for (let ci = 0; ci < comps.length; ci++){
+        const c = comps[ci];
+        const others = sumsOf(comps.filter((_, j) => j !== ci));
+        const feasible = c.ks.filter(k => {
+          for (let s = 0; s <= R; s++) if (others[s] && k + s >= lo && k + s <= R) return true;
+          return false;
+        });
+        if (!feasible.length) continue;
+        for (let v = 0; v < c.vars.length; v++){
+          let safe = true, isMine = true;
+          for (const k of feasible){
+            const rec = c.byK.get(k);
+            if (!rec){ safe = false; isMine = false; break; }
+            if (rec.any[v]) safe = false;
+            if (!rec.all[v]) isMine = false;
+          }
+          if (safe) progress = open(c.vars[v]) || progress;
+          else if (isMine) progress = flag(c.vars[v]) || progress;
+        }
+      }
+      if (progress) return true;
+      if (interior > 0){
+        const all = sumsOf(comps);
+        let allSafe = true, allMine = true, any = false;
+        for (let s = lo; s <= R; s++){
+          if (!all[s]) continue;
+          any = true;
+          if (R - s !== 0) allSafe = false;
+          if (R - s !== interior) allMine = false;
+        }
+        if (any && (allSafe || allMine)){
+          for (let i = 0; i < n; i++){
+            if (rev[i] || flg[i] || varId[i] >= 0) continue;
+            progress = (allSafe ? open(i) : flag(i)) || progress;
+          }
+        }
+      }
+      return progress;
+    }
+    function endgame(){
+      const R = total - flagCount;
+      let progress = false;
+      if (R === 0) for (let i = 0; i < n; i++) progress = open(i) || progress;
+      return progress;
+    }
+    open(start);
+    while (revCount < target){
+      if (local()) continue;
+      if (enumerate()) continue;
+      return false;
+    }
+    return true;
+  },
+  // Enumerate every mine arrangement for one frontier component.
+  component(vars, cons){
+    const len = vars.length;
+    const unbounded = () => {
+      const ks = []; for (let k = 0; k <= len; k++) ks.push(k);
+      return { vars, ks, byK: new Map() };
+    };
+    if (len > Solver.MAX_COMPONENT) return unbounded();
+    const idx = new Map(vars.map((v, k) => [v, k]));
+    const cn = cons.map(c => ({ vs: c.u.map(v => idx.get(v)), need: c.need, cnt: 0, rem: c.u.length }));
+    const varCons = vars.map(() => []);
+    cn.forEach(c => c.vs.forEach(v => varCons[v].push(c)));
+    // Order cells so each constraint fills in early (breadth-first over constraints).
+    const order = [], placed = new Uint8Array(len), seenC = new Set();
+    const cq = [cn[0]]; seenC.add(cn[0]);
+    for (let h = 0; h < cq.length; h++){
+      for (const v of cq[h].vs){
+        if (placed[v]) continue;
+        placed[v] = 1; order.push(v);
+        for (const c of varCons[v]) if (!seenC.has(c)){ seenC.add(c); cq.push(c); }
+      }
+    }
+    for (let v = 0; v < len; v++) if (!placed[v]) order.push(v);
+    const val = new Uint8Array(len), byK = new Map();
+    let nodes = 0, aborted = false, mines = 0;
+    const rec = () => {
+      let r = byK.get(mines);
+      if (!r){ r = { any: new Uint8Array(len), all: new Uint8Array(len).fill(1) }; byK.set(mines, r); }
+      for (let v = 0; v < len; v++){ if (val[v]) r.any[v] = 1; else r.all[v] = 0; }
+    };
+    const step = d => {
+      if (aborted) return;
+      if (++nodes > Solver.NODE_CAP){ aborted = true; return; }
+      if (d === len){ rec(); return; }
+      const v = order[d];
+      for (let x = 0; x <= 1; x++){
+        let ok = true;
+        for (const c of varCons[v]){
+          c.cnt += x; c.rem--;
+          if (c.cnt > c.need || c.cnt + c.rem < c.need) ok = false;
+        }
+        val[v] = x; mines += x;
+        if (ok) step(d + 1);
+        mines -= x;
+        for (const c of varCons[v]){ c.cnt -= x; c.rem++; }
+        if (aborted) return;
+      }
+      val[v] = 0;
+    };
+    step(0);
+    if (aborted) return unbounded();
+    return { vars, ks: [...byK.keys()].sort((a, b) => a - b), byK };
+  }
+};
+
+const Game = {
+  create(w, h, mines){
+    const n = w * h;
+    return { w, h, n, mines, nb: neighborTable(w, h),
+      mine: new Uint8Array(n), adj: new Uint8Array(n), mark: new Uint8Array(n),
+      status: 'ready', opened: 0, flags: 0, exploded: -1,
+      startedAt: 0, endedAt: 0, bbbv: 0, noGuess: false };
+  },
+  isOver(s){ return s.status === 'won' || s.status === 'lost'; },
+  // Lay a finished mine mask and start the clock.
+  start(s, mask, noGuess, now){
+    if (s.status !== 'ready') return false;
+    s.mine.set(mask);
+    s.adj = computeAdj(s.n, s.nb, s.mine);
+    s.bbbv = threeBV(s.n, s.nb, s.mine, s.adj);
+    s.noGuess = !!noGuess;
+    s.status = 'playing'; s.startedAt = now;
+    return true;
+  },
+  // Returns the cells it opened as [{i, d}] where d is the flood distance, or null.
+  reveal(s, i, now){
+    if (s.status !== 'playing') return null;
+    const m = s.mark[i];
+    if (m === OPEN || m === FLAG) return null;
+    if (s.mine[i]){
+      s.mark[i] = OPEN; s.exploded = i; s.status = 'lost'; s.endedAt = now;
+      return [{ i, d: 0 }];
+    }
+    s.mark[i] = OPEN; s.opened++;
+    const out = [{ i, d: 0 }];
+    for (let head = 0; head < out.length; head++){
+      const { i: c, d } = out[head];
+      if (s.adj[c] !== 0) continue;
+      for (const j of s.nb[c]){
+        const jm = s.mark[j];
+        if (jm === OPEN || jm === FLAG || s.mine[j]) continue;
+        s.mark[j] = OPEN; s.opened++; out.push({ i: j, d: d + 1 });
+      }
+    }
+    Game.checkWin(s, now);
+    return out;
+  },
+  checkWin(s, now){
+    if (s.status === 'playing' && s.opened === s.n - s.mines){
+      s.status = 'won'; s.endedAt = now;
+      for (let i = 0; i < s.n; i++){
+        if (s.mine[i] && s.mark[i] !== FLAG){
+          if (s.mark[i] === QMARK) s.mark[i] = HIDDEN;
+          s.mark[i] = FLAG; s.flags++;
+        }
+      }
+    }
+  },
+  cycleMark(s, i, allowQ){
+    if (Game.isOver(s)) return false;
+    const m = s.mark[i];
+    if (m === OPEN) return false;
+    if (m === HIDDEN){ s.mark[i] = FLAG; s.flags++; }
+    else if (m === FLAG){ s.flags--; s.mark[i] = allowQ ? QMARK : HIDDEN; }
+    else s.mark[i] = HIDDEN;
+    return true;
+  },
+  canChord(s, i){
+    if (s.status !== 'playing' || s.mark[i] !== OPEN || s.adj[i] === 0) return false;
+    let f = 0; for (const j of s.nb[i]) if (s.mark[j] === FLAG) f++;
+    return f === s.adj[i];
+  },
+  chord(s, i, now){
+    if (!Game.canChord(s, i)) return null;
+    const out = [];
+    for (const j of s.nb[i]){
+      if (s.status !== 'playing') break;
+      const m = s.mark[j];
+      if (m !== HIDDEN && m !== QMARK) continue;
+      const r = Game.reveal(s, j, now);
+      if (r) for (const e of r) out.push({ i: e.i, d: e.d + 1 });
+    }
+    return out.length ? out : null;
+  },
+  elapsedMs(s, now){
+    if (s.status === 'ready') return 0;
+    return (Game.isOver(s) ? s.endedAt : now) - s.startedAt;
+  },
+  elapsedSec(s, now){ return Math.min(999, Math.floor(Game.elapsedMs(s, now) / 1000)); }
+};
+
+/* Stats are plain data so they can be tested without a browser. */
+const Stats = {
+  RECENT: 10,
+  empty(){ return { played: 0, won: 0, streak: 0, bestStreak: 0, bestMs: 0, best3bvs: 0, recent: [] }; },
+  record(rec, won, ms, bbbv, date, trackTime){
+    const r = Object.assign(Stats.empty(), rec || {});
+    r.recent = Array.isArray(r.recent) ? r.recent.slice() : [];
+    r.played++;
+    let newBest = false;
+    if (won){
+      r.won++; r.streak++;
+      if (r.streak > r.bestStreak) r.bestStreak = r.streak;
+      const rate = ms > 0 ? bbbv / (ms / 1000) : 0;
+      if (rate > r.best3bvs) r.best3bvs = rate;
+      if (trackTime && (!r.bestMs || ms < r.bestMs)){ r.bestMs = ms; newBest = true; }
+      r.recent.unshift({ ms: Math.round(ms), bbbv, date });
+      r.recent = r.recent.slice(0, Stats.RECENT);
+    } else {
+      r.streak = 0;
+    }
+    return { rec: r, newBest };
+  }
+};
+// LOGIC-END
+
+
+/* =========================================================
+   SETTINGS & STORAGE
+   Three tiers: localStorage, then the host's window.storage, then memory.
+   ========================================================= */
+const Store = (() => {
+  const mem = Object.create(null);
+  let ls = null;
+  try { const k = '__mg_probe'; localStorage.setItem(k, '1'); localStorage.removeItem(k); ls = localStorage; } catch (e) {}
+  let ws = null;
+  try { if (!ls && window.storage && typeof window.storage.get === 'function') ws = window.storage; } catch (e) {}
+  return {
+    get(k, def){
+      if (k in mem) return mem[k];
+      if (ls){ try { const v = ls.getItem(k); if (v != null) return (mem[k] = JSON.parse(v)); } catch (e) {} }
+      return def;
+    },
+    set(k, v){
+      mem[k] = v;
+      if (ls){ try { ls.setItem(k, JSON.stringify(v)); return; } catch (e) {} }
+      if (ws){ try { Promise.resolve(ws.set(k, JSON.stringify(v))).catch(() => {}); } catch (e) {} }
+    },
+    async hydrate(keys){
+      if (!ws) return false;
+      let any = false;
+      for (const k of keys){
+        try {
+          const r = await ws.get(k);
+          const raw = r && typeof r === 'object' && 'value' in r ? r.value : r;
+          if (raw != null){ mem[k] = typeof raw === 'string' ? JSON.parse(raw) : raw; any = true; }
+        } catch (e) {}
+      }
+      return any;
+    }
+  };
+})();
+
+const PRESETS = {
+  beginner:     { w: 9,  h: 9,  m: 10, label: 'Beginner' },
+  intermediate: { w: 16, h: 16, m: 40, label: 'Intermediate' },
+  expert:       { w: 30, h: 16, m: 99, label: 'Expert' }
+};
+function validateCustom(w, h, m){
+  if (![w, h, m].every(Number.isInteger)) return 'Enter whole numbers for width, height and mines.';
+  if (w < 9 || w > 30) return 'Width must be between 9 and 30.';
+  if (h < 9 || h > 24) return 'Height must be between 9 and 24.';
+  const max = w * h - 9;
+  if (m < 10 || m > max) return `Mines must be between 10 and ${max} for a ${w}×${h} board.`;
+  return null;
+}
+const DEFAULTS = { preset: 'beginner', custom: { w: 20, h: 12, m: 40 }, qmarks: true, mode: 'dig',
+  noGuess: true, motion: null, numbers: 'classic', theme: 'auto' };
+let settings, stats;
+function loadSettings(){
+  settings = Object.assign({}, DEFAULTS, Store.get('minegrid:settings', {}));
+  if (!PRESETS[settings.preset] && settings.preset !== 'custom') settings.preset = 'beginner';
+  if (!settings.custom || validateCustom(settings.custom.w, settings.custom.h, settings.custom.m)) settings.custom = { ...DEFAULTS.custom };
+  if (settings.mode !== 'flag') settings.mode = 'dig';
+  if (settings.numbers !== 'contrast') settings.numbers = 'classic';
+  if (!['auto', 'light', 'dark'].includes(settings.theme)) settings.theme = 'auto';
+  if (typeof settings.motion !== 'boolean') settings.motion = null;
+  settings.noGuess = settings.noGuess !== false;
+  settings.qmarks = settings.qmarks !== false;
+}
+function loadStats(){
+  stats = Store.get('minegrid:stats', null);
+  if (!stats || typeof stats !== 'object') stats = {};
+  // Carry over best times saved by the first version.
+  const old = Store.get('minegrid:best', null);
+  if (old && typeof old === 'object' && !stats.__migrated){
+    for (const p of Object.keys(PRESETS)){
+      const ms = old[p];
+      if (typeof ms !== 'number' || ms <= 0) continue;
+      const key = p + ':classic';
+      const r = Object.assign(Stats.empty(), stats[key] || {});
+      if (!r.bestMs || ms < r.bestMs) r.bestMs = ms;
+      stats[key] = r;
+    }
+    stats.__migrated = true;
+    Store.set('minegrid:stats', stats);
+  }
+}
+const saveSettings = () => Store.set('minegrid:settings', settings);
+loadSettings(); loadStats();
+
+const seedParam = new URLSearchParams(location.search).get('seed');
+const reduceMQ = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const motionOn = () => settings.motion === null ? !reduceMQ.matches : settings.motion;
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const els = {
+  win: $('win'), board: $('board'), wrap: $('wrap'), face: $('face'),
+  mines: $('mines'), timer: $('timer'), status: $('status'), best: $('best'), kind: $('kind'),
+  presets: $('presets'), custom: $('custom'),
+  cw: $('cw'), ch: $('ch'), cm: $('cm'), capply: $('capply'), cerr: $('cerr'), mode: $('mode'),
+  zoomIn: $('zoomIn'), zoomOut: $('zoomOut'), zoomFit: $('zoomFit'),
+  settingsDlg: $('settingsDlg'), statsDlg: $('statsDlg'),
+  setNoGuess: $('setNoGuess'), setQ: $('setQ'), setMotion: $('setMotion'),
+  setNumbers: $('setNumbers'), setTheme: $('setTheme'),
+  installText: $('installText'), installBtn: $('installBtn'),
+  statsLevel: $('statsLevel'), statsKind: $('statsKind'), statList: $('statList'),
+  recentBox: $('recentBox'), resetStats: $('resetStats')
+};
+
+let game, rng, cellEls = [], cellContent = [], animUntil, animDelay, animKind;
+let cursor = 0, kbdActive = false, pressing = false, pressed = [];
+let dealing = false, dealToken = 0;
+
+const SEG = {
+  a:'2,0.5 10,0.5 8.5,2.5 3.5,2.5', b:'10.5,1 10.5,10.5 8.5,9 8.5,3', c:'10.5,11.5 10.5,21 8.5,19 8.5,13',
+  d:'2,21.5 10,21.5 8.5,19.5 3.5,19.5', e:'1.5,11.5 3.5,13 3.5,19 1.5,21', f:'1.5,1 3.5,3 3.5,9 1.5,10.5',
+  g:'2.5,11 3.5,10 8.5,10 9.5,11 8.5,12 3.5,12'
+};
+const DIGITS = { '0':'abcdef','1':'bc','2':'abged','3':'abgcd','4':'fgbc','5':'afgcd','6':'afgedc','7':'abc','8':'abcdefg','9':'abcdfg','-':'g' };
+function ledSVG(value){
+  const v = Math.max(-99, Math.min(999, value));
+  const str = v < 0 ? '-' + String(-v).padStart(2, '0') : String(v).padStart(3, '0');
+  let out = '<svg viewBox="0 0 40 22" aria-hidden="true">';
+  [...str].forEach((ch, k) => {
+    const lit = DIGITS[ch] || '';
+    out += `<g transform="translate(${1 + k * 13} 0)">`;
+    for (const s in SEG) out += `<polygon class="${lit.includes(s) ? 'on' : 'off'}" points="${SEG[s]}"/>`;
+    out += '</g>';
+  });
+  return out + '</svg>';
+}
+let lastMinesVal = null, lastTimeVal = null;
+function renderCounters(now){
+  const mv = game.mines - game.flags;
+  if (mv !== lastMinesVal){ lastMinesVal = mv; els.mines.innerHTML = ledSVG(mv); els.mines.setAttribute('aria-label', `Mines left: ${mv}`); }
+  const tv = Game.elapsedSec(game, now);
+  if (tv !== lastTimeVal){ lastTimeVal = tv; els.timer.innerHTML = ledSVG(tv); els.timer.setAttribute('aria-label', `Time: ${tv} seconds`); }
+}
+
+function dims(){ return settings.preset === 'custom' ? settings.custom : PRESETS[settings.preset]; }
+
+function buildBoard(){
+  const { w, h, n } = game;
+  els.board.style.setProperty('--cols', w);
+  els.board.setAttribute('aria-rowcount', h);
+  els.board.setAttribute('aria-colcount', w);
+  const frag = document.createDocumentFragment();
+  cellEls = new Array(n);
+  for (let i = 0; i < n; i++){
+    const d = document.createElement('div');
+    d.dataset.i = i; d.setAttribute('role', 'gridcell');
+    cellEls[i] = d; frag.appendChild(d);
+  }
+  els.board.replaceChildren(frag);
+}
+function resetCellCaches(){
+  cellContent = new Array(game.n).fill(null);
+  animUntil = new Float64Array(game.n);
+  animDelay = new Int32Array(game.n);
+  animKind = new Array(game.n).fill('');
+}
+
+function cellView(i){
+  const s = game, m = s.mark[i];
+  if (m === OPEN){
+    if (s.mine[i]) return ['open boom', 'mine', 'mine, exploded'];
+    const a = s.adj[i];
+    return a ? ['open n' + a, String(a), `${a} adjacent ${a === 1 ? 'mine' : 'mines'}`] : ['open', '', 'empty'];
+  }
+  if (s.status === 'lost'){
+    if (s.mine[i] && m !== FLAG) return ['open', 'mine', 'mine'];
+    if (!s.mine[i] && m === FLAG) return ['open', 'wrong', 'wrong flag'];
+  }
+  if (m === FLAG) return ['hidden', 'flag', 'flagged'];
+  if (m === QMARK) return ['hidden q', '?', 'question mark'];
+  return ['hidden', '', 'hidden'];
+}
+const ICON = {
+  mine: '<svg aria-hidden="true"><use href="#i-mine"/></svg>',
+  flag: '<svg aria-hidden="true"><use href="#i-flag"/></svg>',
+  wrong: '<svg aria-hidden="true" viewBox="0 0 16 16"><use href="#i-mine"/><use href="#i-x"/></svg>'
+};
+function render(){
+  const now = performance.now();
+  const pressedSet = new Set(pressed);
+  for (let i = 0; i < game.n; i++){
+    const [cls, content, label] = cellView(i);
+    const el = cellEls[i];
+    let c = 'cell ' + cls;
+    if (pressedSet.has(i) && cls.startsWith('hidden') && content !== 'flag') c += ' pressed';
+    const animating = animUntil[i] > now;
+    if (animating) c += ' ' + animKind[i];
+    if (kbdActive && i === cursor) c += ' cursor';
+    if (el.className !== c) el.className = c;
+    if (animating){
+      const d = animDelay[i] + 'ms';
+      if (el.dataset.d !== d){ el.dataset.d = d; el.style.setProperty('--d', d); }
+    }
+    if (cellContent[i] !== content){
+      cellContent[i] = content;
+      el.innerHTML = ICON[content] || content;
+      const x = i % game.w, y = (i - x) / game.w;
+      el.setAttribute('aria-label', `Row ${y + 1}, column ${x + 1}, ${label}`);
+    }
+  }
+  els.board.classList.toggle('dealing', dealing);
+  els.face.dataset.state = game.status === 'won' ? 'won' : game.status === 'lost' ? 'lost' : (pressing || dealing) ? 'press' : 'normal';
+  renderCounters(now);
+  els.presets.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.preset === settings.preset)));
+  els.mode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === settings.mode)));
+  els.custom.hidden = settings.preset !== 'custom';
+  renderInfo();
+}
+function currentKindNg(){ return game.status === 'ready' ? settings.noGuess : game.noGuess; }
+function fmtSec(ms){ return (ms / 1000).toFixed(1); }
+function renderInfo(){
+  const ng = currentKindNg();
+  const p = PRESETS[settings.preset];
+  const rec = stats[`${settings.preset}:${ng ? 'ng' : 'classic'}`];
+  const kindWord = ng ? 'guess-free' : 'classic';
+  if (p) els.best.textContent = rec && rec.bestMs ? `Best ${p.label.toLowerCase()} time (${kindWord}): ${fmtSec(rec.bestMs)} s` : `No ${kindWord} ${p.label.toLowerCase()} best time yet`;
+  else els.best.textContent = 'Custom boards track wins and 3BV/s';
+  els.kind.textContent = (ng ? 'Guess-free board' : 'Classic board') + (seedParam !== null ? `, seed ${seedParam}` : '');
+}
+
+/* Animation queue: cells keep their cover until their turn. */
+function queueAnims(list, kind, stepMs, capMs){
+  if (!list || !list.length || !motionOn()) return;
+  const now = performance.now();
+  for (const { i, d } of list){
+    const delay = Math.min(capMs, Math.round(d * stepMs));
+    animKind[i] = kind; animDelay[i] = delay; animUntil[i] = now + delay + 320;
+  }
+  scheduleAnimSweep(Math.min(capMs, list.reduce((m, e) => Math.max(m, e.d * stepMs), 0)) + 340);
+}
+let sweepTimer = 0;
+function scheduleAnimSweep(ms){
+  clearTimeout(sweepTimer);
+  sweepTimer = setTimeout(() => render(), ms);
+}
+
+/* =========================================================
+   ZOOM
+   ========================================================= */
+const MAX_CELL = 64;
+let curCell = 36, autoSize = 36, minSize = 28, wholeSize = 36, userCell = null;
+function measure(){
+  const vw = document.documentElement.clientWidth;
+  const chrome = els.win.offsetHeight - els.wrap.offsetHeight + 6;
+  const availW = vw - 20 - 16 - 6 - 2;
+  const availH = window.innerHeight - chrome - 40;
+  const byW = Math.floor(availW / game.w), byH = Math.floor(availH / game.h);
+  autoSize = Math.max(28, Math.min(40, byW, byH > 0 ? byH : 40));
+  wholeSize = Math.max(12, Math.min(MAX_CELL, byW, byH > 0 ? byH : byW));
+  minSize = Math.max(12, Math.min(autoSize, wholeSize));
+}
+function setCell(size, ax, ay){
+  size = Math.round(size);
+  if (size === curCell) return;
+  let px, py;
+  const anchored = ax != null;
+  if (anchored){
+    const r = els.board.getBoundingClientRect();
+    px = (ax - r.left) / curCell; py = (ay - r.top) / curCell;
+  }
+  curCell = size;
+  els.board.style.setProperty('--cell', size + 'px');
+  if (anchored){
+    const r2 = els.board.getBoundingClientRect();
+    els.wrap.scrollLeft += (r2.left + px * size) - ax;
+    window.scrollBy(0, (r2.top + py * size) - ay);
+  }
+}
+function updateZoomButtons(){
+  els.zoomOut.disabled = curCell <= minSize;
+  els.zoomIn.disabled = curCell >= MAX_CELL;
+  els.zoomFit.disabled = curCell === wholeSize;
+}
+function fit(){
+  measure();
+  const size = userCell == null ? autoSize : Math.max(minSize, Math.min(MAX_CELL, userCell));
+  setCell(size);
+  updateZoomButtons();
+}
+function zoomTo(size, ax, ay){
+  measure();
+  userCell = Math.round(Math.max(minSize, Math.min(MAX_CELL, size)));
+  if (ax == null){
+    const r = els.wrap.getBoundingClientRect();
+    ax = r.left + r.width / 2;
+    ay = Math.max(r.top, 0) + Math.min(r.height, window.innerHeight - Math.max(r.top, 0)) / 2;
+  }
+  setCell(userCell, ax, ay);
+  updateZoomButtons();
+}
+els.zoomIn.addEventListener('click', () => zoomTo(curCell * 1.25));
+els.zoomOut.addEventListener('click', () => zoomTo(curCell / 1.25));
+els.zoomFit.addEventListener('click', () => { measure(); zoomTo(wholeSize); els.win.scrollIntoView({ block: 'nearest' }); });
+els.wrap.addEventListener('wheel', e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  zoomTo(curCell * Math.exp(-e.deltaY * 0.0025), e.clientX, e.clientY);
+}, { passive: false });
+
+/* Pinch with two fingers. Browser pinch is off on the board so the page itself never zooms. */
+let pinch = null, pinchEndedAt = 0, pinchRaf = 0;
+const touchDist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+els.wrap.addEventListener('touchstart', e => {
+  if (e.touches.length === 2){
+    abortPointer();
+    const [a, b] = e.touches;
+    pinch = { d0: touchDist(a, b) || 1, c0: curCell };
+    e.preventDefault();
+  }
+}, { passive: false });
+els.wrap.addEventListener('touchmove', e => {
+  if (!pinch || e.touches.length < 2) return;
+  e.preventDefault();
+  const [a, b] = e.touches;
+  const target = pinch.c0 * touchDist(a, b) / pinch.d0;
+  const mx = (a.clientX + b.clientX) / 2, my = (a.clientY + b.clientY) / 2;
+  cancelAnimationFrame(pinchRaf);
+  pinchRaf = requestAnimationFrame(() => zoomTo(target, mx, my));
+}, { passive: false });
+const endPinch = e => { if (pinch && e.touches.length < 2){ pinch = null; pinchEndedAt = performance.now(); } };
+els.wrap.addEventListener('touchend', endPinch);
+els.wrap.addEventListener('touchcancel', endPinch);
+['gesturestart', 'gesturechange'].forEach(t => els.wrap.addEventListener(t, e => e.preventDefault()));
+
+/* =========================================================
+   CONTROLLER
+   ========================================================= */
+function bucketKey(preset, ng){ return `${preset}:${ng ? 'ng' : 'classic'}`; }
+function recordResult(g, won, ms){
+  const key = bucketKey(g.preset, g.noGuess);
+  const date = new Date().toISOString().slice(0, 10);
+  const { rec, newBest } = Stats.record(stats[key], won, ms, g.bbbv, date, g.preset !== 'custom');
+  stats[key] = rec;
+  Store.set('minegrid:stats', stats);
+  return newBest;
+}
+
+function newGame(){
+  if (game && game.status === 'playing') recordResult(game, false, Game.elapsedMs(game, performance.now()));
+  dealToken++; dealing = false;
+  const d = dims();
+  const sameSize = game && game.w === d.w && game.h === d.h;
+  game = Game.create(d.w, d.h, d.m);
+  game.preset = settings.preset;
+  rng = seedParam !== null
+    ? mulberry32(hashSeed(`${seedParam}|${d.w}x${d.h}x${d.m}`))
+    : mulberry32((Math.random() * 4294967296) >>> 0);
+  if (!sameSize){ buildBoard(); userCell = null; }
+  resetCellCaches();
+  cursor = Math.min(cursor, game.n - 1);
+  cancelPointer(); pressed = []; pressing = false;
+  lastMinesVal = lastTimeVal = null;
+  els.status.textContent = '';
+  els.win.classList.remove('shake');
+  render(); fit();
+}
+
+function dealNoGuess(w, h, m, safe, token){
+  return new Promise(resolve => {
+    const t0 = performance.now();
+    let tries = 0;
+    const step = () => {
+      if (token !== dealToken) return resolve(null);
+      const end = performance.now() + 14;
+      while (performance.now() < end){
+        tries++;
+        const mask = Gen.tryNoGuess(w, h, m, safe, rng);
+        if (mask) return resolve({ mask, tries });
+      }
+      if (performance.now() - t0 > 4000) return resolve({ mask: null, tries });
+      setTimeout(step, 0);
+    };
+    step();
+  });
+}
+
+async function firstReveal(i){
+  if (dealing || game.mark[i] === FLAG) return;
+  const g = game, token = ++dealToken;
+  let ng = settings.noGuess, mask = null, note = '';
+  // Above about 30% mines, guess-free layouts essentially never exist, so don't make the player wait.
+  if (ng && g.mines / g.n > 0.3){
+    ng = false;
+    note = 'Guess-free boards need fewer mines than this (about 30% of cells or less), so this one is a classic board.';
+  }
+  if (ng){
+    dealing = true; render();
+    const slow = setTimeout(() => { if (token === dealToken) els.status.textContent = 'Dealing a board you can solve without guessing…'; }, 150);
+    const res = await dealNoGuess(g.w, g.h, g.mines, i, token);
+    clearTimeout(slow);
+    if (token !== dealToken || game !== g) return;
+    dealing = false;
+    if (res && res.mask) mask = res.mask;
+    else { ng = false; note = 'No guess-free board turned up at this mine density, so this one is a classic board.'; }
+  }
+  if (!mask) mask = Gen.random(g.w, g.h, g.mines, i, rng);
+  Game.start(g, mask, ng, performance.now());
+  els.status.textContent = note;
+  act(now => Game.reveal(g, i, now), i);
+}
+
+function act(fn, origin){
+  if (dealing) return;
+  const before = game.mark.slice();
+  const prev = game.status;
+  const opened = fn(performance.now());
+  if (opened) queueAnims(opened, 'dig', 18, 360);
+  if (prev !== game.status) onStatusChange(before, origin);
+  render();
+}
+function chebyshev(a, b){
+  const ax = a % game.w, ay = (a - ax) / game.w, bx = b % game.w, by = (b - bx) / game.w;
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+}
+function onStatusChange(before, origin){
+  if (game.status === 'won'){
+    const ms = Game.elapsedMs(game, 0);
+    const newBest = recordResult(game, true, ms);
+    const rate = ms > 0 ? game.bbbv / (ms / 1000) : 0;
+    els.status.textContent = `Cleared in ${fmtSec(ms)} seconds. 3BV ${game.bbbv}, ${rate.toFixed(2)} per second.` + (newBest ? ' New best time.' : '');
+    const planted = [];
+    for (let i = 0; i < game.n; i++) if (game.mine[i] && before[i] !== FLAG) planted.push({ i, d: origin == null ? 0 : chebyshev(i, origin) });
+    queueAnims(planted, 'plant', 35, 700);
+  } else if (game.status === 'lost'){
+    recordResult(game, false, Game.elapsedMs(game, 0));
+    els.status.textContent = 'Mine hit. Press the hard hat or F2 to play again.';
+    const shown = [];
+    for (let i = 0; i < game.n; i++){
+      if (i === game.exploded) continue;
+      if ((game.mine[i] && game.mark[i] !== FLAG) || (!game.mine[i] && game.mark[i] === FLAG))
+        shown.push({ i, d: 2 + chebyshev(i, game.exploded) });
+    }
+    queueAnims(shown, 'dig', 45, 900);
+    if (motionOn()){ els.win.classList.remove('shake'); void els.win.offsetWidth; els.win.classList.add('shake'); }
+    try { navigator.vibrate && navigator.vibrate(40); } catch (e) {}
+  }
+}
+const doReveal = i => (game.status === 'ready' ? firstReveal(i) : act(now => Game.reveal(game, i, now), i));
+const doMark   = i => act(() => { Game.cycleMark(game, i, settings.qmarks); return null; }, i);
+const doChord  = i => act(now => Game.chord(game, i, now), i);
+const doPrimary = i => (game.mark[i] === OPEN ? doChord(i) : doReveal(i));
+
+/* ---------- Pointer input ---------- */
+const LONG_MS = 400, MOVE_TOL = 10;
+let ptr = null;
+
+function pressTargets(i, chordPress){
+  if (i < 0) return [];
+  if (game.mark[i] === OPEN) return game.nb[i].concat(i);
+  return chordPress ? [i] : [i];
+}
+function setPress(i, chordPress){ pressed = pressTargets(i, chordPress); pressing = i >= 0; render(); }
+function cancelPointer(){
+  if (ptr && ptr.timer) clearTimeout(ptr.timer);
+  ptr = null;
+}
+function abortPointer(){ if (!ptr) return; cancelPointer(); pressed = []; pressing = false; render(); }
+function cellFromPoint(x, y){
+  const el = document.elementFromPoint(x, y);
+  const c = el && el.closest && el.closest('.cell');
+  return c && els.board.contains(c) ? +c.dataset.i : -1;
+}
+
+els.board.addEventListener('contextmenu', e => e.preventDefault());
+els.board.addEventListener('pointerdown', e => {
+  const c = e.target.closest('.cell'); if (!c) return;
+  if (pinch || dealing) return;
+  const i = +c.dataset.i;
+  kbdActive = false;
+  cursor = i;
+  if (Game.isOver(game)){ render(); return; }
+  if (ptr) return;
+  if (e.pointerType === 'mouse'){
+    // Right button, or Control-click (the Mac right-click), places a flag.
+    if (e.button === 2 || (e.button === 0 && e.ctrlKey)){ e.preventDefault(); doMark(i); return; }
+    if (e.button !== 0 && e.button !== 1) return;
+    e.preventDefault();
+    ptr = { id: e.pointerId, type: 'mouse', i, chord: e.button === 1 };
+    setPress(i, ptr.chord);
+  } else {
+    ptr = { id: e.pointerId, type: 'touch', i, x: e.clientX, y: e.clientY, long: false, cancelled: false };
+    const my = ptr;
+    ptr.timer = setTimeout(() => {
+      if (ptr !== my || my.cancelled || pinch) return;
+      my.long = true;
+      try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
+      pressed = []; pressing = false;
+      if (settings.mode === 'flag') doPrimary(i); else doMark(i);
+    }, LONG_MS);
+    setPress(i, false);
+  }
+});
+window.addEventListener('pointermove', e => {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  if (ptr.type === 'touch'){
+    if (!ptr.cancelled && Math.hypot(e.clientX - ptr.x, e.clientY - ptr.y) > MOVE_TOL){
+      ptr.cancelled = true; clearTimeout(ptr.timer); pressed = []; pressing = false; render();
+    }
+  } else {
+    const i = cellFromPoint(e.clientX, e.clientY);
+    if (i !== ptr.i){ ptr.i = i; setPress(i, ptr.chord); }
+  }
+});
+window.addEventListener('pointerup', e => {
+  if (!ptr || e.pointerId !== ptr.id) return;
+  const p = ptr; cancelPointer();
+  pressed = []; pressing = false;
+  if (p.type === 'mouse'){
+    if (p.i >= 0) (p.chord ? doChord(p.i) : doPrimary(p.i)); else render();
+  } else {
+    if (!p.long && !p.cancelled && !pinch && performance.now() - pinchEndedAt > 250){
+      if (game.mark[p.i] === OPEN) doChord(p.i);
+      else if (settings.mode === 'flag') doMark(p.i);
+      else doReveal(p.i);
+    } else render();
+  }
+});
+window.addEventListener('pointercancel', abortPointer);
+window.addEventListener('blur', abortPointer);
+
+/* ---------- Keyboard ---------- */
+els.board.addEventListener('focus', () => { if (els.board.matches(':focus-visible')){ kbdActive = true; render(); } });
+els.board.addEventListener('blur', () => { kbdActive = false; render(); });
+document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return;
+  if (e.key === 'F2'){ e.preventDefault(); newGame(); return; }
+  if (document.activeElement !== els.board) return;
+  const x = cursor % game.w, y = (cursor - x) / game.w;
+  let nx = x, ny = y;
+  switch (e.key){
+    case 'ArrowLeft':  nx = Math.max(0, x - 1); break;
+    case 'ArrowRight': nx = Math.min(game.w - 1, x + 1); break;
+    case 'ArrowUp':    ny = Math.max(0, y - 1); break;
+    case 'ArrowDown':  ny = Math.min(game.h - 1, y + 1); break;
+    case ' ': case 'Enter': e.preventDefault(); kbdActive = true; doPrimary(cursor); return;
+    case 'f': case 'F': e.preventDefault(); kbdActive = true; doMark(cursor); return;
+    case 'c': case 'C': e.preventDefault(); kbdActive = true; doChord(cursor); return;
+    case '+': case '=': e.preventDefault(); zoomTo(curCell * 1.25); return;
+    case '-': case '_': e.preventDefault(); zoomTo(curCell / 1.25); return;
+    case '0': e.preventDefault(); measure(); zoomTo(wholeSize); return;
+    default: return;
+  }
+  e.preventDefault();
+  kbdActive = true;
+  cursor = ny * game.w + nx;
+  render();
+  cellEls[cursor].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+});
+
+/* ---------- Toolbar ---------- */
+els.face.addEventListener('click', newGame);
+els.presets.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  settings.preset = b.dataset.preset; saveSettings();
+  if (settings.preset === 'custom') fillCustomInputs();
+  newGame();
+});
+els.mode.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  settings.mode = b.dataset.mode; saveSettings(); render();
+});
+function fillCustomInputs(){
+  els.cw.value = settings.custom.w; els.ch.value = settings.custom.h; els.cm.value = settings.custom.m;
+  updateMineMax(); els.cerr.textContent = '';
+}
+function updateMineMax(){
+  const w = +els.cw.value, h = +els.ch.value;
+  if (w && h) els.cm.max = Math.max(10, w * h - 9);
+}
+els.cw.addEventListener('input', updateMineMax);
+els.ch.addEventListener('input', updateMineMax);
+function applyCustom(){
+  const w = Number(els.cw.value), h = Number(els.ch.value), m = Number(els.cm.value);
+  const err = validateCustom(w, h, m);
+  els.cerr.textContent = err || '';
+  if (err) return;
+  settings.custom = { w, h, m }; settings.preset = 'custom'; saveSettings(); newGame();
+}
+els.capply.addEventListener('click', applyCustom);
+els.custom.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT'){ e.preventDefault(); applyCustom(); } });
+
+/* ---------- Settings dialog ---------- */
+function applyAppearance(){
+  const root = document.documentElement;
+  if (settings.theme === 'auto') delete root.dataset.theme; else root.dataset.theme = settings.theme;
+  if (settings.numbers === 'contrast') root.dataset.numbers = 'contrast'; else delete root.dataset.numbers;
+}
+function renderSettings(){
+  els.setNoGuess.checked = settings.noGuess;
+  els.setQ.checked = settings.qmarks;
+  els.setMotion.checked = motionOn();
+  els.setNumbers.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.numbers === settings.numbers)));
+  els.setTheme.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === settings.theme)));
+  renderInstall();
+}
+els.setNoGuess.addEventListener('change', () => { settings.noGuess = els.setNoGuess.checked; saveSettings(); render(); });
+els.setQ.addEventListener('change', () => { settings.qmarks = els.setQ.checked; saveSettings(); });
+els.setMotion.addEventListener('change', () => { settings.motion = els.setMotion.checked; saveSettings(); });
+els.setNumbers.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  settings.numbers = b.dataset.numbers; saveSettings(); applyAppearance(); renderSettings();
+});
+els.setTheme.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  settings.theme = b.dataset.theme; saveSettings(); applyAppearance(); renderSettings();
+});
+
+/* ---------- Install & offline ---------- */
+const isStandalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const swPossible = 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+let swReady = false, swFailed = !swPossible, installPrompt = null;
+if (swPossible){
+  try {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => { swReady = true; renderInstall(); })
+      .catch(() => { swFailed = true; renderInstall(); });
+  } catch (e) { swFailed = true; }
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; renderInstall(); });
+window.addEventListener('appinstalled', () => { installPrompt = null; renderInstall(); });
+function renderInstall(){
+  let text;
+  els.installBtn.hidden = true;
+  if (isStandalone) text = 'Mine Grid is installed and plays without a connection.';
+  else if (swFailed) text = 'Installing and offline play work when Mine Grid is opened from its own website, not from inside another page.';
+  else if (installPrompt){ text = 'Install Mine Grid to play from your home screen or dock, with or without a connection.'; els.installBtn.hidden = false; }
+  else if (isIOS) text = 'On iPhone or iPad, tap Share, then Add to Home Screen. It plays offline from there.';
+  else if (swReady) text = 'This page now plays offline. Your browser’s Install app option adds it to your device.';
+  else text = 'Getting offline play ready…';
+  els.installText.textContent = text;
+}
+els.installBtn.addEventListener('click', async () => {
+  if (!installPrompt) return;
+  try { installPrompt.prompt(); await installPrompt.userChoice; } catch (e) {}
+  installPrompt = null; renderInstall();
+});
+
+/* ---------- Stats dialog ---------- */
+const statsView = { level: 'beginner', kind: 'ng' };
+let resetArmed = 0;
+function renderStats(){
+  els.statsLevel.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.level === statsView.level)));
+  els.statsKind.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === statsView.kind)));
+  const r = Object.assign(Stats.empty(), stats[`${statsView.level}:${statsView.kind}`] || {});
+  const recent = Array.isArray(r.recent) ? r.recent : [];
+  const avg = recent.length ? recent.reduce((s, x) => s + x.ms, 0) / recent.length : 0;
+  const custom = statsView.level === 'custom';
+  const rows = [
+    ['Games played', r.played],
+    ['Games won', r.won],
+    ['Win rate', r.played ? Math.round(r.won / r.played * 100) + '%' : '–'],
+    ['Current streak', r.streak],
+    ['Best streak', r.bestStreak],
+    ['Best time', custom ? 'Not tracked' : (r.bestMs ? fmtSec(r.bestMs) + ' s' : '–')],
+    ['Average of recent wins', custom ? 'Not tracked' : (avg ? fmtSec(avg) + ' s' : '–')],
+    ['Best 3BV per second', r.best3bvs ? r.best3bvs.toFixed(2) : '–']
+  ];
+  els.statList.replaceChildren(...rows.flatMap(([k, v]) => {
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    return [dt, dd];
+  }));
+  if (!recent.length){
+    const p = document.createElement('p'); p.className = 'empty sunken';
+    p.textContent = 'No wins on this board yet. Clear one and it shows up here.';
+    els.recentBox.replaceChildren(p);
+  } else {
+    const wrap = document.createElement('div'); wrap.className = 'table-wrap sunken';
+    const t = document.createElement('table'); t.className = 'recent';
+    t.innerHTML = '<thead><tr><th scope="col">Date</th><th scope="col" class="num">Time</th><th scope="col" class="num">3BV</th><th scope="col" class="num">3BV/s</th></tr></thead>';
+    const tb = document.createElement('tbody');
+    for (const x of recent){
+      const tr = document.createElement('tr');
+      const rate = x.ms > 0 ? (x.bbbv / (x.ms / 1000)).toFixed(2) : '–';
+      [[x.date, ''], [fmtSec(x.ms) + ' s', 'num'], [x.bbbv, 'num'], [rate, 'num']].forEach(([v, cls]) => {
+        const td = document.createElement('td'); td.textContent = v; if (cls) td.className = cls; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    }
+    t.appendChild(tb); wrap.appendChild(t);
+    els.recentBox.replaceChildren(wrap);
+  }
+  disarmReset();
+}
+function disarmReset(){
+  clearTimeout(resetArmed); resetArmed = 0;
+  els.resetStats.textContent = 'Reset these stats';
+  els.resetStats.classList.remove('danger');
+}
+els.statsLevel.addEventListener('click', e => { const b = e.target.closest('button'); if (b){ statsView.level = b.dataset.level; renderStats(); } });
+els.statsKind.addEventListener('click', e => { const b = e.target.closest('button'); if (b){ statsView.kind = b.dataset.kind; renderStats(); } });
+els.resetStats.addEventListener('click', () => {
+  if (!resetArmed){
+    els.resetStats.textContent = 'Press again to reset';
+    els.resetStats.classList.add('danger');
+    resetArmed = setTimeout(disarmReset, 3000);
+    return;
+  }
+  delete stats[`${statsView.level}:${statsView.kind}`];
+  Store.set('minegrid:stats', stats);
+  renderStats(); render();
+});
+
+/* ---------- Dialog plumbing ---------- */
+function openDialog(dlg, opener){
+  if (typeof dlg.showModal !== 'function'){ dlg.setAttribute('open', ''); return; }
+  dlg.returnFocusTo = opener;
+  dlg.showModal();
+}
+[els.settingsDlg, els.statsDlg].forEach(dlg => {
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+  dlg.querySelector('[data-close]').addEventListener('click', () => dlg.close ? dlg.close() : dlg.removeAttribute('open'));
+  dlg.addEventListener('close', () => { if (dlg.returnFocusTo) dlg.returnFocusTo.focus(); });
+});
+$('openSettings').addEventListener('click', e => { renderSettings(); openDialog(els.settingsDlg, e.currentTarget); });
+$('openStats').addEventListener('click', e => {
+  statsView.level = settings.preset;
+  statsView.kind = currentKindNg() ? 'ng' : 'classic';
+  renderStats(); openDialog(els.statsDlg, e.currentTarget);
+});
+
+/* ---------- Timer & resize ---------- */
+setInterval(() => { if (game.status === 'playing') renderCounters(performance.now()); }, 200);
+let fitQueued = false;
+window.addEventListener('resize', () => {
+  if (fitQueued) return; fitQueued = true;
+  requestAnimationFrame(() => { fitQueued = false; fit(); });
+});
+
+applyAppearance();
+fillCustomInputs();
+newGame();
+renderInstall();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+Store.hydrate(['minegrid:settings', 'minegrid:stats']).then(any => {
+  if (!any) return;
+  loadSettings(); loadStats(); applyAppearance(); fillCustomInputs();
+  if (game.status === 'ready') newGame(); else render();
+});
+})();
+</script>
+</body>
+</html>
