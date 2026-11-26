@@ -5,6 +5,12 @@ const sections = [
     label: 'Games',
     projects: [
       {
+        title: 'NINJA ARMADILLOS',
+        desc: 'A 90s arcade sidewalk brawler. Four armadillos, one fire ant gang, and whatever ninja weapons are in the crates.',
+        status: 'Web',
+        href: '/ninja-armadillos/',
+      },
+      {
         title: 'MINE GRID',
         desc: 'The minefield logic puzzle, rebuilt. Every board can be solved without guessing. Plays offline.',
         status: 'Web',
